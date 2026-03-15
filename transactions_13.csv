@@ -1,0 +1,3 @@
+date,strategy_id,action,ticker,shares,price,commission,net_amount,cash_after,reason
+2026-03-15,13,BUY,AVGO,1.846141,322.16,4.95,-600.0002,399.9998,"Highest strategy score (114.2) with excellent gross margin of 36.6%, allocating 60% of portfolio"
+2026-03-15,13,BUY,CME,1.899826,311.4,4.95,-596.8516,-196.8518,"Second highest score (90.8) with outstanding 61.8% margin and low beta (0.26), allocating 35% of portfolio"

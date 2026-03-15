@@ -1,0 +1,4 @@
+date,strategy_id,action,ticker,shares,price,commission,net_amount,cash_after,reason
+2026-03-15,04,BUY,MU,1.395707,426.13,4.95,-600.0,400.0,"Highest quality GARP candidate with strong 28.1% margin and 416% EPS growth, allocating ~33% of portfolio"
+2026-03-15,04,BUY,NVDA,3.28214,180.25,4.95,-596.8515,-196.8515,"Excellent margins at 55.6% with solid 120% EPS growth, strong fundamentals despite lower score, allocating ~33% of portfolio"
+2026-03-15,04,BUY,APP,1.289831,458.67,4.95,-596.8526,-793.7041,"Outstanding 62.6% margin with 101.8% EPS growth, best margin profile in top candidates, allocating ~27% of portfolio"

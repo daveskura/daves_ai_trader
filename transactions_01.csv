@@ -1,0 +1,4 @@
+date,strategy_id,action,ticker,shares,price,commission,net_amount,cash_after,reason
+2026-03-15,01,BUY,MU,1.395707,426.13,4.95,-600.0,400.0,"Highest momentum score (65.1) with strong momentum and golden cross, allocating ~31% of portfolio"
+2026-03-15,01,BUY,WDC,2.172705,272.29,4.95,-596.8516,-196.8516,"Second highest score (62.5) with strong momentum and golden cross, allocating ~31% of portfolio"
+2026-03-15,01,BUY,MSI,1.250437,473.12,4.95,-596.8526,-793.7042,"Third highest score (58.2) with strong momentum and golden cross, allocating ~31% of portfolio"

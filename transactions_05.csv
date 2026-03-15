@@ -1,0 +1,3 @@
+date,strategy_id,action,ticker,shares,price,commission,net_amount,cash_after,reason
+2026-03-15,05,BUY,BAC,12.73015,46.72,4.95,-600.0,400.0,"Second highest score (73.0) in Financial Services sector, allocating ~33% of portfolio"
+2026-03-15,05,BUY,PNC,2.94141,201.13,4.95,-596.8516,-196.8516,"Third highest score (72.9) in Financial Services sector, allocating ~28% of portfolio to reach max 3 positions while maintaining 5% cash reserve"

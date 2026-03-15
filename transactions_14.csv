@@ -1,0 +1,3 @@
+date,strategy_id,action,ticker,shares,price,commission,net_amount,cash_after,reason
+2026-03-15,14,BUY,NVDA,3.299598,180.25,4.95,-599.9999,400.0001,"Largest market cap stock (4.38T), allocating ~47% of portfolio for passive S&P 500 benchmark"
+2026-03-15,14,BUY,AAPL,2.365288,250.12,4.95,-596.8516,-196.8516,"Second largest market cap stock (3.68T), allocating ~47% of portfolio for passive S&P 500 benchmark"
