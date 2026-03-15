@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Equity Signal Picker</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:       #0a0c0f;
+    --surface:  #111318;
+    --border:   #1e2229;
+    --border2:  #2a2f38;
+    --text:     #c8cdd6;
+    --muted:    #555d6b;
+    --accent:   #00e5a0;
+    --accent2:  #0099ff;
+    --red:      #ff4d6a;
+    --yellow:   #ffc947;
+    --green:    #00e5a0;
+    --tier1:    #7c6af7;
+    --tier2:    #0099ff;
+    --tier3:    #ff9140;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 13px;
+    min-height: 100vh;
+  }
+
+  /* ── HEADER ── */
+  header {
+    padding: 28px 32px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+
+  .logo {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.2em;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  h1 {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 22px;
+    font-weight: 600;
+    color: #eef0f3;
+    letter-spacing: -0.02em;
+  }
+
+  .run-date {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+
+  /* ── UPLOAD ZONE ── */
+  .upload-zone {
+    margin: 28px 32px;
+    border: 1px dashed var(--border2);
+    border-radius: 6px;
+    padding: 36px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    background: var(--surface);
+  }
+  .upload-zone:hover, .upload-zone.drag { border-color: var(--accent); background: #0d1210; }
+  .upload-zone .icon { font-size: 28px; margin-bottom: 10px; opacity: 0.5; }
+  .upload-zone p { color: var(--muted); font-size: 13px; }
+  .upload-zone strong { color: var(--text); }
+  #file-input { display: none; }
+
+  /* ── STATS BAR ── */
+  #stats-bar {
+    display: none;
+    margin: 0 32px 20px;
+    display: none;
+    gap: 2px;
+  }
+  #stats-bar.visible { display: flex; }
+
+  .stat {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 14px 18px;
+    border-radius: 4px;
+  }
+  .stat-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .stat-value {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 20px;
+    font-weight: 600;
+    color: #eef0f3;
+  }
+  .stat-value.green { color: var(--green); }
+  .stat-value.red   { color: var(--red); }
+  .stat-value.yellow { color: var(--yellow); }
+
+  /* ── CONTROLS ── */
+  #controls {
+    display: none;
+    margin: 0 32px 16px;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  #controls.visible { display: flex; }
+
+  .ctrl-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .ctrl-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  select, input[type=range], input[type=text] {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    color: var(--text);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    border-radius: 3px;
+    padding: 5px 10px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  select:focus, input:focus { border-color: var(--accent); }
+  input[type=range] { padding: 0; width: 100px; accent-color: var(--accent); }
+  input[type=text] { width: 180px; }
+
+  .btn {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 6px 14px;
+    border-radius: 3px;
+    border: 1px solid var(--border2);
+    background: transparent;
+    color: var(--text);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn:hover { border-color: var(--accent); color: var(--accent); }
+  .btn.primary { background: var(--accent); color: #000; border-color: var(--accent); font-weight: 600; }
+  .btn.primary:hover { background: #00c990; }
+
+  #score-val {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--accent);
+    min-width: 28px;
+  }
+
+  /* ── TABLE ── */
+  #table-wrap {
+    display: none;
+    margin: 0 32px 32px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  #table-wrap.visible { display: block; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+  }
+
+  thead tr {
+    background: #0e1014;
+    border-bottom: 1px solid var(--border2);
+  }
+
+  th {
+    padding: 10px 14px;
+    text-align: left;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 500;
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+  }
+  th:hover { color: var(--text); }
+  th.sorted { color: var(--accent); }
+  th .sort-arrow { margin-left: 4px; opacity: 0.5; }
+  th.sorted .sort-arrow { opacity: 1; }
+
+  tbody tr {
+    border-bottom: 1px solid var(--border);
+    transition: background 0.1s;
+    cursor: pointer;
+  }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: #13171e; }
+  tbody tr.selected { background: #0d1a14; border-left: 2px solid var(--accent); }
+
+  td {
+    padding: 9px 14px;
+    color: var(--text);
+    white-space: nowrap;
+  }
+
+  .ticker-cell {
+    font-weight: 600;
+    font-size: 13px;
+    color: #eef0f3;
+    letter-spacing: 0.04em;
+  }
+
+  .sector-cell {
+    color: var(--muted);
+    font-size: 11px;
+    max-width: 160px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Score bar */
+  .score-wrap { display: flex; align-items: center; gap: 8px; }
+  .score-bar-bg {
+    width: 60px; height: 4px;
+    background: var(--border2);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .score-bar-fill { height: 100%; border-radius: 2px; transition: width 0.3s; }
+
+  /* Tier score pills */
+  .tier-score {
+    display: inline-block;
+    font-size: 11px;
+    padding: 2px 7px;
+    border-radius: 2px;
+    font-weight: 500;
+  }
+  .t1 { background: #1a1740; color: var(--tier1); }
+  .t2 { background: #0a1a2a; color: var(--tier2); }
+  .t3 { background: #1f1208; color: var(--tier3); }
+
+  /* Signal badge */
+  .signal {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    padding: 3px 8px;
+    border-radius: 2px;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .sig-sb { background: #002a1a; color: var(--green); border: 1px solid #004a2d; }
+  .sig-b  { background: #001a26; color: #40c4ff;     border: 1px solid #003048; }
+  .sig-h  { background: #1a1700; color: var(--yellow);border: 1px solid #302e00; }
+  .sig-s  { background: #1f0a10; color: #ff8099;     border: 1px solid #3a1020; }
+  .sig-ss { background: #200000; color: var(--red);   border: 1px solid #440010; }
+
+  /* MA signal */
+  .ma-bull { color: var(--green); font-size: 11px; }
+  .ma-bear { color: var(--red);   font-size: 11px; }
+  .ma-none { color: var(--muted); font-size: 11px; }
+
+  /* ── DETAIL PANEL ── */
+  #detail {
+    display: none;
+    position: fixed;
+    top: 0; right: 0;
+    width: 360px; height: 100vh;
+    background: #0d1014;
+    border-left: 1px solid var(--border2);
+    overflow-y: auto;
+    z-index: 100;
+    padding: 24px;
+    animation: slideIn 0.2s ease;
+  }
+  @keyframes slideIn { from { transform: translateX(20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+  #detail.visible { display: block; }
+
+  .detail-close {
+    position: absolute;
+    top: 16px; right: 16px;
+    background: none; border: none;
+    color: var(--muted); font-size: 18px;
+    cursor: pointer; padding: 4px 8px;
+  }
+  .detail-close:hover { color: var(--text); }
+
+  .detail-ticker {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 28px; font-weight: 600;
+    color: #eef0f3; margin-bottom: 2px;
+  }
+  .detail-name {
+    color: var(--muted); font-size: 12px; margin-bottom: 16px;
+  }
+
+  .detail-score-ring {
+    display: flex; align-items: center; gap: 16px;
+    background: var(--surface); border: 1px solid var(--border2);
+    border-radius: 6px; padding: 16px; margin-bottom: 16px;
+  }
+  .ring-num {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 36px; font-weight: 600; line-height: 1;
+  }
+  .ring-label { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+  .detail-section { margin-bottom: 20px; }
+  .detail-section-title {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px; letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 10px;
+  }
+
+  .kpi-row {
+    display: flex; justify-content: space-between;
+    align-items: center; padding: 6px 0;
+    border-bottom: 1px solid #14181e;
+  }
+  .kpi-row:last-child { border-bottom: none; }
+  .kpi-name { color: var(--muted); font-size: 12px; }
+  .kpi-val  {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px; font-weight: 500; color: #eef0f3;
+  }
+  .kpi-val.pos { color: var(--green); }
+  .kpi-val.neg { color: var(--red); }
+  .kpi-val.warn { color: var(--yellow); }
+
+  .tier-bar-row { margin-bottom: 10px; }
+  .tier-bar-label {
+    display: flex; justify-content: space-between;
+    font-size: 11px; color: var(--muted); margin-bottom: 4px;
+  }
+  .tier-bar-label span:last-child {
+    font-family: 'IBM Plex Mono', monospace;
+    color: var(--text);
+  }
+  .tier-bar-track {
+    height: 6px; background: var(--border2);
+    border-radius: 3px; overflow: hidden;
+  }
+  .tier-bar-fill { height: 100%; border-radius: 3px; }
+
+  /* ── SECTOR HEATMAP ── */
+  #sector-view {
+    display: none;
+    margin: 0 32px 32px;
+  }
+  #sector-view.visible { display: block; }
+  .sector-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 10px;
+  }
+  .sector-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 14px 16px;
+  }
+  .sector-card-name {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--muted);
+    margin-bottom: 8px;
+  }
+  .sector-card-score {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 22px; font-weight: 600; color: #eef0f3;
+    margin-bottom: 6px;
+  }
+  .sector-card-bar {
+    height: 3px; background: var(--border2);
+    border-radius: 2px; overflow: hidden; margin-bottom: 8px;
+  }
+  .sector-card-fill { height: 100%; border-radius: 2px; }
+  .sector-top-tickers { font-size: 11px; color: var(--muted); }
+  .sector-top-tickers span { color: var(--text); margin-right: 6px; }
+
+  /* ── TABS ── */
+  .tabs {
+    display: none;
+    margin: 0 32px 16px;
+    gap: 2px;
+  }
+  .tabs.visible { display: flex; }
+  .tab {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px; letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 7px 16px; border-radius: 3px;
+    border: 1px solid transparent;
+    background: transparent; color: var(--muted);
+    cursor: pointer; transition: all 0.15s;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active { background: var(--surface); border-color: var(--border2); color: var(--accent); }
+
+  /* ── EMPTY STATE ── */
+  .empty { text-align: center; padding: 60px; color: var(--muted); }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="logo">Equity Analysis System</div>
+    <h1>Signal Picker</h1>
+    <div class="run-date" id="run-date">Load equity_kpi_results.csv to begin</div>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center;">
+    <button class="btn primary" onclick="document.getElementById('file-input').click()">↑ Load CSV</button>
+    <input type="file" id="file-input" accept=".csv">
+  </div>
+</header>
+
+<!-- Upload zone (shown when no data) -->
+<div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-input').click()">
+  <div class="icon">📊</div>
+  <p><strong>Drop equity_kpi_results.csv here</strong></p>
+  <p style="margin-top:6px;">Output from equity_kpi_analyzer.py · drag & drop or click to browse</p>
+</div>
+
+<!-- Stats bar -->
+<div id="stats-bar">
+  <div class="stat">
+    <div class="stat-label">Total Stocks</div>
+    <div class="stat-value" id="stat-total">—</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Strong Buy</div>
+    <div class="stat-value green" id="stat-sb">—</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Buy</div>
+    <div class="stat-value green" id="stat-buy">—</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Hold</div>
+    <div class="stat-value yellow" id="stat-hold">—</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Sell / Strong Sell</div>
+    <div class="stat-value red" id="stat-sell">—</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Avg Composite</div>
+    <div class="stat-value" id="stat-avg">—</div>
+  </div>
+</div>
+
+<!-- Tabs -->
+<div class="tabs" id="tabs">
+  <button class="tab active" onclick="switchTab('table', this)">Rankings</button>
+  <button class="tab" onclick="switchTab('sectors', this)">Sectors</button>
+</div>
+
+<!-- Controls -->
+<div id="controls">
+  <div class="ctrl-group">
+    <span class="ctrl-label">Search</span>
+    <input type="text" id="search" placeholder="AAPL, Technology…" oninput="applyFilters()">
+  </div>
+  <div class="ctrl-group">
+    <span class="ctrl-label">Sector</span>
+    <select id="sector-filter" onchange="applyFilters()">
+      <option value="">All Sectors</option>
+    </select>
+  </div>
+  <div class="ctrl-group">
+    <span class="ctrl-label">Signal</span>
+    <select id="signal-filter" onchange="applyFilters()">
+      <option value="">All Signals</option>
+      <option value="STRONG BUY">Strong Buy</option>
+      <option value="BUY">Buy</option>
+      <option value="HOLD">Hold</option>
+      <option value="SELL">Sell</option>
+      <option value="STRONG SELL">Strong Sell</option>
+    </select>
+  </div>
+  <div class="ctrl-group">
+    <span class="ctrl-label">Min Score</span>
+    <input type="range" id="min-score" min="0" max="100" value="0" oninput="document.getElementById('score-val').textContent=this.value; applyFilters()">
+    <span id="score-val">0</span>
+  </div>
+  <div class="ctrl-group">
+    <span class="ctrl-label">Sort by</span>
+    <select id="sort-col" onchange="applyFilters()">
+      <option value="composite_score">Composite Score</option>
+      <option value="tier1_score">Tier 1 Score</option>
+      <option value="tier2_score">Tier 2 Score</option>
+      <option value="tier3_score">Tier 3 Score</option>
+      <option value="rsi_14">RSI</option>
+      <option value="net_profit_margin">Net Profit Margin</option>
+    </select>
+  </div>
+  <button class="btn" onclick="resetFilters()">Reset</button>
+  <button class="btn" onclick="exportFiltered()">↓ Export Filtered</button>
+</div>
+
+<!-- Table view -->
+<div id="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th onclick="sortBy('rank')">#<span class="sort-arrow">↕</span></th>
+        <th onclick="sortBy('ticker')">Ticker<span class="sort-arrow">↕</span></th>
+        <th onclick="sortBy('sector')">Sector<span class="sort-arrow">↕</span></th>
+        <th onclick="sortBy('composite_score')" class="sorted">Score<span class="sort-arrow">↓</span></th>
+        <th>Signal</th>
+        <th onclick="sortBy('tier1_score')">T1<span class="sort-arrow">↕</span></th>
+        <th onclick="sortBy('tier2_score')">T2<span class="sort-arrow">↕</span></th>
+        <th onclick="sortBy('tier3_score')">T3<span class="sort-arrow">↕</span></th>
+        <th onclick="sortBy('net_profit_margin')">Net Margin<span class="sort-arrow">↕</span></th>
+        <th onclick="sortBy('rsi_14')">RSI<span class="sort-arrow">↕</span></th>
+        <th onclick="sortBy('ma_signal')">MA Signal<span class="sort-arrow">↕</span></th>
+        <th onclick="sortBy('current_price')">Price<span class="sort-arrow">↕</span></th>
+      </tr>
+    </thead>
+    <tbody id="table-body"></tbody>
+  </table>
+</div>
+
+<!-- Sector view -->
+<div id="sector-view">
+  <div class="sector-grid" id="sector-grid"></div>
+</div>
+
+<!-- Detail panel -->
+<div id="detail">
+  <button class="detail-close" onclick="closeDetail()">✕</button>
+  <div id="detail-content"></div>
+</div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────
+let allData = [];
+let filtered = [];
+let sortCol = 'composite_score';
+let sortDir = -1; // -1 = desc
+let selectedTicker = null;
+
+// ── CSV Parser ─────────────────────────────────────────────────────────────
+function parseCSV(text) {
+  const lines = text.trim().split('\n');
+  const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g,''));
+  return lines.slice(1).map(line => {
+    const vals = line.match(/(".*?"|[^,]+|(?<=,)(?=,)|^(?=,)|(?<=,)$)/g) || [];
+    const obj = {};
+    headers.forEach((h, i) => {
+      let v = (vals[i] || '').trim().replace(/^"|"$/g,'');
+      const n = parseFloat(v);
+      obj[h] = isNaN(n) ? v : n;
+    });
+    return obj;
+  }).filter(r => r.ticker);
+}
+
+// ── Load file ──────────────────────────────────────────────────────────────
+document.getElementById('file-input').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => initData(parseCSV(ev.target.result), file.name);
+  reader.readAsText(file);
+});
+
+// Drag and drop
+const uz = document.getElementById('upload-zone');
+uz.addEventListener('dragover', e => { e.preventDefault(); uz.classList.add('drag'); });
+uz.addEventListener('dragleave', () => uz.classList.remove('drag'));
+uz.addEventListener('drop', e => {
+  e.preventDefault(); uz.classList.remove('drag');
+  const file = e.dataTransfer.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => initData(parseCSV(ev.target.result), file.name);
+  reader.readAsText(file);
+});
+
+// ── Init ───────────────────────────────────────────────────────────────────
+function initData(data, filename) {
+  allData = data.sort((a,b) => (b.composite_score||0) - (a.composite_score||0));
+  allData.forEach((r,i) => r._rank = i+1);
+
+  document.getElementById('upload-zone').style.display = 'none';
+  document.getElementById('run-date').textContent =
+    `${filename}  ·  ${allData.length} equities  ·  loaded ${new Date().toLocaleDateString()}`;
+
+  // Populate sector filter
+  const sectors = [...new Set(allData.map(r=>r.sector).filter(Boolean))].sort();
+  const sf = document.getElementById('sector-filter');
+  sectors.forEach(s => { const o = document.createElement('option'); o.value=s; o.textContent=s; sf.appendChild(o); });
+
+  // Show UI
+  document.getElementById('stats-bar').classList.add('visible');
+  document.getElementById('controls').classList.add('visible');
+  document.getElementById('table-wrap').classList.add('visible');
+  document.getElementById('tabs').classList.add('visible');
+
+  updateStats();
+  applyFilters();
+  renderSectors();
+}
+
+// ── Stats bar ──────────────────────────────────────────────────────────────
+function updateStats() {
+  const d = filtered.length ? filtered : allData;
+  document.getElementById('stat-total').textContent = d.length;
+  document.getElementById('stat-sb').textContent   = d.filter(r=>sigClass(r.composite_score)==='sig-sb').length;
+  document.getElementById('stat-buy').textContent  = d.filter(r=>sigClass(r.composite_score)==='sig-b').length;
+  document.getElementById('stat-hold').textContent = d.filter(r=>sigClass(r.composite_score)==='sig-h').length;
+  document.getElementById('stat-sell').textContent = d.filter(r=>['sig-s','sig-ss'].includes(sigClass(r.composite_score))).length;
+  const avg = d.reduce((s,r)=>s+(r.composite_score||0),0)/d.length;
+  document.getElementById('stat-avg').textContent  = avg.toFixed(1);
+}
+
+// ── Filters ────────────────────────────────────────────────────────────────
+function applyFilters() {
+  const search  = document.getElementById('search').value.toLowerCase();
+  const sector  = document.getElementById('sector-filter').value;
+  const signal  = document.getElementById('signal-filter').value.toUpperCase();
+  const minScore= parseFloat(document.getElementById('min-score').value)||0;
+  const sc      = document.getElementById('sort-col').value;
+
+  filtered = allData.filter(r => {
+    if (search && !r.ticker?.toString().toLowerCase().includes(search) &&
+                  !r.sector?.toString().toLowerCase().includes(search)) return false;
+    if (sector && r.sector !== sector) return false;
+    if (signal && !(r.signal||'').toUpperCase().includes(signal)) return false;
+    if ((r.composite_score||0) < minScore) return false;
+    return true;
+  });
+
+  filtered.sort((a,b) => sortDir * ((b[sortCol]||0) - (a[sortCol]||0)));
+  renderTable();
+  updateStats();
+}
+
+function resetFilters() {
+  document.getElementById('search').value = '';
+  document.getElementById('sector-filter').value = '';
+  document.getElementById('signal-filter').value = '';
+  document.getElementById('min-score').value = 0;
+  document.getElementById('score-val').textContent = '0';
+  applyFilters();
+}
+
+function sortBy(col) {
+  if (sortCol === col) sortDir *= -1;
+  else { sortCol = col; sortDir = -1; }
+  applyFilters();
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+function scoreColor(s) {
+  if (s >= 75) return '#00e5a0';
+  if (s >= 60) return '#40c4ff';
+  if (s >= 45) return '#ffc947';
+  if (s >= 30) return '#ff8099';
+  return '#ff4d6a';
+}
+
+function sigClass(s) {
+  if (s >= 75) return 'sig-sb';
+  if (s >= 60) return 'sig-b';
+  if (s >= 45) return 'sig-h';
+  if (s >= 30) return 'sig-s';
+  return 'sig-ss';
+}
+
+function sigLabel(s) {
+  if (s >= 75) return '▲▲ STRONG BUY';
+  if (s >= 60) return '▲ BUY';
+  if (s >= 45) return '─ HOLD';
+  if (s >= 30) return '▼ SELL';
+  return '▼▼ STRONG SELL';
+}
+
+function fmt(v, pct=false, dec=2) {
+  if (v===null||v===undefined||v==='') return '—';
+  if (typeof v !== 'number') return v;
+  if (pct) return (v*100).toFixed(1)+'%';
+  return v.toFixed(dec);
+}
+
+function maClass(sig) {
+  if (!sig || sig==='') return 'ma-none';
+  if (sig.includes('BULL')) return 'ma-bull';
+  if (sig.includes('BEAR')) return 'ma-bear';
+  return 'ma-none';
+}
+
+// ── Render table ───────────────────────────────────────────────────────────
+function renderTable() {
+  const body = document.getElementById('table-body');
+  if (!filtered.length) {
+    body.innerHTML = '<tr><td colspan="12" class="empty">No stocks match your filters</td></tr>';
+    return;
+  }
+
+  body.innerHTML = filtered.map((r, i) => {
+    const sc = r.composite_score || 0;
+    const sc1 = r.tier1_score || 0;
+    const sc2 = r.tier2_score || 0;
+    const sc3 = r.tier3_score || 0;
+    const sig = sigClass(sc);
+    const maC = maClass(r.ma_signal);
+    const maShort = r.ma_signal
+      ? (r.ma_signal.includes('BULL') ? '↑ Golden' : (r.ma_signal.includes('BEAR') ? '↓ Death' : '—'))
+      : '—';
+    const selected = r.ticker === selectedTicker ? 'selected' : '';
+
+    return `<tr class="${selected}" onclick="showDetail('${r.ticker}')">
+      <td style="color:var(--muted);font-size:11px;">${i+1}</td>
+      <td class="ticker-cell">${r.ticker}</td>
+      <td class="sector-cell">${r.sector||'—'}</td>
+      <td>
+        <div class="score-wrap">
+          <span style="font-family:'IBM Plex Mono',monospace;font-weight:600;color:${scoreColor(sc)};min-width:32px">${sc.toFixed(1)}</span>
+          <div class="score-bar-bg"><div class="score-bar-fill" style="width:${sc}%;background:${scoreColor(sc)}"></div></div>
+        </div>
+      </td>
+      <td><span class="signal ${sig}">${sigLabel(sc)}</span></td>
+      <td><span class="tier-score t1">${sc1?sc1.toFixed(0):'—'}</span></td>
+      <td><span class="tier-score t2">${sc2?sc2.toFixed(0):'—'}</span></td>
+      <td><span class="tier-score t3">${sc3?sc3.toFixed(0):'—'}</span></td>
+      <td style="color:${r.net_profit_margin>0?'var(--green)':'var(--red)'}">${fmt(r.net_profit_margin,true)}</td>
+      <td style="color:${r.rsi_14<30?'var(--green)':(r.rsi_14>70?'var(--red)':'var(--text)')}">${fmt(r.rsi_14,false,1)}</td>
+      <td class="${maC}" style="font-size:11px">${maShort}</td>
+      <td style="color:var(--text)">$${fmt(r.current_price,false,2)}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Sector view ────────────────────────────────────────────────────────────
+function renderSectors() {
+  const sectors = {};
+  allData.forEach(r => {
+    const s = r.sector || 'Unknown';
+    if (!sectors[s]) sectors[s] = [];
+    sectors[s].push(r);
+  });
+
+  const grid = document.getElementById('sector-grid');
+  grid.innerHTML = Object.entries(sectors)
+    .sort((a,b) => {
+      const avgA = a[1].reduce((s,r)=>s+(r.composite_score||0),0)/a[1].length;
+      const avgB = b[1].reduce((s,r)=>s+(r.composite_score||0),0)/b[1].length;
+      return avgB - avgA;
+    })
+    .map(([sec, stocks]) => {
+      const avg = stocks.reduce((s,r)=>s+(r.composite_score||0),0)/stocks.length;
+      const top3 = stocks.sort((a,b)=>(b.composite_score||0)-(a.composite_score||0)).slice(0,3);
+      const col = scoreColor(avg);
+      return `<div class="sector-card">
+        <div class="sector-card-name">${sec}</div>
+        <div class="sector-card-score" style="color:${col}">${avg.toFixed(1)}</div>
+        <div class="sector-card-bar"><div class="sector-card-fill" style="width:${avg}%;background:${col}"></div></div>
+        <div class="sector-top-tickers">Top: ${top3.map(r=>`<span>${r.ticker}</span>`).join('')}<span style="color:var(--muted)">${stocks.length} stocks</span></div>
+      </div>`;
+    }).join('');
+}
+
+// ── Detail panel ───────────────────────────────────────────────────────────
+function showDetail(ticker) {
+  const r = allData.find(d => d.ticker === ticker);
+  if (!r) return;
+  selectedTicker = ticker;
+
+  // Re-render table to update selected row highlight
+  renderTable();
+
+  const sc  = r.composite_score || 0;
+  const col = scoreColor(sc);
+
+  document.getElementById('detail-content').innerHTML = `
+    <div class="detail-ticker">${r.ticker}</div>
+    <div class="detail-name">${r.sector||''} ${r.name&&r.name!==r.ticker?'· '+r.name:''}</div>
+
+    <div class="detail-score-ring">
+      <div>
+        <div class="ring-num" style="color:${col}">${sc.toFixed(1)}</div>
+        <div class="ring-label">Composite Score / 100</div>
+      </div>
+      <div>
+        <span class="signal ${sigClass(sc)}" style="font-size:12px">${sigLabel(sc)}</span>
+        ${r.current_price ? `<div style="margin-top:8px;font-family:'IBM Plex Mono',monospace;color:var(--muted);font-size:12px">$${fmt(r.current_price,false,2)}</div>` : ''}
+      </div>
+    </div>
+
+    <!-- Tier breakdown -->
+    <div class="detail-section">
+      <div class="detail-section-title">Tier Breakdown</div>
+      ${[['Tier 1 · Fundamentals & Macro','tier1_score','var(--tier1)'],
+         ['Tier 2 · Technical','tier2_score','var(--tier2)'],
+         ['Tier 3 · Sentiment','tier3_score','var(--tier3)']].map(([label,key,color])=>{
+        const v = r[key];
+        return v!=null ? `<div class="tier-bar-row">
+          <div class="tier-bar-label"><span>${label}</span><span>${v.toFixed(1)}</span></div>
+          <div class="tier-bar-track"><div class="tier-bar-fill" style="width:${v}%;background:${color}"></div></div>
+        </div>` : '';
+      }).join('')}
+    </div>
+
+    <!-- Tier 1 KPIs -->
+    <div class="detail-section">
+      <div class="detail-section-title">▪ Tier 1 · Financial & Macro</div>
+      ${kpiRow('Net Profit Margin', r.net_profit_margin, pct=true)}
+      ${kpiRow('EPS (TTM)', r.eps_ttm, false, 2, 'USD')}
+      ${kpiRow('EPS Forward Growth', r.eps_growth_fwd, pct=true)}
+      ${kpiRow('Current Ratio', r.current_ratio, false, 2, '', 1.5)}
+      ${kpiRow('P/E Ratio', r.pe_ratio, false, 1)}
+      ${kpiRow('Beta', r.beta, false, 2)}
+      ${kpiRow('VIX', r.vix, false, 1, '', null, 20, 30)}
+      ${kpiRow('GDP Growth', r.macro_gdp_growth_rate, pct=true)}
+      ${kpiRow('CPI Inflation', r.macro_inflation_rate_cpi, pct=true)}
+      ${kpiRow('Fed Rate Change', r.macro_policy_rate_change, false, 3, 'pp')}
+    </div>
+
+    <!-- Tier 2 KPIs -->
+    <div class="detail-section">
+      <div class="detail-section-title">▪ Tier 2 · Technical</div>
+      ${kpiRow('RSI (14)', r.rsi_14, false, 1, '', 30, 70)}
+      <div class="kpi-row">
+        <span class="kpi-name">MA Signal</span>
+        <span class="kpi-val ${maClass(r.ma_signal)}">${r.ma_signal||'—'}</span>
+      </div>
+      ${kpiRow('Abnormal Return', r.abnormal_return, pct=true)}
+      ${kpiRow('52w High', r.['52w_high'], false, 2, 'USD')}
+      ${kpiRow('52w Low',  r.['52w_low'],  false, 2, 'USD')}
+      ${kpiRow('% from 52w High', r.pct_from_52w_high, pct=true)}
+    </div>
+
+    <!-- Tier 3 KPIs -->
+    <div class="detail-section">
+      <div class="detail-section-title">▪ Tier 3 · Sentiment</div>
+      ${kpiRow('Analyst Consensus', r.analyst_consensus, false, 2, '/5')}
+      ${kpiRow('Analyst Count', r.analyst_count, false, 0)}
+      ${kpiRow('Net Insider Shares', r.net_insider_shares, false, 0)}
+    </div>
+  `;
+
+  document.getElementById('detail').classList.add('visible');
+}
+
+function kpiRow(label, val, isPct=false, dec=2, suffix='', goodAbove=null, warnAbove=null, badAbove=null) {
+  if (val===null||val===undefined||val==='') return '';
+  let display = typeof val==='number'
+    ? (isPct ? (val*100).toFixed(1)+'%' : val.toFixed(dec)+(suffix?' '+suffix:''))
+    : val;
+  let cls = '';
+  if (typeof val==='number') {
+    if (goodAbove !== null && val >= goodAbove) cls = 'pos';
+    else if (badAbove !== null && val >= badAbove) cls = 'neg';
+    else if (warnAbove !== null && val >= warnAbove) cls = 'warn';
+    else if (goodAbove !== null && val < goodAbove) cls = 'neg';
+  }
+  return `<div class="kpi-row">
+    <span class="kpi-name">${label}</span>
+    <span class="kpi-val ${cls}">${display}</span>
+  </div>`;
+}
+
+function closeDetail() {
+  document.getElementById('detail').classList.remove('visible');
+  selectedTicker = null;
+  renderTable();
+}
+
+// ── Tabs ───────────────────────────────────────────────────────────────────
+function switchTab(tab, btn) {
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  if (tab==='table') {
+    document.getElementById('table-wrap').classList.add('visible');
+    document.getElementById('sector-view').classList.remove('visible');
+    document.getElementById('controls').classList.add('visible');
+  } else {
+    document.getElementById('table-wrap').classList.remove('visible');
+    document.getElementById('sector-view').classList.add('visible');
+    document.getElementById('controls').classList.remove('visible');
+  }
+}
+
+// ── Export filtered ────────────────────────────────────────────────────────
+function exportFiltered() {
+  if (!filtered.length) return;
+  const keys = Object.keys(filtered[0]).filter(k=>!k.startsWith('_'));
+  const csv = [keys.join(','), ...filtered.map(r=>keys.map(k=>{
+    const v = r[k];
+    return typeof v==='string'&&v.includes(',') ? `"${v}"` : (v??'');
+  }).join(','))].join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+  a.download = 'filtered_equities.csv';
+  a.click();
+}
+</script>
+</body>
+</html>

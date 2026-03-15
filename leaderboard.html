@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Strategy Leaderboard</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+         background: #f5f4f0; color: #1a1a18; font-size: 14px; }
+
+  .top-bar { background: #fff; border-bottom: 0.5px solid #ddd;
+             padding: 16px 24px; display: flex; align-items: center;
+             justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  .top-bar h1 { font-size: 17px; font-weight: 500; }
+  .top-bar .meta { font-size: 12px; color: #888; }
+
+  .upload-zone { border: 1.5px dashed #bbb; border-radius: 8px; padding: 20px 24px;
+                 text-align: center; color: #888; cursor: pointer; margin: 24px;
+                 transition: border-color .2s, background .2s; }
+  .upload-zone:hover, .upload-zone.drag { border-color: #378ADD; background: #f0f7ff; }
+  .upload-zone input { display: none; }
+
+  .content { padding: 0 24px 40px; display: none; }
+  .content.visible { display: block; }
+
+  /* metric strip */
+  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px,1fr));
+             gap: 10px; margin-bottom: 20px; }
+  .metric { background: #fff; border-radius: 8px; padding: 12px 16px; }
+  .metric .label { font-size: 11px; color: #888; margin-bottom: 4px; }
+  .metric .value { font-size: 22px; font-weight: 500; }
+  .metric .value.pos { color: #0f6e56; }
+  .metric .value.neg { color: #993c1d; }
+
+  /* chart */
+  .chart-wrap { background: #fff; border-radius: 10px; padding: 16px 20px;
+                margin-bottom: 20px; }
+  .chart-wrap h2 { font-size: 14px; font-weight: 500; margin-bottom: 12px; color: #555; }
+  .bar-chart { display: flex; flex-direction: column; gap: 6px; }
+  .bar-row { display: flex; align-items: center; gap: 8px; }
+  .bar-label { width: 220px; font-size: 12px; white-space: nowrap; overflow: hidden;
+               text-overflow: ellipsis; color: #444; flex-shrink: 0; }
+  .bar-id { width: 24px; font-size: 11px; color: #888; flex-shrink: 0; }
+  .bar-track { flex: 1; background: #f0ede8; border-radius: 4px; height: 20px;
+               position: relative; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 4px; transition: width .4s ease; min-width: 2px; }
+  .bar-fill.pos { background: #1D9E75; }
+  .bar-fill.neg { background: #D85A30; }
+  .bar-pct { width: 60px; font-size: 12px; font-weight: 500; text-align: right; flex-shrink: 0; }
+  .bar-pct.pos { color: #0f6e56; }
+  .bar-pct.neg { color: #993c1d; }
+
+  /* table */
+  .table-wrap { background: #fff; border-radius: 10px; overflow: hidden;
+                margin-bottom: 20px; }
+  .table-wrap h2 { font-size: 14px; font-weight: 500; padding: 14px 20px 10px;
+                   border-bottom: 0.5px solid #eee; color: #555; }
+  table { width: 100%; border-collapse: collapse; }
+  th { font-size: 11px; font-weight: 500; color: #888; padding: 8px 12px;
+       text-align: left; border-bottom: 0.5px solid #eee; white-space: nowrap; }
+  td { font-size: 13px; padding: 9px 12px; border-bottom: 0.5px solid #f5f5f5; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #fafaf8; }
+  .rank-1 td:first-child { font-weight: 500; color: #BA7517; }
+  .rank-2 td:first-child { font-weight: 500; color: #5F5E5A; }
+  .rank-3 td:first-child { font-weight: 500; color: #993C1D; }
+
+  /* badges */
+  .badge { display: inline-block; font-size: 10px; padding: 2px 7px;
+           border-radius: 4px; white-space: nowrap; }
+  .style-momentum { background:#E6F1FB; color:#0C447C; }
+  .style-contrarian { background:#EAF3DE; color:#27500A; }
+  .style-value      { background:#EAF3DE; color:#27500A; }
+  .style-growth     { background:#E6F1FB; color:#0C447C; }
+  .style-macro      { background:#EEEDFE; color:#3C3489; }
+  .style-defensive  { background:#E1F5EE; color:#085041; }
+  .style-event      { background:#FAEEDA; color:#633806; }
+  .style-income     { background:#E1F5EE; color:#085041; }
+  .style-alt-data   { background:#FAEEDA; color:#633806; }
+  .style-academic   { background:#FBEAF0; color:#72243E; }
+  .style-passive    { background:#F1EFE8; color:#444441; }
+
+  .risk-high { background:#FCEBEB; color:#A32D2D; }
+  .risk-med  { background:#FAEEDA; color:#854F0B; }
+  .risk-low  { background:#EAF3DE; color:#3B6D11; }
+
+  .sig-buy  { background:#EAF3DE; color:#27500A; font-weight:500; }
+  .sig-hold { background:#F1EFE8; color:#444441; }
+  .sig-sell { background:#FCEBEB; color:#A32D2D; font-weight:500; }
+
+  /* passive benchmark line */
+  .passive-row td { color: #888; font-style: italic; }
+
+  /* mini sparkline placeholders */
+  .spark { display: inline-block; width: 60px; height: 20px; vertical-align: middle; }
+
+  @media (max-width: 640px) {
+    .bar-label { width: 120px; }
+    th:nth-child(n+6), td:nth-child(n+6) { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <div>
+    <h1>Multi-strategy trading leaderboard</h1>
+    <div class="meta" id="file-meta">Drop your leaderboard.csv to load data</div>
+  </div>
+  <label style="cursor:pointer">
+    <span style="font-size:13px; padding:7px 14px; border:0.5px solid #ccc;
+                 border-radius:6px; background:#fff;">Load CSV</span>
+    <input type="file" id="file-input" accept=".csv">
+  </label>
+</div>
+
+<div class="upload-zone" id="drop-zone">
+  <div style="font-size:32px;margin-bottom:8px">&#8595;</div>
+  <div style="font-weight:500;margin-bottom:4px">Drop leaderboard.csv here</div>
+  <div style="font-size:12px">Generated daily by strategy_runner.py</div>
+  <input type="file" id="drop-input" accept=".csv">
+</div>
+
+<div class="content" id="content">
+
+  <div class="metrics" id="metrics"></div>
+
+  <div class="chart-wrap">
+    <h2>Return by strategy (ranked)</h2>
+    <div class="bar-chart" id="bar-chart"></div>
+  </div>
+
+  <div class="table-wrap">
+    <h2>Full strategy breakdown</h2>
+    <div style="overflow-x:auto">
+      <table id="main-table">
+        <thead>
+          <tr>
+            <th>Rank</th>
+            <th>ID</th>
+            <th>Strategy</th>
+            <th>Style</th>
+            <th>Risk</th>
+            <th>Cash</th>
+            <th>Holdings</th>
+            <th>Total</th>
+            <th>P&amp;L</th>
+            <th>Return</th>
+            <th>Trades</th>
+          </tr>
+        </thead>
+        <tbody id="table-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+function parseCSV(text) {
+  const lines = text.trim().split('\n');
+  const headers = lines[0].split(',').map(h => h.trim());
+  return lines.slice(1).map(line => {
+    const vals = line.split(',');
+    const obj = {};
+    headers.forEach((h, i) => obj[h] = (vals[i] || '').trim());
+    return obj;
+  });
+}
+
+function fmt(n, prefix='$') {
+  const v = parseFloat(n);
+  if (isNaN(v)) return '-';
+  return prefix + Math.abs(v).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+
+function fmtPct(n) {
+  const v = parseFloat(n);
+  if (isNaN(v)) return '-';
+  return (v >= 0 ? '+' : '-') + Math.abs(v).toFixed(2) + '%';
+}
+
+function styleClass(s) { return 'style-' + (s||'').replace(/[^a-z]/g,''); }
+function riskClass(r)  { return 'risk-' + (r||'low'); }
+
+function render(data) {
+  data.sort((a,b) => parseFloat(b.total||0) - parseFloat(a.total||0));
+  const best   = data[0];
+  const worst  = data[data.length-1];
+  const totals = data.map(d => parseFloat(d.total||0));
+  const avg    = totals.reduce((a,b)=>a+b,0) / totals.length;
+  const winners= data.filter(d => parseFloat(d.pnl||0) > 0).length;
+  const date   = data[0]?.date || '';
+
+  document.getElementById('file-meta').textContent =
+    `Last updated: ${date}  |  ${data.length} strategies`;
+
+  // metrics
+  document.getElementById('metrics').innerHTML = `
+    <div class="metric"><div class="label">Best strategy</div>
+      <div class="value pos" style="font-size:16px">${best?.strategy_name?.split('(')[0].trim() || '-'}</div></div>
+    <div class="metric"><div class="label">Best return</div>
+      <div class="value ${parseFloat(best?.pnl||0)>=0?'pos':'neg'}">${fmtPct(best?.pct_return)}</div></div>
+    <div class="metric"><div class="label">Avg portfolio</div>
+      <div class="value">${fmt(avg)}</div></div>
+    <div class="metric"><div class="label">Strategies winning</div>
+      <div class="value pos">${winners} / ${data.length}</div></div>
+    <div class="metric"><div class="label">Worst return</div>
+      <div class="value ${parseFloat(worst?.pnl||0)>=0?'pos':'neg'}">${fmtPct(worst?.pct_return)}</div></div>
+  `;
+
+  // bar chart
+  const maxAbs = Math.max(...data.map(d => Math.abs(parseFloat(d.pct_return||0))), 0.1);
+  document.getElementById('bar-chart').innerHTML = data.map(d => {
+    const pct  = parseFloat(d.pct_return || 0);
+    const w    = Math.max(Math.abs(pct) / maxAbs * 100, 1);
+    const pos  = pct >= 0;
+    const cls  = pos ? 'pos' : 'neg';
+    const passive = d.style === 'passive';
+    return `
+      <div class="bar-row">
+        <div class="bar-id">${d.strategy_id}</div>
+        <div class="bar-label" title="${d.strategy_name}">${d.strategy_name}</div>
+        <div class="bar-track">
+          <div class="bar-fill ${cls}" style="width:${w}%;${passive?'opacity:0.5':''}"></div>
+        </div>
+        <div class="bar-pct ${cls}">${fmtPct(pct)}</div>
+      </div>`;
+  }).join('');
+
+  // table
+  document.getElementById('table-body').innerHTML = data.map((d, i) => {
+    const rank = i + 1;
+    const pnl  = parseFloat(d.pnl || 0);
+    const pos  = pnl >= 0;
+    const passive = d.style === 'passive';
+    return `
+      <tr class="${rank<=3?'rank-'+rank:''} ${passive?'passive-row':''}">
+        <td>${rank}</td>
+        <td style="color:#888;font-size:12px">${d.strategy_id}</td>
+        <td style="font-weight:${rank===1?'500':'400'}">${d.strategy_name}</td>
+        <td><span class="badge ${styleClass(d.style)}">${d.style}</span></td>
+        <td><span class="badge ${riskClass(d.risk)}">${d.risk}</span></td>
+        <td>${fmt(d.cash)}</td>
+        <td>${fmt(d.holdings_value)}</td>
+        <td style="font-weight:500">${fmt(d.total)}</td>
+        <td style="color:${pos?'#0f6e56':'#993c1d'};font-weight:500">
+          ${pos?'+':'-'}${fmt(Math.abs(pnl))}
+        </td>
+        <td style="color:${pos?'#0f6e56':'#993c1d'};font-weight:500">
+          ${fmtPct(d.pct_return)}
+        </td>
+        <td style="color:#888">${d.trades}</td>
+      </tr>`;
+  }).join('');
+
+  document.getElementById('drop-zone').style.display = 'none';
+  document.getElementById('content').classList.add('visible');
+}
+
+function loadFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    const data = parseCSV(e.target.result);
+    if (data.length) render(data);
+  };
+  reader.readAsText(file);
+}
+
+document.getElementById('file-input').addEventListener('change', e => {
+  if (e.target.files[0]) loadFile(e.target.files[0]);
+});
+document.getElementById('drop-input').addEventListener('change', e => {
+  if (e.target.files[0]) loadFile(e.target.files[0]);
+});
+
+const dz = document.getElementById('drop-zone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('drag'));
+dz.addEventListener('drop', e => {
+  e.preventDefault(); dz.classList.remove('drag');
+  const f = e.dataTransfer.files[0];
+  if (f) loadFile(f);
+});
+dz.addEventListener('click', () => document.getElementById('drop-input').click());
+</script>
+</body>
+</html>

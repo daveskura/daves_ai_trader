@@ -1,0 +1,1587 @@
+ 
+============================================ 
+ DAILY RUN: Thu 03/12/2026 21:22:06.59 
+============================================ 
+Traceback (most recent call last):
+  File "C:\dave\Clauderama\equity_kpi_analyzer.py", line 525, in <module>
+    main()
+    ~~~~^^
+  File "C:\dave\Clauderama\equity_kpi_analyzer.py", line 426, in main
+    tickers = get_universe(
+        n               = args.universe_n,
+    ...<2 lines>...
+        force_refresh   = args.refresh_universe,
+    )
+  File "C:\dave\Clauderama\universe_manager.py", line 252, in get_universe
+    print("\n" + "\u2500" * 55)
+    ~~~~~^^^^^^^^^^^^^^^^^
+  File "C:\Python314\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode characters in position 2-56: character maps to <undefined>
+[21:22:10.24] ERROR: KPI analyser failed 
+ 
+============================================ 
+ DAILY RUN: Thu 03/12/2026 21:28:25.81 
+============================================ 
+
+-------------------------------------------------------
+  UNIVERSE SELECTION
+-------------------------------------------------------
+  [UNIVERSE] Loaded 200 tickers from cache (refreshed 2026-03-11)
+  [UNIVERSE] Next refresh in < 7 days  |  mode=balanced
+-------------------------------------------------------
+
+=================================================================
+  EQUITY KPI DAILY ANALYSER
+  Run date : 2026-03-12
+  Universe : S&P 500 top 200 (balanced)  (200 tickers)
+=================================================================
+
+[1/3] Fetching macro data...
+  [MACRO] No FRED key provided — skipping macro data.
+          Get a free key at: https://fred.stlouisfed.org/docs/api/api_key.html
+
+[2/3] Fetching VIX & S&P 500 benchmark...
+  VIX = 27.29
+
+[3/3] Fetching data for 200 tickers...
+
+  [1/200] NVDA... composite=72.0
+  [2/200] AAPL... composite=69.7
+  [3/200] GOOGL... composite=70.0
+  [4/200] GOOG... composite=69.9
+  [5/200] MSFT... composite=64.4
+  [6/200] AMZN... composite=55.0
+  [7/200] META... composite=62.8
+  [8/200] AVGO... composite=70.2
+  [9/200] TSLA... composite=53.7
+  [10/200] BRK-B... composite=48.7
+  [11/200] WMT... composite=55.5
+  [12/200] LLY... composite=68.3
+  [13/200] JPM... composite=72.9
+  [14/200] XOM... composite=60.6
+  [15/200] V... composite=63.8
+  [16/200] JNJ... composite=70.0
+  [17/200] MU... composite=69.1
+  [18/200] ORCL... composite=63.5
+  [19/200] MA... composite=63.4
+  [20/200] COST... composite=55.6
+  [21/200] ABBV... composite=56.3
+  [22/200] NFLX... composite=61.4
+  [23/200] CVX... composite=56.3
+  [24/200] PLTR... composite=63.3
+  [25/200] PG... composite=64.8
+  [26/200] BAC... composite=72.0
+  [27/200] HD... composite=53.2
+  [28/200] GE... composite=60.4
+  [29/200] AMD... composite=61.8
+  [30/200] KO... composite=70.4
+  [31/200] CAT... composite=64.4
+  [32/200] CSCO... composite=69.5
+  [33/200] MRK... composite=70.1
+  [34/200] AMAT... composite=68.5
+  [35/200] RTX... composite=56.1
+  [36/200] LRCX... composite=68.4
+  [37/200] PM... composite=73.6
+  [38/200] UNH... composite=43.8
+  [39/200] MS... composite=70.7
+  [40/200] GS... composite=70.6
+  [41/200] WFC... composite=72.4
+  [42/200] INTC... composite=46.3
+  [43/200] TMUS... composite=56.9
+  [44/200] IBM... composite=66.1
+  [45/200] MCD... composite=70.3
+  [46/200] GEV... composite=62.5
+  [47/200] LIN... composite=73.0
+  [48/200] PEP... composite=58.5
+  [49/200] VZ... composite=62.7
+  [50/200] AXP... composite=69.3
+  [51/200] AMGN... composite=68.0
+  [52/200] T... composite=42.6
+  [53/200] KLAC... composite=68.3
+  [54/200] ABT... composite=57.3
+  [55/200] C... composite=65.5
+  [56/200] NEE... composite=71.2
+  [57/200] TMO... composite=62.4
+  [58/200] CRM... composite=66.0
+  [59/200] GILD... composite=70.0
+  [60/200] TXN... composite=70.1
+  [61/200] DIS... composite=56.7
+  [62/200] TJX... composite=58.8
+  [63/200] ISRG... composite=69.7
+  [64/200] ANET... composite=69.1
+  [65/200] BA... composite=52.3
+  [66/200] APH... composite=68.0
+  [67/200] SCHW... composite=69.8
+  [68/200] DE... composite=63.3
+  [69/200] APP... composite=64.6
+  [70/200] ADI... composite=70.7
+  [71/200] UBER... composite=41.9
+  [72/200] PFE... composite=61.3
+  [73/200] HON... composite=60.6
+  [74/200] LMT... composite=57.4
+  [75/200] UNP... composite=71.6
+  [76/200] BLK... composite=65.7
+  [77/200] WELL... composite=60.2
+  [78/200] QCOM... composite=55.1
+  [79/200] COP... composite=56.7
+  [80/200] BKNG... composite=62.9
+  [81/200] LOW... composite=59.0
+  [82/200] ETN... composite=58.1
+  [83/200] DHR... composite=64.6
+  [84/200] PANW... composite=55.6
+  [85/200] SYK... composite=58.2
+  [86/200] BX... composite=64.4
+  [87/200] SPGI... composite=63.1
+  [88/200] CB... composite=70.1
+  [89/200] NEM... composite=69.0
+  [90/200] VRTX... composite=67.5
+  [91/200] ACN... composite=53.4
+  [92/200] PLD... composite=53.2
+  [93/200] INTU... composite=64.2
+  [94/200] BMY... composite=63.3
+  [95/200] NOW... composite=55.8
+  [96/200] HCA... composite=60.0
+  [97/200] PH... composite=68.0
+  [98/200] PGR... composite=38.7
+  [99/200] IBKR... composite=68.5
+  [100/200] SBUX... composite=53.7
+  [101/200] MCK... composite=52.6
+  [102/200] MDT... composite=65.2
+  [103/200] COF... composite=57.7
+  [104/200] GLW... composite=60.2
+  [105/200] ADBE... composite=64.3
+  [106/200] CRWD... composite=45.1
+  [107/200] CMCSA... composite=46.0
+  [108/200] MO... composite=72.7
+  [109/200] CME... composite=72.9
+  [110/200] CEG... composite=54.5
+  [111/200] SO... composite=62.9
+  [112/200] NOC... composite=46.7
+  [113/200] BSX... composite=57.4
+  [114/200] HWM... composite=66.9
+  [115/200] DUK... composite=63.4
+  [116/200] DELL... composite=48.0
+  [117/200] SNDK... composite=45.9
+  [118/200] CVS... composite=51.5
+  [119/200] TT... composite=66.2
+  [120/200] GD... composite=58.9
+  [121/200] EQIX... composite=65.9
+  [122/200] WM... composite=62.4
+  [123/200] WDC... composite=69.9
+  [124/200] WMB... composite=69.7
+  [125/200] ICE... composite=66.0
+  [126/200] FCX... composite=56.8
+  [127/200] MAR... composite=71.5
+  [128/200] STX... composite=68.9
+  [129/200] ADP... composite=62.1
+  [130/200] AMT... composite=63.2
+  [131/200] UPS... composite=57.9
+  [132/200] FDX... composite=57.4
+  [133/200] MRSH... composite=58.2
+  [134/200] PWR... composite=55.1
+  [135/200] PNC... composite=73.0
+  [136/200] SNPS... composite=55.7
+  [137/200] JCI... composite=60.0
+  [138/200] NKE... composite=51.0
+  [139/200] REGN... composite=66.9
+  [140/200] MMM... composite=63.8
+  [141/200] BK... composite=71.6
+  [142/200] CDNS... composite=63.7
+  [143/200] USB... composite=73.1
+  [144/200] KKR... composite=54.5
+  [145/200] ABNB... composite=67.4
+  [146/200] SHW... composite=64.1
+  [147/200] CTAS... composite=59.8
+  [148/200] ORLY... composite=57.1
+  [149/200] MCO... composite=61.3
+  [150/200] EMR... composite=59.2
+  [151/200] ECL... composite=66.9
+  [152/200] ITW... composite=71.6
+  [153/200] RCL... composite=68.9
+  [154/200] MSI... composite=69.8
+  [155/200] CMI... composite=56.9
+  [156/200] MNST... composite=72.9
+  [157/200] CSX... composite=69.1
+  [158/200] DASH... composite=48.6
+  [159/200] KMI... composite=63.4
+  [160/200] SLB... composite=57.4
+  [161/200] EOG... composite=71.0
+  [162/200] CL... composite=58.9
+  [163/200] MDLZ... composite=48.5
+  [164/200] TDG... composite=71.6
+  [165/200] AEP... composite=54.2
+  [166/200] HOOD... composite=63.9
+  [167/200] VLO... composite=51.1
+  [168/200] GM... composite=54.9
+  [169/200] CI... composite=47.9
+  [170/200] CRH... composite=60.6
+  [171/200] RSG... composite=58.0
+  [172/200] ROST... composite=59.4
+  [173/200] HLT... composite=73.8
+  [174/200] WBD... composite=36.1
+  [175/200] MPC... composite=51.5
+  [176/200] COR... composite=52.1
+  [177/200] LHX... composite=56.4
+  [178/200] AON... composite=64.4
+  [179/200] PSX... composite=53.3
+  [180/200] CVNA... composite=57.0
+  [181/200] NSC... composite=65.6
+  [182/200] TRV... composite=50.9
+  [183/200] ELV... composite=55.8
+  [184/200] DLR... composite=51.6
+  [185/200] PCAR... composite=61.8
+  [186/200] FTNT... composite=66.1
+  [187/200] APD... composite=55.0
+  [188/200] SPG... composite=54.0
+  [189/200] APO... composite=54.4
+  [190/200] AZO... composite=54.1
+  [191/200] SRE... composite=64.5
+  [192/200] O... composite=70.0
+  [193/200] TEL... composite=62.7
+  [194/200] BDX... composite=59.2
+  [195/200] BKR... composite=58.4
+  [196/200] TFC... composite=71.4
+  [197/200] AFL... composite=74.2
+  [198/200] OXY... composite=57.2
+  [199/200] D... composite=72.9
+  [200/200] OKE... composite=60.4
+
+=================================================================
+  RESULTS  (sorted by composite score)
+=================================================================
+ticker                 sector  current_price  composite_score        signal  tier1_score  tier2_score  tier3_score  net_profit_margin  eps_growth_fwd  rsi_14              ma_signal  net_insider_shares
+   AFL     Financial Services       109.6300          74.2000 BUY         ▲      75.7000      79.2000      50.0000             0.2124          0.1394 27.9100 BULLISH (Golden Cross)                   0
+   HLT      Consumer Cyclical       294.2600          73.8000 BUY         ▲      75.7000      77.8000      50.0000             0.2941          0.7024 28.6300 BULLISH (Golden Cross)                   0
+    PM     Consumer Defensive       172.0000          73.6000 BUY         ▲      75.7000      77.3000      50.0000             0.2784          0.2671 37.1300 BULLISH (Golden Cross)                   0
+   USB     Financial Services        51.4800          73.1000 BUY         ▲      75.7000      75.5000      50.0000             0.2730          0.2075 22.1700 BULLISH (Golden Cross)                   0
+   PNC     Financial Services       202.6900          73.0000 BUY         ▲      75.7000      75.2000      50.0000             0.2946          0.2437 18.1800 BULLISH (Golden Cross)                   0
+   LIN        Basic Materials       490.4100          73.0000 BUY         ▲      75.7000      75.2000      50.0000             0.2030          0.3339 47.1400 BULLISH (Golden Cross)                   0
+   JPM     Financial Services       282.8900          72.9000 BUY         ▲      75.7000      75.0000      50.0000             0.3310          0.1740 23.0900 BULLISH (Golden Cross)                   0
+  MNST     Consumer Defensive        76.9900          72.9000 BUY         ▲      75.7000      74.9000      50.0000             0.2297          0.3168 29.6700 BULLISH (Golden Cross)                   0
+   CME     Financial Services       311.1900          72.9000 BUY         ▲      75.7000      75.0000      50.0000             0.6180          0.1388 57.5100 BULLISH (Golden Cross)                   0
+     D              Utilities        62.8400          72.9000 BUY         ▲      72.3000      81.8000      50.0000             0.1798          0.1009 29.5900 BULLISH (Golden Cross)                   0
+    MO     Consumer Defensive        67.7200          72.7000 BUY         ▲      75.7000      74.1000      50.0000             0.3440          0.4099 50.8800 BULLISH (Golden Cross)                   0
+   WFC     Financial Services        75.2500          72.4000 BUY         ▲      75.7000      73.4000      50.0000             0.2534          0.2658 20.6200 BULLISH (Golden Cross)                   0
+  NVDA             Technology       183.1400          72.0000 BUY         ▲      75.7000      71.9000      50.0000             0.5560          1.2089 43.5600 BULLISH (Golden Cross)                   0
+   BAC     Financial Services        47.1300          72.0000 BUY         ▲      75.7000      71.9000      50.0000             0.2705          0.3004 25.9000 BULLISH (Golden Cross)                   0
+   ITW            Industrials       265.6200          71.6000 BUY         ▲      74.2000      73.5000      50.0000             0.1911          0.1598 10.6200 BULLISH (Golden Cross)                   0
+    BK     Financial Services       117.1200          71.6000 BUY         ▲      75.7000      70.5000      50.0000             0.2652          0.2643 47.1600 BULLISH (Golden Cross)                   0
+   UNP            Industrials       244.1000          71.6000 BUY         ▲      75.7000      70.5000      50.0000             0.2912          0.1272 22.9400 BULLISH (Golden Cross)                   0
+   TDG            Industrials      1225.9500          71.6000 BUY         ▲      75.4000      71.1000      50.0000             0.1985          0.4766 21.8700 BULLISH (Golden Cross)                   0
+   MAR      Consumer Cyclical       316.3100          71.5000 BUY         ▲      75.7000      70.3000      50.0000             0.3725          0.3666 27.8900 BULLISH (Golden Cross)                   0
+   TFC     Financial Services        44.3700          71.4000 BUY         ▲      75.7000      70.0000      50.0000             0.2700          0.3382 18.5300 BULLISH (Golden Cross)                   0
+   NEE              Utilities        91.7300          71.2000 BUY         ▲      75.7000      69.1000      50.0000             0.2493          0.3269 50.6200 BULLISH (Golden Cross)                   0
+   EOG                 Energy       133.0400          71.0000 BUY         ▲      75.7000      68.5000      50.0000             0.2198          0.2227 69.2600 BULLISH (Golden Cross)                   0
+    MS     Financial Services       154.3700          70.7000 BUY         ▲      75.7000      67.6000      50.0000             0.2312          0.2039 28.0400 BULLISH (Golden Cross)                   0
+   ADI             Technology       307.2700          70.7000 BUY         ▲      75.7000      67.7000      50.0000             0.2302          1.3675 18.7700 BULLISH (Golden Cross)                   0
+    GS     Financial Services       787.5200          70.6000 BUY         ▲      75.7000      67.1000      50.0000             0.2735          0.2674 24.2300 BULLISH (Golden Cross)                   0
+    KO     Consumer Defensive        77.6100          70.4000 BUY         ▲      75.7000      66.6000      50.0000             0.2734          0.1400 35.8300 BULLISH (Golden Cross)                   0
+   MCD      Consumer Cyclical       323.9100          70.3000 BUY         ▲      75.7000      66.2000      50.0000             0.3185          0.1991 45.2600 BULLISH (Golden Cross)                   0
+  AVGO             Technology       335.9700          70.2000 BUY         ▲      75.7000      65.9000      50.0000             0.3657          2.4249 52.1100 BULLISH (Golden Cross)                   0
+    CB     Financial Services       329.5600          70.1000 BUY         ▲      71.2000      74.5000      50.0000             0.1729          0.1312 47.6700 BULLISH (Golden Cross)                   0
+   TXN             Technology       190.0500          70.1000 BUY         ▲      75.7000      65.5000      50.0000             0.2812          0.4538 14.6000 BULLISH (Golden Cross)                   0
+   MRK             Healthcare       115.9100          70.1000 BUY         ▲      75.7000      65.5000      50.0000             0.2808          0.3406 35.7400 BULLISH (Golden Cross)                   0
+ GOOGL Communication Services       303.5500          70.0000 BUY         ▲      75.7000      65.1000      50.0000             0.3281          0.2418 37.4700 BULLISH (Golden Cross)                   0
+   JNJ             Healthcare       242.0400          70.0000 BUY         ▲      75.7000      65.4000      50.0000             0.2846          0.1390 51.5000 BULLISH (Golden Cross)                   0
+  GILD             Healthcare       145.2100          70.0000 BUY         ▲      75.7000      65.1000      50.0000             0.2890          0.4238 39.2300 BULLISH (Golden Cross)                   0
+     O            Real Estate        65.0300          70.0000 BUY         ▲      73.0000      70.6000      50.0000             0.1837          0.5006 43.6500 BULLISH (Golden Cross)                   0
+  GOOG Communication Services       303.2100          69.9000 BUY         ▲      75.7000      65.0000      50.0000             0.3281          0.2429 37.2300 BULLISH (Golden Cross)                   0
+   WDC             Technology       261.1800          69.9000 BUY         ▲      75.7000      64.9000      50.0000             0.3676          0.2699 40.9300 BULLISH (Golden Cross)                   0
+   MSI             Technology       462.6300          69.8000 BUY         ▲      73.1000      69.9000      50.0000             0.1844          0.4212 49.8900 BULLISH (Golden Cross)                   0
+  SCHW     Financial Services        91.2400          69.8000 BUY         ▲      75.7000      64.5000      50.0000             0.3519          0.4601 40.3900 BULLISH (Golden Cross)                   0
+  ISRG             Healthcare       479.2700          69.7000 BUY         ▲      75.7000      64.3000      50.0000             0.2838          0.4499 35.4300 BULLISH (Golden Cross)                   0
+   WMB                 Energy        73.5200          69.7000 BUY         ▲      75.7000      64.4000      50.0000             0.2210          0.2248 53.1500 BULLISH (Golden Cross)                   0
+  AAPL             Technology       255.7600          69.7000 BUY         ▲      75.7000      64.2000      50.0000             0.2704          0.1767 37.7300 BULLISH (Golden Cross)                   0
+  CSCO             Technology        77.7400          69.5000 BUY         ▲      73.6000      67.7000      50.0000             0.1876          0.6244 44.9800 BULLISH (Golden Cross)                   0
+   AXP     Financial Services       301.8900          69.3000 BUY         ▲      69.0000      76.4000      50.0000             0.1598          0.3072 26.9300 BULLISH (Golden Cross)                   0
+  ANET             Technology       134.0300          69.1000 BUY         ▲      75.7000      62.3000      50.0000             0.3899          0.5503 51.0500 BULLISH (Golden Cross)                   0
+    MU             Technology       405.3500          69.1000 BUY         ▲      75.7000      62.2000      50.0000             0.2815          3.5324 43.8100 BULLISH (Golden Cross)                   0
+   CSX            Industrials        39.2200          69.1000 BUY         ▲      75.7000      62.2000      50.0000             0.2050          0.3553 32.1900 BULLISH (Golden Cross)                   0
+   NEM        Basic Materials       114.4800          69.0000 BUY         ▲      75.7000      62.0000      50.0000             0.3125          0.6942 37.9600 BULLISH (Golden Cross)                   0
+   STX             Technology       373.9800          68.9000 BUY         ▲      75.0000      63.0000      50.0000             0.1959          1.2439 40.2200 BULLISH (Golden Cross)                   0
+   RCL      Consumer Cyclical       266.4900          68.9000 BUY         ▲      75.7000      61.5000      50.0000             0.2380          0.3263 29.6300 BULLISH (Golden Cross)                   0
+  AMAT             Technology       337.2700          68.5000 BUY         ▲      75.7000      60.2000      50.0000             0.2778          0.4182 36.9900 BULLISH (Golden Cross)                   0
+  IBKR     Financial Services        66.9200          68.5000 BUY         ▲      68.8000      74.2000      50.0000             0.1585          0.2339 29.4400 BULLISH (Golden Cross)                   0
+  LRCX             Technology       209.4900          68.4000 BUY         ▲      75.7000      59.8000      50.0000             0.3022          0.4146 32.5300 BULLISH (Golden Cross)                   0
+   LLY             Healthcare       977.2500          68.3000 BUY         ▲      75.7000      59.7000      50.0000             0.3167          0.8241 43.2900 BULLISH (Golden Cross)                   0
+  KLAC             Technology      1409.5700          68.3000 BUY         ▲      75.7000      59.7000      50.0000             0.3576          0.3727 41.9300 BULLISH (Golden Cross)                   0
+    PH            Industrials       902.1700          68.0000 BUY         ▲      71.2000      67.6000      50.0000             0.1729          0.2424 21.7200 BULLISH (Golden Cross)                   0
+   APH             Technology       131.4700          68.0000 BUY         ▲      73.2000      63.6000      50.0000             0.1849          0.5407 31.2800 BULLISH (Golden Cross)                   0
+  AMGN             Healthcare       367.7900          68.0000 BUY         ▲      75.7000      58.5000      50.0000             0.2098          0.6346 45.1300 BULLISH (Golden Cross)                   0
+  VRTX             Healthcare       478.1300          67.5000 BUY         ▲      75.7000      57.0000      50.0000             0.3294          0.4298 50.4200 BULLISH (Golden Cross)                   0
+  ABNB      Consumer Cyclical       127.7000          67.4000 BUY         ▲      75.7000      56.7000      50.0000             0.2051          0.4402 49.7500 BULLISH (Golden Cross)                   0
+   HWM            Industrials       243.8200          66.9000 BUY         ▲      72.8000      60.7000      50.0000             0.1825          0.4878 33.6100 BULLISH (Golden Cross)                   0
+   ECL        Basic Materials       275.8900          66.9000 BUY         ▲      63.9000      78.6000      50.0000             0.1291          0.3347 14.6000 BULLISH (Golden Cross)                   0
+  REGN             Healthcare       746.6100          66.9000 BUY         ▲      75.7000      54.9000      50.0000             0.3141          0.2743 41.8300 BULLISH (Golden Cross)                   0
+    TT            Industrials       421.8200          66.2000 BUY         ▲      65.5000      72.9000      50.0000             0.1386          0.2794 25.6800 BULLISH (Golden Cross)                   0
+   IBM             Technology       247.6800          66.1000 BUY         ▲      68.4000      67.0000      50.0000             0.1565          0.2034 44.4700 BULLISH (Golden Cross)                   0
+  FTNT             Technology        84.4000          66.1000 BUY         ▲      75.7000      52.3000      50.0000             0.2726          0.3672 62.7800  BEARISH (Death Cross)                   0
+   ICE     Financial Services       158.6100          66.0000 BUY         ▲      75.7000      52.0000      50.0000             0.3338          0.4882 58.3600  BEARISH (Death Cross)                   0
+   CRM             Technology       199.2800          66.0000 BUY         ▲      72.3000      58.8000      50.0000             0.1796          0.9112 61.2000  BEARISH (Death Cross)                   0
+  EQIX            Real Estate       971.4700          65.9000 BUY         ▲      66.7000      69.6000      50.0000             0.1458          0.2804 64.8200 BULLISH (Golden Cross)                   0
+   BLK     Financial Services       922.9000          65.7000 BUY         ▲      75.7000      51.0000      50.0000             0.2293          0.7523 16.2400  BEARISH (Death Cross)                   0
+   NSC            Industrials       291.2600          65.6000 BUY         ▲      63.7000      74.6000      50.0000             0.2356          0.0640 18.3700 BULLISH (Golden Cross)                   0
+     C     Financial Services       105.5000          65.5000 BUY         ▲      71.0000      59.5000      50.0000             0.1720          0.7306 33.9500 BULLISH (Golden Cross)                   0
+   MDT             Healthcare        87.3800          65.2000 BUY         ▲      64.0000      72.7000      50.0000             0.1300          0.7029 21.7200 BULLISH (Golden Cross)                   0
+    PG     Consumer Defensive       150.5000          64.8000 BUY         ▲      69.3000      60.6000      50.0000             0.1896          0.0860 33.7600 BULLISH (Golden Cross)                   0
+   DHR             Healthcare       186.2600          64.6000 BUY         ▲      66.8000      64.9000      50.0000             0.1465          0.8119 18.8800 BULLISH (Golden Cross)                   0
+   APP Communication Services       449.3300          64.6000 BUY         ▲      75.7000      47.3000      50.0000             0.6263          1.0138 55.4900  BEARISH (Death Cross)                   0
+   SRE              Utilities        93.1900          64.5000 BUY         ▲      64.2000      70.0000      50.0000             0.1311          1.0057 47.8600 BULLISH (Golden Cross)                   0
+    BX     Financial Services       102.1200          64.4000 BUY         ▲      75.7000      46.5000      50.0000             0.2124          1.0479 27.1200  BEARISH (Death Cross)                   0
+   CAT            Industrials       700.6900          64.4000 BUY         ▲      64.3000      69.5000      50.0000             0.1314          0.4712 34.6800 BULLISH (Golden Cross)                   0
+  MSFT             Technology       401.8600          64.4000 BUY         ▲      75.7000      46.5000      50.0000             0.3904          0.1785 53.4700  BEARISH (Death Cross)                   0
+   AON     Financial Services       315.9100          64.4000 BUY         ▲      75.7000      46.5000      50.0000             0.2151          0.2649 42.9100  BEARISH (Death Cross)                   0
+  ADBE             Technology       269.7800          64.3000 BUY         ▲      75.7000      46.3000      50.0000             0.3000          0.5813 58.4900  BEARISH (Death Cross)                   0
+  INTU             Technology       435.1300          64.2000 BUY         ▲      75.7000      45.8000      50.0000             0.2157          0.7191 64.3400  BEARISH (Death Cross)                   0
+   SHW        Basic Materials       317.7000          64.1000 BUY         ▲      60.5000      76.1000      50.0000             0.1090          0.3182 19.0200 BULLISH (Golden Cross)                   0
+  HOOD     Financial Services        76.1200          63.9000 BUY         ▲      75.7000      45.0000      50.0000             0.4210          0.3496 50.0100  BEARISH (Death Cross)                   0
+     V     Financial Services       306.5000          63.8000 BUY         ▲      75.7000      44.7000      50.0000             0.4975          0.3627 33.2200  BEARISH (Death Cross)                   0
+   MMM            Industrials       149.1000          63.8000 BUY         ▲      64.1000      67.7000      50.0000             0.1303          0.5639 21.5100 BULLISH (Golden Cross)                   0
+  CDNS             Technology       290.3200          63.7000 BUY         ▲      75.7000      44.2000      50.0000             0.2094          1.3153 46.0300  BEARISH (Death Cross)                   0
+  ORCL             Technology       159.1600          63.5000 BUY         ▲      75.7000      43.6000      50.0000             0.2526          0.4945 60.3300  BEARISH (Death Cross)                   0
+   KMI                 Energy        33.3600          63.4000 BUY         ▲      61.8000      71.1000      50.0000             0.1795          0.0684 60.1900 BULLISH (Golden Cross)                   0
+    MA     Financial Services       497.3100          63.4000 BUY         ▲      75.7000      43.2000      50.0000             0.4565          0.3691 33.6800  BEARISH (Death Cross)                   0
+   DUK              Utilities       131.8200          63.4000 BUY         ▲      68.1000      58.6000      50.0000             0.1543          0.1343 71.7200 BULLISH (Golden Cross)                   0
+  PLTR             Technology       153.5000          63.3000 BUY         ▲      75.7000      43.0000      50.0000             0.3631          1.8877 70.6800  BEARISH (Death Cross)                   0
+    DE            Industrials       585.8300          63.3000 BUY         ▲      59.5000      75.3000      50.0000             0.1030          0.3066 18.4700 BULLISH (Golden Cross)                   0
+   BMY             Healthcare        58.9500          63.3000 BUY         ▲      66.8000      60.6000      50.0000             0.1464          0.7707 40.5300 BULLISH (Golden Cross)                   0
+   AMT            Real Estate       179.8600          63.2000 BUY         ▲      75.7000      42.5000      50.0000             0.2376          0.2817 39.3800  BEARISH (Death Cross)                   0
+  SPGI     Financial Services       419.7000          63.1000 BUY         ▲      75.7000      42.3000      50.0000             0.2915          0.5043 51.7000  BEARISH (Death Cross)                   0
+    SO              Utilities        97.8400          62.9000 BUY         ▲      66.9000      59.2000      50.0000             0.1469          0.2547 72.0700 BULLISH (Golden Cross)                   0
+  BKNG      Consumer Cyclical      4217.7100          62.9000 BUY         ▲      75.7000      41.5000      50.0000             0.2008          0.8914 54.9300  BEARISH (Death Cross)                   0
+  META Communication Services       638.1800          62.8000 BUY         ▲      75.7000      41.3000      50.0000             0.3008          0.5262 42.4700  BEARISH (Death Cross)                   0
+    VZ Communication Services        50.6300          62.7000 BUY         ▲      63.1000      66.1000      50.0000             0.1243          0.2923 63.0200 BULLISH (Golden Cross)                   0
+   TEL             Technology       197.8400          62.7000 BUY         ▲      61.4000      69.5000      50.0000             0.1142          0.7854 25.9800 BULLISH (Golden Cross)                   0
+   GEV            Industrials       832.1100          62.5000 BUY         ▲      63.8000      64.0000      50.0000             0.1283          0.2833 50.3800 BULLISH (Golden Cross)                   0
+   TMO             Healthcare       475.8900          62.4000 BUY         ▲      67.4000      56.6000      50.0000             0.1505          0.5150 32.2000 BULLISH (Golden Cross)                   0
+    WM            Industrials       238.6100          62.4000 BUY         ▲      60.3000      70.7000      50.0000             0.1074          0.3989 61.7800 BULLISH (Golden Cross)                   0
+   ADP             Technology       207.4500          62.1000 BUY         ▲      75.6000      39.0000      50.0000             0.1996          0.1480 43.7500  BEARISH (Death Cross)                   0
+  PCAR            Industrials       116.8200          61.8000 BUY         ▲      56.3000      76.6000      50.0000             0.0835          0.4988 25.7300 BULLISH (Golden Cross)                   0
+   AMD             Technology       197.7400          61.8000 BUY         ▲      62.9000      63.7000      50.0000             0.1232          3.1866 48.5600 BULLISH (Golden Cross)                   0
+  NFLX Communication Services        94.3100          61.4000 BUY         ▲      75.7000      36.7000      50.0000             0.2430          0.5152 75.5100  BEARISH (Death Cross)                   0
+   PFE             Healthcare        26.8600          61.3000 BUY         ▲      63.0000      61.7000      50.0000             0.1238          1.0656 52.7400 BULLISH (Golden Cross)                   0
+   MCO     Financial Services       426.4700          61.3000 BUY         ▲      75.7000      36.1000      50.0000             0.3186          0.3673 41.6600  BEARISH (Death Cross)                   0
+   XOM                 Energy       153.5300          60.6000 BUY         ▲      57.2000      71.1000      50.0000             0.0891          0.2803 62.1800 BULLISH (Golden Cross)                   0
+   CRH        Basic Materials        99.7300          60.6000 BUY         ▲      59.0000      67.4000      50.0000             0.0996          0.1996  7.7600 BULLISH (Golden Cross)                   0
+   HON            Industrials       233.4000          60.6000 BUY         ▲      62.1000      61.2000      50.0000             0.1182          0.6553 38.8600 BULLISH (Golden Cross)                   0
+   OKE                 Energy        84.9300          60.4000 BUY         ▲      59.2000      66.2000      50.0000             0.1009          0.1101 43.7100 BULLISH (Golden Cross)                   0
+    GE            Industrials       306.7000          60.4000 BUY         ▲      60.8000      63.0000      50.0000             0.1876          0.0614 27.3700 BULLISH (Golden Cross)                   0
+   GLW             Technology       129.7700          60.2000 BUY         ▲      59.4000      65.2000      50.0000             0.1021          1.1384 44.8900 BULLISH (Golden Cross)                   0
+  WELL            Real Estate       206.2000          60.2000 BUY         ▲      56.8000      70.5000      50.0000             0.0864          1.3169 46.7000 BULLISH (Golden Cross)                   0
+   JCI            Industrials       130.9400          60.0000 BUY         ▲      55.7000      72.0000      50.0000             0.0798          0.8625 25.9500 BULLISH (Golden Cross)                   0
+   HCA             Healthcare       532.5800          60.0000 BUY         ▲      57.3000      68.9000      50.0000             0.0897          0.1750 50.1400 BULLISH (Golden Cross)                   0
+  CTAS            Industrials       193.2600          59.8000 HOLD        ─      71.6000      39.6000      50.0000             0.1753          0.1694 38.6500  BEARISH (Death Cross)                   0
+  ROST      Consumer Cyclical       209.8400          59.4000 HOLD        ─      58.1000      65.2000      50.0000             0.0943          0.2217 60.6400 BULLISH (Golden Cross)                   0
+   EMR            Industrials       132.1800          59.2000 HOLD        ─      63.5000      53.7000      50.0000             0.1267          0.7605 31.2800 BULLISH (Golden Cross)                   0
+   BDX             Healthcare       159.6300          59.2000 HOLD        ─      55.7000      69.3000      50.0000             0.0801          1.2055  0.2400 BULLISH (Golden Cross)                   0
+   LOW      Consumer Cyclical       239.4500          59.0000 HOLD        ─      55.2000      69.7000      50.0000             0.0769          0.1543 14.2100 BULLISH (Golden Cross)                   0
+    CL     Consumer Defensive        87.9500          58.9000 HOLD        ─      59.8000      60.2000      50.0000             0.1046          0.5773 32.0600 BULLISH (Golden Cross)                   0
+    GD            Industrials       355.2300          58.9000 HOLD        ─      55.7000      68.2000      50.0000             0.0801          0.1689 53.4600 BULLISH (Golden Cross)                   0
+   TJX      Consumer Cyclical       155.7900          58.8000 HOLD        ─      57.5000      64.3000      50.0000             0.0910          0.1659 44.1700 BULLISH (Golden Cross)                   0
+   PEP     Consumer Defensive       158.8600          58.5000 HOLD        ─      57.0000      64.2000      50.0000             0.0877          0.5194 39.7500 BULLISH (Golden Cross)                   0
+   BKR                 Energy        55.9000          58.4000 HOLD        ─      57.9000      62.1000      50.0000             0.0933          0.1301 25.7100 BULLISH (Golden Cross)                   0
+  MRSH     Financial Services       170.8800          58.2000 HOLD        ─      68.1000      41.1000      50.0000             0.1542          0.3426 35.6900  BEARISH (Death Cross)                   0
+   SYK             Healthcare       337.2100          58.2000 HOLD        ─      63.9000      49.5000      50.0000             0.1292          0.9921 17.9000  BEARISH (Death Cross)                   0
+   ETN            Industrials       348.6400          58.1000 HOLD        ─      67.2000      42.6000      50.0000             0.1489          0.4686 36.2400  BEARISH (Death Cross)                   0
+   RSG            Industrials       225.7800          58.0000 HOLD        ─      63.8000      48.9000      50.0000             0.1289          0.1739 62.6300  BEARISH (Death Cross)                   0
+   UPS            Industrials        97.8900          57.9000 HOLD        ─      52.8000      70.7000      50.0000             0.0628          0.2135 15.1900 BULLISH (Golden Cross)                   0
+   COF     Financial Services       177.4500          57.7000 HOLD        ─      51.6000      72.4000      50.0000             0.0554          6.2978 28.5300 BULLISH (Golden Cross)                   0
+   SLB                 Energy        44.5600          57.4000 HOLD        ─      58.1000      58.3000      50.0000             0.0945          0.4211 20.9600 BULLISH (Golden Cross)                   0
+   FDX            Industrials       353.1300          57.4000 HOLD        ─      50.4000      73.9000      50.0000             0.0481          0.2045 23.5800 BULLISH (Golden Cross)                   0
+   LMT            Industrials       652.8300          57.4000 HOLD        ─      53.5000      67.7000      50.0000             0.0669          0.4868 49.2500 BULLISH (Golden Cross)                   0
+   BSX             Healthcare        68.5500          57.4000 HOLD        ─      66.4000      41.7000      50.0000             0.1444          1.0185 32.2500  BEARISH (Death Cross)                   0
+   ABT             Healthcare       108.1400          57.3000 HOLD        ─      66.8000      40.7000      50.0000             0.1466          0.6783 39.8000  BEARISH (Death Cross)                   0
+   OXY                 Energy        58.4100          57.2000 HOLD        ─      52.8000      68.3000      50.0000             0.0625          0.6867 72.7300 BULLISH (Golden Cross)                   0
+  ORLY      Consumer Cyclical        92.9800          57.1000 HOLD        ─      66.1000      41.4000      50.0000             0.1427          0.2030 48.0500  BEARISH (Death Cross)                   0
+  CVNA      Consumer Cyclical       292.6400          57.0000 HOLD        ─      53.9000      65.5000      50.0000             0.0692          0.2619 35.5800 BULLISH (Golden Cross)                   0
+   CMI            Industrials       538.7500          56.9000 HOLD        ─      56.4000      60.3000      50.0000             0.0844          0.5333 31.5400 BULLISH (Golden Cross)                   0
+  TMUS Communication Services       214.3700          56.9000 HOLD        ─      63.1000      46.9000      50.0000             0.1245          0.4475 49.9200  BEARISH (Death Cross)                   0
+   FCX        Basic Materials        59.2100          56.8000 HOLD        ─      56.5000      59.7000      50.0000             0.0848          1.3538 37.9600 BULLISH (Golden Cross)                   0
+   COP                 Energy       120.2600          56.7000 HOLD        ─      55.0000      62.3000      50.0000             0.1321          0.0720 70.4700 BULLISH (Golden Cross)                   0
+   DIS Communication Services        99.4300          56.7000 HOLD        ─      58.2000      55.8000      50.0000             0.1280          0.0834 23.6100  BEARISH (Death Cross)                   0
+   LHX            Industrials       357.8800          56.4000 HOLD        ─      54.6000      62.2000      50.0000             0.0735          0.5978 51.4400 BULLISH (Golden Cross)                   0
+   CVX                 Energy       196.9700          56.3000 HOLD        ─      53.5000      64.0000      50.0000             0.0666          0.4022 71.8500 BULLISH (Golden Cross)                   0
+  ABBV             Healthcare       225.3700          56.3000 HOLD        ─      53.8000      63.3000      50.0000             0.0684          5.8010 50.8300 BULLISH (Golden Cross)                   0
+   RTX            Industrials       203.0400          56.1000 HOLD        ─      55.0000      60.3000      50.0000             0.0760          0.5170 48.1600 BULLISH (Golden Cross)                   0
+   NOW             Technology       112.9700          55.8000 HOLD        ─      64.3000      40.8000      50.0000             0.1316          1.9992 60.6200  BEARISH (Death Cross)                   0
+   ELV             Healthcare       287.8900          55.8000 HOLD        ─      47.1000      75.2000      50.0000             0.0284          0.1679 24.1000 BULLISH (Golden Cross)                   0
+  SNPS             Technology       418.7200          55.7000 HOLD        ─      65.4000      38.2000      50.0000             0.1380          1.6279 42.1900  BEARISH (Death Cross)                   0
+  COST     Consumer Defensive      1003.3200          55.6000 HOLD        ─      47.4000      73.8000      50.0000             0.0299          0.1650 56.7300 BULLISH (Golden Cross)                   0
+  PANW             Technology       168.1200          55.6000 HOLD        ─      64.0000      40.6000      50.0000             0.1296          1.2067 77.1700  BEARISH (Death Cross)                   0
+   WMT     Consumer Defensive       125.3300          55.5000 HOLD        ─      47.5000      73.3000      50.0000             0.0307          0.2043 55.5300 BULLISH (Golden Cross)                   0
+  QCOM             Technology       131.1500          55.1000 HOLD        ─      62.3000      42.4000      50.0000             0.1196          1.2657 31.4400  BEARISH (Death Cross)                   0
+   PWR            Industrials       566.9100          55.1000 HOLD        ─      48.4000      70.2000      50.0000             0.0361          1.2621 56.1700 BULLISH (Golden Cross)                   0
+  AMZN      Consumer Cyclical       209.5300          55.0000 HOLD        ─      60.4000      45.7000      50.0000             0.1083          0.3029 49.2500  BEARISH (Death Cross)                   0
+   APD        Basic Materials       290.4800          55.0000 HOLD        ─      42.4000      81.7000      50.0000            -0.0267         10.5346 61.2800 BULLISH (Golden Cross)                   0
+    GM      Consumer Cyclical        73.4500          54.9000 HOLD        ─      45.2000      75.9000      50.0000             0.0172          3.2437 26.2000 BULLISH (Golden Cross)                   0
+   KKR     Financial Services        83.8800          54.5000 HOLD        ─      56.9000      51.1000      50.0000             0.0873          2.3924 29.4600  BEARISH (Death Cross)                   0
+   CEG              Utilities       301.5500          54.5000 HOLD        ─      57.5000      49.9000      50.0000             0.0908          0.8396 53.6100  BEARISH (Death Cross)                   0
+   APO     Financial Services       100.3000          54.4000 HOLD        ─      60.7000      43.4000      50.0000             0.1102          0.9638 25.5500  BEARISH (Death Cross)                   0
+   AEP              Utilities       132.2200          54.2000 HOLD        ─      46.8000      70.3000      50.0000             0.1636          0.0316 61.1400 BULLISH (Golden Cross)                   0
+   AZO      Consumer Cyclical      3614.2700          54.1000 HOLD        ─      63.7000      36.3000      50.0000             0.1278          0.2248 44.0100  BEARISH (Death Cross)                   0
+   SPG            Real Estate       187.5700          54.0000 HOLD        ─      42.4000      78.6000      50.0000             0.7266         -0.5125 27.0900 BULLISH (Golden Cross)                   0
+  SBUX      Consumer Cyclical       100.1800          53.7000 HOLD        ─      48.4000      65.6000      50.0000             0.0363          1.4611 60.0100 BULLISH (Golden Cross)                   0
+  TSLA      Consumer Cyclical       395.0100          53.7000 HOLD        ─      49.0000      64.3000      50.0000             0.0400          1.6513 41.8200 BULLISH (Golden Cross)                   0
+   ACN             Technology       196.0500          53.4000 HOLD        ─      60.3000      40.7000      50.0000             0.1076          0.2315 36.5700  BEARISH (Death Cross)                   0
+   PSX                 Energy       174.0900          53.3000 HOLD        ─      47.9000      65.1000      50.0000             0.0332          0.1985 78.6900 BULLISH (Golden Cross)                   0
+    HD      Consumer Cyclical       338.9300          53.2000 HOLD        ─      56.7000      47.3000      50.0000             0.0860          0.1455 23.3000  BEARISH (Death Cross)                   0
+   PLD            Real Estate       131.9000          53.2000 HOLD        ─      42.4000      76.0000      50.0000             0.3614         -0.0597 23.9000 BULLISH (Golden Cross)                   0
+   MCK             Healthcare       944.3600          52.6000 HOLD        ─      44.2000      70.4000      50.0000             0.0109          0.2759 49.3400 BULLISH (Golden Cross)                   0
+    BA            Industrials       204.7600          52.3000 HOLD        ─      45.9000      66.0000      50.0000             0.0211          0.8967 28.0300 BULLISH (Golden Cross)                   0
+   COR             Healthcare       352.6500          52.1000 HOLD        ─      43.2000      70.5000      50.0000             0.0050          1.3529 41.3900 BULLISH (Golden Cross)                   0
+   DLR            Real Estate       180.4000          51.6000 HOLD        ─      42.4000      70.4000      50.0000             0.2085         -0.0484 59.0600 BULLISH (Golden Cross)                   0
+   CVS             Healthcare        76.0700          51.5000 HOLD        ─      43.1000      68.9000      50.0000             0.0044          4.8835 48.2500 BULLISH (Golden Cross)                   0
+   MPC                 Energy       230.0700          51.5000 HOLD        ─      47.4000      60.2000      50.0000             0.0303          0.1336 75.3000 BULLISH (Golden Cross)                   0
+   VLO                 Energy       235.8100          51.1000 HOLD        ─      45.7000      62.3000      50.0000             0.0202          0.8359 76.5700 BULLISH (Golden Cross)                   0
+   NKE      Consumer Cyclical        54.1300          51.0000 HOLD        ─      51.4000      50.5000      50.0000             0.0543          0.3447 11.0600  BEARISH (Death Cross)                   0
+   TRV     Financial Services       302.0100          50.9000 HOLD        ─      41.2000      70.5000      50.0000             0.1278          0.0325 46.0900 BULLISH (Golden Cross)                   0
+ BRK-B     Financial Services       491.8900          48.7000 HOLD        ─      39.1000      67.4000      50.0000             0.1803         -0.3017 45.4600 BULLISH (Golden Cross)                   0
+  DASH      Consumer Cyclical       161.7500          48.6000 HOLD        ─      53.7000      37.8000      50.0000             0.0682          2.5710 38.3900  BEARISH (Death Cross)                   0
+  MDLZ     Consumer Defensive        54.3500          48.5000 HOLD        ─      53.0000      39.1000      50.0000             0.0636          0.7878 32.6600  BEARISH (Death Cross)                   0
+  DELL             Technology       149.9100          48.0000 HOLD        ─      51.1000      41.0000      50.0000             0.0523          0.6626 72.5200  BEARISH (Death Cross)                   0
+    CI             Healthcare       265.8800          47.9000 HOLD        ─      46.0000      50.9000      50.0000             0.0217          0.5097 37.0600  BEARISH (Death Cross)                   0
+   NOC            Industrials       736.3000          46.7000 HOLD        ─      36.2000      66.5000      50.0000             0.0997          0.0318 54.5600 BULLISH (Golden Cross)                   0
+  INTC             Technology        45.2500          46.3000 HOLD        ─      42.4000      53.0000      50.0000            -0.0051         17.5197 52.7800 BULLISH (Golden Cross)                   0
+ CMCSA Communication Services        30.1600          46.0000 HOLD        ─      36.0000      64.5000      50.0000             0.1617         -0.2599 38.9100 BULLISH (Golden Cross)                   0
+  SNDK             Technology       618.8200          45.9000 HOLD        ─      42.4000      51.5000      50.0000            -0.1166         12.5153 46.3500 BULLISH (Golden Cross)                   0
+  CRWD             Technology       441.5400          45.1000 HOLD        ─      42.4000      48.7000      50.0000            -0.0338         10.3567 67.7800  BEARISH (Death Cross)                   0
+   UNH             Healthcare       277.0500          43.8000 SELL        ▼      46.8000      35.7000      50.0000             0.0269          0.5073 41.8100  BEARISH (Death Cross)                   0
+     T Communication Services        27.3900          42.6000 SELL        ▼      38.1000      49.1000      50.0000             0.1742         -0.1613 44.6700  BEARISH (Death Cross)                   0
+  UBER             Technology        72.9700          41.9000 SELL        ▼      41.2000      40.6000      50.0000             0.1933         -0.0930 47.5200  BEARISH (Death Cross)                   0
+   PGR     Financial Services       205.1800          38.7000 SELL        ▼      30.5000      51.4000      50.0000             0.1290         -0.1594 51.8200  BEARISH (Death Cross)                   0
+   WBD Communication Services        27.4300          36.1000 SELL        ▼      12.3000      78.9000      50.0000             0.0195         -1.1207 28.0000 BULLISH (Golden Cross)                   0
+
+─────────────────────────────────────────────────────────────────
+  TOP 20 SIGNALS
+─────────────────────────────────────────────────────────────────
+  AFL      74.2/100   BUY         ▲       Financial Services
+  HLT      73.8/100   BUY         ▲       Consumer Cyclical
+  PM       73.6/100   BUY         ▲       Consumer Defensive
+  USB      73.1/100   BUY         ▲       Financial Services
+  PNC      73.0/100   BUY         ▲       Financial Services
+  LIN      73.0/100   BUY         ▲       Basic Materials
+  JPM      72.9/100   BUY         ▲       Financial Services
+  MNST     72.9/100   BUY         ▲       Consumer Defensive
+  CME      72.9/100   BUY         ▲       Financial Services
+  D        72.9/100   BUY         ▲       Utilities
+  MO       72.7/100   BUY         ▲       Consumer Defensive
+  WFC      72.4/100   BUY         ▲       Financial Services
+  NVDA     72.0/100   BUY         ▲       Technology
+  BAC      72.0/100   BUY         ▲       Financial Services
+  ITW      71.6/100   BUY         ▲       Industrials
+  BK       71.6/100   BUY         ▲       Financial Services
+  UNP      71.6/100   BUY         ▲       Industrials
+  TDG      71.6/100   BUY         ▲       Industrials
+  MAR      71.5/100   BUY         ▲       Consumer Cyclical
+  TFC      71.4/100   BUY         ▲       Financial Services
+
+─────────────────────────────────────────────────────────────────
+  SECTOR AVERAGES  (composite score)
+─────────────────────────────────────────────────────────────────
+  Financial Services                        avg= 64.9  n=32
+  Basic Materials                           avg= 63.6  n=7
+  Utilities                                 avg= 63.4  n=7
+  Consumer Defensive                        avg= 63.1  n=10
+  Technology                                avg= 62.5  n=38
+  Industrials                               avg= 61.3  n=31
+  Healthcare                                avg= 60.8  n=25
+  Real Estate                               avg= 59.7  n=7
+  Consumer Cyclical                         avg= 59.5  n=19
+  Energy                                    avg= 59.0  n=13
+  Communication Services                    avg= 57.2  n=11
+
+✓ Full results saved to: equity_kpi_results.csv
+=================================================================
+
+
+=================================================================
+  AI PAPER TRADING AGENT
+  Date    : 2026-03-12
+  KPI file: equity_kpi_results.csv
+=================================================================
+
+  Cash:         $    104.52
+  Holdings:     $    841.00
+  Total:        $    945.52  (goal: $2000)
+  Progress:     47.3%
+
+  Current positions (3):
+    MU      0.9076 shares  $367.89  P&L: -12.11 (-3.2%)
+    PNC     1.1671 shares  $236.56  P&L: -3.44 (-1.4%)
+    USB     4.5951 shares  $236.55  P&L: -3.45 (-1.4%)
+
+  Asking Claude for today's trading decisions...
+
+  📋 Claude's reasoning:
+     Portfolio is down 5.4% with three positions in lower-scoring stocks. MU (score not in top 25, down 3.2%) should be exited. Consolidate into top-scoring AFL (74.2) and HLT (73.8) which have very low RSI indicating oversold conditions and strong bull momentum, while maintaining existing USB/PNC positions that still score well.
+
+  Executing 3 trade(s)...
+
+  → SELL MU  $367.89  |  MU not in top candidates list, down 3.2%, freeing capital for higher-scoring opportunities.
+    ✓ SELL MU     0.9076 shares @ $405.35 | proceeds $362.76 (incl. $4.95 comm + $0.1839 spread)
+  → BUY AFL  $250.00  |  Highest composite score (74.2), extremely oversold RSI of 27.91 in bull trend, strong margin profile at 21.2%.
+    ✓ BUY  AFL    2.2804 shares @ $109.63 | cost $255.07 (incl. $4.95 comm + $0.1250 spread)
+  → BUY HLT  $170.00  |  Second highest score (73.8), oversold RSI 28.63, excellent 29.4% margin in bull market alignment.
+    ✓ BUY  HLT    0.5622 shares @ $294.26 | cost $170.48 (incl. $4.95 comm + $0.0827 spread)
+
+─────────────────────────────────────────────────────────────────
+  END OF DAY SUMMARY
+─────────────────────────────────────────────────────────────────
+  Cash:         $     41.73
+  Holdings:     $    888.55
+  Total:        $    930.28
+  Goal:         $   2000.00  (46.5% complete)
+
+  Positions (4):
+    AFL     2.2804 shares  $250.00  P&L: +0.00 (+0.0%)
+    PNC     1.1671 shares  $236.56  P&L: -3.44 (-1.4%)
+    USB     4.5951 shares  $236.55  P&L: -3.45 (-1.4%)
+    HLT     0.5622 shares  $165.44  P&L: +0.00 (+0.0%)
+
+  Transactions log: transactions.csv
+=================================================================
+
+[21:30:03.95] Daily run complete. 
+ 
+============================================ 
+ DAILY RUN: Fri 03/13/2026 16:40:26.87 
+============================================ 
+
+-------------------------------------------------------
+  UNIVERSE SELECTION
+-------------------------------------------------------
+  [UNIVERSE] Loaded 200 tickers from cache (refreshed 2026-03-11)
+  [UNIVERSE] Next refresh in < 7 days  |  mode=balanced
+-------------------------------------------------------
+
+=================================================================
+  EQUITY KPI DAILY ANALYSER
+  Run date : 2026-03-13
+  Universe : S&P 500 top 200 (balanced)  (200 tickers)
+=================================================================
+
+[1/3] Fetching macro data...
+  [MACRO] No FRED key provided — skipping macro data.
+          Get a free key at: https://fred.stlouisfed.org/docs/api/api_key.html
+
+[2/3] Fetching VIX & S&P 500 benchmark...
+  VIX = 27.19
+
+[3/3] Fetching data for 200 tickers...
+
+  [1/200] NVDA... composite=70.0
+  [2/200] AAPL... composite=71.6
+  [3/200] GOOGL... composite=70.4
+  [4/200] GOOG... composite=70.2
+  [5/200] MSFT... composite=62.7
+  [6/200] AMZN... composite=54.4
+  [7/200] META... composite=60.5
+  [8/200] AVGO... composite=66.7
+  [9/200] TSLA... composite=54.4
+  [10/200] BRK-B... composite=48.2
+  [11/200] WMT... composite=54.5
+  [12/200] LLY... composite=71.2
+  [13/200] JPM... composite=70.9
+  [14/200] XOM... composite=61.0
+  [15/200] V... composite=64.3
+  [16/200] JNJ... composite=70.1
+  [17/200] MU... composite=75.1
+  [18/200] ORCL... composite=62.1
+  [19/200] MA... composite=64.3
+  [20/200] COST... composite=54.2
+  [21/200] ABBV... composite=54.6
+  [22/200] NFLX... composite=61.7
+  [23/200] CVX... composite=53.1
+  [24/200] PLTR... composite=59.0
+  [25/200] PG... composite=69.3
+  [26/200] BAC... composite=73.0
+  [27/200] HD... composite=55.8
+  [28/200] GE... composite=63.2
+  [29/200] AMD... composite=61.5
+  [30/200] KO... composite=73.0
+  [31/200] CAT... composite=63.2
+  [32/200] CSCO... composite=70.2
+  [33/200] MRK... composite=70.0
+  [34/200] AMAT... composite=72.4
+  [35/200] RTX... composite=58.7
+  [36/200] LRCX... composite=72.5
+  [37/200] PM... composite=71.9
+  [38/200] UNH... composite=48.4
+  [39/200] MS... composite=71.2
+  [40/200] GS... composite=73.3
+  [41/200] WFC... composite=72.2
+  [42/200] INTC... composite=52.1
+  [43/200] TMUS... composite=57.7
+  [44/200] IBM... composite=55.1
+  [45/200] MCD... composite=71.2
+  [46/200] GEV... composite=60.3
+  [47/200] LIN... composite=71.3
+  [48/200] PEP... composite=59.8
+  [49/200] VZ... composite=64.2
+  [50/200] AXP... composite=66.1
+  [51/200] AMGN... composite=69.9
+  [52/200] T... composite=42.6
+  [53/200] KLAC... composite=71.6
+  [54/200] ABT... composite=61.6
+  [55/200] C... composite=68.2
+  [56/200] NEE... composite=71.7
+  [57/200] TMO... composite=66.4
+  [58/200] CRM... composite=59.1
+  [59/200] GILD... composite=70.2
+  [60/200] TXN... composite=74.1
+  [61/200] DIS... composite=56.8
+  [62/200] TJX... composite=59.4
+  [63/200] ISRG... composite=69.6
+  [64/200] ANET... composite=70.6
+  [65/200] BA... composite=55.4
+  [66/200] APH... composite=71.2
+  [67/200] SCHW... composite=72.7
+  [68/200] DE... composite=62.6
+  [69/200] APP... composite=67.2
+  [70/200] ADI... composite=73.3
+  [71/200] UBER... composite=44.2
+  [72/200] PFE... composite=61.7
+  [73/200] HON... composite=63.0
+  [74/200] LMT... composite=55.8
+  [75/200] UNP... composite=73.0
+  [76/200] BLK... composite=67.6
+  [77/200] WELL... composite=60.0
+  [78/200] QCOM... composite=55.3
+  [79/200] COP... composite=56.1
+  [80/200] BKNG... composite=64.9
+  [81/200] LOW... composite=60.6
+  [82/200] ETN... composite=61.2
+  [83/200] DHR... composite=68.9
+  [84/200] PANW... composite=52.4
+  [85/200] SYK... composite=59.9
+  [86/200] BX... composite=68.6
+  [87/200] SPGI... composite=65.0
+  [88/200] CB... composite=67.5
+  [89/200] NEM... composite=69.1
+  [90/200] VRTX... composite=68.5
+  [91/200] ACN... composite=55.4
+  [92/200] PLD... composite=53.9
+  [93/200] INTU... composite=61.5
+  [94/200] BMY... composite=65.2
+  [95/200] NOW... composite=58.0
+  [96/200] HCA... composite=60.0
+  [97/200] PH... composite=69.8
+  [98/200] PGR... composite=36.7
+  [99/200] IBKR... composite=65.6
+  [100/200] SBUX... composite=53.3
+  [101/200] MCK... composite=51.1
+  [102/200] MDT... composite=66.3
+  [103/200] COF... composite=57.6
+  [104/200] GLW... composite=60.4
+  [105/200] ADBE... composite=58.6
+  [106/200] CRWD... composite=40.4
+  [107/200] CMCSA... composite=46.8
+  [108/200] MO... composite=70.6
+  [109/200] CME... composite=70.3
+  [110/200] CEG... composite=53.4
+  [111/200] SO... composite=65.2
+  [112/200] NOC... composite=46.3
+  [113/200] BSX... composite=59.4
+  [114/200] HWM... composite=69.2
+  [115/200] DUK... composite=62.8
+  [116/200] DELL... composite=46.6
+  [117/200] SNDK... composite=55.1
+  [118/200] CVS... composite=50.9
+  [119/200] TT... composite=67.9
+  [120/200] GD... composite=57.3
+  [121/200] EQIX... composite=65.2
+  [122/200] WM... composite=61.2
+  [123/200] WDC... composite=75.1
+  [124/200] WMB... composite=70.3
+  [125/200] ICE... composite=64.6
+  [126/200] FCX... composite=54.7
+  [127/200] MAR... composite=73.0
+  [128/200] STX... composite=73.3
+  [129/200] ADP... composite=64.6
+  [130/200] AMT... composite=66.7
+  [131/200] UPS... composite=59.4
+  [132/200] FDX... composite=58.3
+  [133/200] MRSH... composite=60.2
+  [134/200] PWR... composite=53.0
+  [135/200] PNC... composite=72.9
+  [136/200] SNPS... composite=56.7
+  [137/200] JCI... composite=61.3
+  [138/200] NKE... composite=52.5
+  [139/200] REGN... composite=70.2
+  [140/200] MMM... composite=68.1
+  [141/200] BK... composite=70.0
+  [142/200] CDNS... composite=63.1
+  [143/200] USB... composite=72.8
+  [144/200] KKR... composite=56.0
+  [145/200] ABNB... composite=69.7
+  [146/200] SHW... composite=65.5
+  [147/200] CTAS... composite=62.2
+  [148/200] ORLY... composite=56.7
+  [149/200] MCO... composite=65.3
+  [150/200] EMR... composite=63.6
+  [151/200] ECL... composite=66.0
+  [152/200] ITW... composite=73.5
+  [153/200] RCL... composite=73.6
+  [154/200] MSI... composite=71.4
+  [155/200] CMI... composite=58.7
+  [156/200] MNST... composite=73.5
+  [157/200] CSX... composite=71.1
+  [158/200] DASH... composite=51.4
+  [159/200] KMI... composite=62.2
+  [160/200] SLB... composite=63.3
+  [161/200] EOG... composite=66.8
+  [162/200] CL... composite=64.7
+  [163/200] MDLZ... composite=54.2
+  [164/200] TDG... composite=72.6
+  [165/200] AEP... composite=53.9
+  [166/200] HOOD... composite=61.5
+  [167/200] VLO... composite=46.4
+  [168/200] GM... composite=54.2
+  [169/200] CI... composite=46.4
+  [170/200] CRH... composite=63.9
+  [171/200] RSG... composite=56.2
+  [172/200] ROST... composite=58.4
+  [173/200] HLT... composite=72.9
+  [174/200] WBD... composite=35.0
+  [175/200] MPC... composite=47.9
+  [176/200] COR... composite=50.2
+  [177/200] LHX... composite=58.2
+  [178/200] AON... composite=65.8
+  [179/200] PSX... composite=49.2
+  [180/200] CVNA... composite=61.8
+  [181/200] NSC... composite=65.8
+  [182/200] TRV... composite=49.9
+  [183/200] ELV... composite=57.5
+  [184/200] DLR... composite=50.4
+  [185/200] PCAR... composite=60.8
+  [186/200] FTNT... composite=59.1
+  [187/200] APD... composite=49.8
+  [188/200] SPG... composite=53.6
+  [189/200] APO... composite=59.7
+  [190/200] AZO... composite=55.2
+  [191/200] SRE... composite=65.8
+  [192/200] O... composite=68.0
+  [193/200] TEL... composite=66.1
+  [194/200] BDX... composite=61.1
+  [195/200] BKR... composite=60.0
+  [196/200] TFC... composite=72.4
+  [197/200] AFL... composite=69.7
+  [198/200] OXY... composite=55.7
+  [199/200] D... composite=69.1
+  [200/200] OKE... composite=61.3
+
+=================================================================
+  RESULTS  (sorted by composite score)
+=================================================================
+ticker                 sector  current_price  composite_score         signal  tier1_score  tier2_score  tier3_score  net_profit_margin  eps_growth_fwd  rsi_14              ma_signal  net_insider_shares
+    MU             Technology       426.1300          75.1000 STRONG BUY  ▲▲      76.0000      81.7000      50.0000             0.2815          3.7282 51.3000 BULLISH (Golden Cross)                   0
+   WDC             Technology       272.2900          75.1000 STRONG BUY  ▲▲      76.0000      81.7000      50.0000             0.3676          0.2711 47.1300 BULLISH (Golden Cross)                   0
+   TXN             Technology       190.7800          74.1000  BUY         ▲      76.0000      78.3000      50.0000             0.2812          0.4511 15.8000 BULLISH (Golden Cross)                   0
+   RCL      Consumer Cyclical       272.5400          73.6000  BUY         ▲      76.0000      76.5000      50.0000             0.2380          0.3263 36.9100 BULLISH (Golden Cross)                   0
+  MNST     Consumer Defensive        77.1100          73.5000  BUY         ▲      76.0000      76.4000      50.0000             0.2297          0.3168 26.0700 BULLISH (Golden Cross)                   0
+   ITW            Industrials       266.9900          73.5000  BUY         ▲      74.6000      79.0000      50.0000             0.1911          0.1586 14.4500 BULLISH (Golden Cross)                   0
+    GS     Financial Services       782.2100          73.3000  BUY         ▲      76.0000      75.5000      50.0000             0.2735          0.2666 26.8400 BULLISH (Golden Cross)                   0
+   ADI             Technology       306.0700          73.3000  BUY         ▲      76.0000      75.8000      50.0000             0.2302          1.3631 18.3400 BULLISH (Golden Cross)                   0
+   STX             Technology       383.7100          73.3000  BUY         ▲      75.4000      77.0000      50.0000             0.1959          1.2389 43.9500 BULLISH (Golden Cross)                   0
+    KO     Consumer Defensive        77.3400          73.0000  BUY         ▲      76.0000      74.5000      50.0000             0.2734          0.1400 28.3000 BULLISH (Golden Cross)                   0
+   UNP            Industrials       242.4400          73.0000  BUY         ▲      76.0000      74.7000      50.0000             0.2912          0.1262 23.3500 BULLISH (Golden Cross)                   0
+   MAR      Consumer Cyclical       313.8100          73.0000  BUY         ▲      76.0000      74.6000      50.0000             0.3725          0.3637 29.0500 BULLISH (Golden Cross)                   0
+   BAC     Financial Services        46.7200          73.0000  BUY         ▲      76.0000      74.7000      50.0000             0.2705          0.3004 29.9200 BULLISH (Golden Cross)                   0
+   PNC     Financial Services       201.1300          72.9000  BUY         ▲      76.0000      74.4000      50.0000             0.2946          0.2452 23.4200 BULLISH (Golden Cross)                   0
+   HLT      Consumer Cyclical       291.5500          72.9000  BUY         ▲      76.0000      74.2000      50.0000             0.2941          0.7024 29.4800 BULLISH (Golden Cross)                   0
+   USB     Financial Services        51.0000          72.8000  BUY         ▲      76.0000      74.0000      50.0000             0.2730          0.2075 27.1600 BULLISH (Golden Cross)                   0
+  SCHW     Financial Services        93.0600          72.7000  BUY         ▲      76.0000      73.5000      50.0000             0.3519          0.4601 51.0300 BULLISH (Golden Cross)                   0
+   TDG            Industrials      1214.6600          72.6000  BUY         ▲      75.8000      73.8000      50.0000             0.1985          0.4737 25.9400 BULLISH (Golden Cross)                   0
+  LRCX             Technology       212.2000          72.5000  BUY         ▲      76.0000      72.9000      50.0000             0.3022          0.4205 35.2100 BULLISH (Golden Cross)                   0
+  AMAT             Technology       341.5300          72.4000  BUY         ▲      76.0000      72.5000      50.0000             0.2778          0.4197 39.2500 BULLISH (Golden Cross)                   0
+   TFC     Financial Services        43.8300          72.4000  BUY         ▲      76.0000      72.7000      50.0000             0.2700          0.3382 21.3900 BULLISH (Golden Cross)                   0
+   WFC     Financial Services        74.1000          72.2000  BUY         ▲      76.0000      72.1000      50.0000             0.2534          0.2658 23.0400 BULLISH (Golden Cross)                   0
+    PM     Consumer Defensive       174.6600          71.9000  BUY         ▲      76.0000      71.0000      50.0000             0.2784          0.2671 35.4400 BULLISH (Golden Cross)                   0
+   NEE              Utilities        92.7800          71.7000  BUY         ▲      76.0000      70.3000      50.0000             0.2493          0.3269 47.5500 BULLISH (Golden Cross)                   0
+  KLAC             Technology      1418.6400          71.6000  BUY         ▲      76.0000      70.1000      50.0000             0.3576          0.3810 43.5700 BULLISH (Golden Cross)                   0
+  AAPL             Technology       250.1200          71.6000  BUY         ▲      76.0000      69.9000      50.0000             0.2704          0.1767 29.9100 BULLISH (Golden Cross)                   0
+   MSI             Technology       473.1200          71.4000  BUY         ▲      73.4000      74.5000      50.0000             0.1844          0.4212 56.0100 BULLISH (Golden Cross)                   0
+   LIN        Basic Materials       493.9200          71.3000  BUY         ▲      76.0000      69.0000      50.0000             0.2030          0.3321 48.3600 BULLISH (Golden Cross)                   0
+   MCD      Consumer Cyclical       326.4600          71.2000  BUY         ▲      76.0000      68.6000      50.0000             0.3185          0.1981 40.8400 BULLISH (Golden Cross)                   0
+   APH             Technology       133.9200          71.2000  BUY         ▲      73.5000      73.7000      50.0000             0.1849          0.5407 36.5000 BULLISH (Golden Cross)                   0
+   LLY             Healthcare       985.0800          71.2000  BUY         ▲      76.0000      68.5000      50.0000             0.3167          0.8264 31.5700 BULLISH (Golden Cross)                   0
+    MS     Financial Services       154.8700          71.2000  BUY         ▲      76.0000      68.5000      50.0000             0.2312          0.2063 35.0100 BULLISH (Golden Cross)                   0
+   CSX            Industrials        39.3000          71.1000  BUY         ▲      76.0000      68.2000      50.0000             0.2050          0.3553 34.2300 BULLISH (Golden Cross)                   0
+   JPM     Financial Services       283.4400          70.9000  BUY         ▲      76.0000      67.8000      50.0000             0.3310          0.1729 31.8800 BULLISH (Golden Cross)                   0
+  ANET             Technology       133.5700          70.6000  BUY         ▲      76.0000      66.8000      50.0000             0.3899          0.5503 55.6500 BULLISH (Golden Cross)                   0
+    MO     Consumer Defensive        67.8900          70.6000  BUY         ▲      76.0000      66.7000      50.0000             0.3440          0.4099 42.5200 BULLISH (Golden Cross)                   0
+ GOOGL Communication Services       302.2800          70.4000  BUY         ▲      76.0000      65.9000      50.0000             0.3281          0.2406 39.4300 BULLISH (Golden Cross)                   0
+   CME     Financial Services       311.4000          70.3000  BUY         ▲      76.0000      65.8000      50.0000             0.6180          0.1378 53.7600 BULLISH (Golden Cross)                   0
+   WMB                 Energy        73.3400          70.3000  BUY         ▲      76.0000      65.5000      50.0000             0.2210          0.2248 52.0600 BULLISH (Golden Cross)                   0
+  CSCO             Technology        78.3300          70.2000  BUY         ▲      74.0000      69.2000      50.0000             0.1876          0.6244 52.1600 BULLISH (Golden Cross)                   0
+  GILD             Healthcare       144.9900          70.2000  BUY         ▲      76.0000      65.3000      50.0000             0.2890          0.4183 41.1700 BULLISH (Golden Cross)                   0
+  GOOG Communication Services       301.4600          70.2000  BUY         ▲      76.0000      65.3000      50.0000             0.3281          0.2395 38.4800 BULLISH (Golden Cross)                   0
+  REGN             Healthcare       745.7700          70.2000  BUY         ▲      76.0000      65.4000      50.0000             0.3141          0.2721 39.4700 BULLISH (Golden Cross)                   0
+   JNJ             Healthcare       241.5200          70.1000  BUY         ▲      76.0000      64.9000      50.0000             0.2846          0.1380 43.9200 BULLISH (Golden Cross)                   0
+  NVDA             Technology       180.2500          70.0000  BUY         ▲      76.0000      64.5000      50.0000             0.5560          1.1997 39.3300 BULLISH (Golden Cross)                   0
+    BK     Financial Services       116.1700          70.0000  BUY         ▲      76.0000      64.5000      50.0000             0.2652          0.2643 51.8300 BULLISH (Golden Cross)                   0
+   MRK             Healthcare       115.6100          70.0000  BUY         ▲      76.0000      64.7000      50.0000             0.2808          0.3388 30.4600 BULLISH (Golden Cross)                   0
+  AMGN             Healthcare       366.2100          69.9000  BUY         ▲      76.0000      64.4000      50.0000             0.2098          0.6353 40.3400 BULLISH (Golden Cross)                   0
+    PH            Industrials       889.8600          69.8000  BUY         ▲      71.5000      72.9000      50.0000             0.1729          0.2396 21.8200 BULLISH (Golden Cross)                   0
+  ABNB      Consumer Cyclical       126.3000          69.7000  BUY         ▲      76.0000      63.7000      50.0000             0.2051          0.4366 54.9400 BULLISH (Golden Cross)                   0
+   AFL     Financial Services       108.7100          69.7000  BUY         ▲      76.0000      63.5000      50.0000             0.2124          0.1394 30.2200 BULLISH (Golden Cross)                   0
+  ISRG             Healthcare       472.1600          69.6000  BUY         ▲      76.0000      63.4000      50.0000             0.2838          0.4554 37.5700 BULLISH (Golden Cross)                   0
+    PG     Consumer Defensive       150.6500          69.3000  BUY         ▲      69.1000      76.0000      50.0000             0.1896          0.0844 23.5200 BULLISH (Golden Cross)                   0
+   HWM            Industrials       236.7500          69.2000  BUY         ▲      73.1000      67.7000      50.0000             0.1825          0.4838 29.5300 BULLISH (Golden Cross)                   0
+     D              Utilities        63.2100          69.1000  BUY         ▲      72.7000      68.3000      50.0000             0.1798          0.1009 46.2700 BULLISH (Golden Cross)                   0
+   NEM        Basic Materials       109.5800          69.1000  BUY         ▲      76.0000      61.5000      50.0000             0.3125          0.6942 28.5000 BULLISH (Golden Cross)                   0
+   DHR             Healthcare       187.3200          68.9000  BUY         ▲      67.1000      78.8000      50.0000             0.1465          0.8119 18.0900 BULLISH (Golden Cross)                   0
+    BX     Financial Services       106.7800          68.6000  BUY         ▲      76.0000      60.0000      50.0000             0.2124          1.0479 41.1000  BEARISH (Death Cross)                   0
+  VRTX             Healthcare       469.3400          68.5000  BUY         ▲      76.0000      59.5000      50.0000             0.3294          0.4308 46.1100 BULLISH (Golden Cross)                   0
+     C     Financial Services       105.6900          68.2000  BUY         ▲      71.4000      67.9000      50.0000             0.1720          0.7306 40.8500 BULLISH (Golden Cross)                   0
+   MMM            Industrials       150.9600          68.1000  BUY         ▲      64.4000      81.4000      50.0000             0.1303          0.5691 26.4500 BULLISH (Golden Cross)                   0
+     O            Real Estate        64.4400          68.0000  BUY         ▲      73.3000      63.5000      50.0000             0.1837          0.5006 35.2700 BULLISH (Golden Cross)                   0
+    TT            Industrials       422.4000          67.9000  BUY         ▲      65.8000      77.9000      50.0000             0.1386          0.2784 28.3800 BULLISH (Golden Cross)                   0
+   BLK     Financial Services       924.1100          67.6000  BUY         ▲      76.0000      56.8000      50.0000             0.2293          0.7493 18.3400  BEARISH (Death Cross)                   0
+    CB     Financial Services       328.9700          67.5000  BUY         ▲      71.5000      65.4000      50.0000             0.1729          0.1321 44.8700 BULLISH (Golden Cross)                   0
+   APP Communication Services       458.6700          67.2000  BUY         ▲      76.0000      55.3000      50.0000             0.6263          1.0218 65.5700  BEARISH (Death Cross)                   0
+   EOG                 Energy       133.6000          66.8000  BUY         ▲      76.0000      53.9000      50.0000             0.2198          0.2352 72.0100 BULLISH (Golden Cross)                   0
+  AVGO             Technology       322.1600          66.7000  BUY         ▲      76.0000      53.8000      50.0000             0.3657          2.4115 45.4700 BULLISH (Golden Cross)                   0
+   AMT            Real Estate       184.4100          66.7000  BUY         ▲      76.0000      53.6000      50.0000             0.2376          0.2793 42.3500  BEARISH (Death Cross)                   0
+   TMO             Healthcare       464.3700          66.4000  BUY         ▲      67.8000      68.9000      50.0000             0.1505          0.5150 25.0600 BULLISH (Golden Cross)                   0
+   MDT             Healthcare        87.1400          66.3000  BUY         ▲      64.4000      75.6000      50.0000             0.1300          0.7029 12.3900 BULLISH (Golden Cross)                   0
+   AXP     Financial Services       299.9600          66.1000  BUY         ▲      69.3000      65.2000      50.0000             0.1598          0.3089 35.4200 BULLISH (Golden Cross)                   0
+   TEL             Technology       199.4100          66.1000  BUY         ▲      61.7000      80.2000      50.0000             0.1142          0.7828 28.7300 BULLISH (Golden Cross)                   0
+   ECL        Basic Materials       274.1800          66.0000  BUY         ▲      64.2000      74.9000      50.0000             0.1291          0.3360 10.7700 BULLISH (Golden Cross)                   0
+   NSC            Industrials       289.3700          65.8000  BUY         ▲      63.5000      75.5000      50.0000             0.2356          0.0623 18.0500 BULLISH (Golden Cross)                   0
+   AON     Financial Services       321.4100          65.8000  BUY         ▲      76.0000      50.8000      50.0000             0.2151          0.2641 55.0600  BEARISH (Death Cross)                   0
+   SRE              Utilities        95.1100          65.8000  BUY         ▲      64.6000      73.3000      50.0000             0.1311          1.0057 57.3400 BULLISH (Golden Cross)                   0
+  IBKR     Financial Services        66.1900          65.6000  BUY         ▲      69.1000      63.9000      50.0000             0.1585          0.2339 33.3800 BULLISH (Golden Cross)                   0
+   SHW        Basic Materials       319.7800          65.5000  BUY         ▲      60.9000      79.7000      50.0000             0.1090          0.3182 17.1300 BULLISH (Golden Cross)                   0
+   MCO     Financial Services       430.0100          65.3000  BUY         ▲      76.0000      49.0000      50.0000             0.3186          0.3673 47.3200  BEARISH (Death Cross)                   0
+  EQIX            Real Estate       969.9000          65.2000  BUY         ▲      67.0000      66.5000      50.0000             0.1458          0.2748 59.9700 BULLISH (Golden Cross)                   0
+    SO              Utilities        98.0100          65.2000  BUY         ▲      67.2000      66.4000      50.0000             0.1469          0.2532 69.3600 BULLISH (Golden Cross)                   0
+   BMY             Healthcare        59.0800          65.2000  BUY         ▲      67.1000      66.3000      50.0000             0.1464          0.7707 37.3400 BULLISH (Golden Cross)                   0
+  SPGI     Financial Services       422.4900          65.0000  BUY         ▲      76.0000      48.0000      50.0000             0.2915          0.5064 61.1000  BEARISH (Death Cross)                   0
+  BKNG      Consumer Cyclical      4241.2600          64.9000  BUY         ▲      76.0000      47.7000      50.0000             0.2008          0.8890 64.1300  BEARISH (Death Cross)                   0
+    CL     Consumer Defensive        88.8400          64.7000  BUY         ▲      60.1000      78.9000      50.0000             0.1046          0.5773 28.0100 BULLISH (Golden Cross)                   0
+   ADP             Technology       208.5200          64.6000  BUY         ▲      76.0000      46.8000      50.0000             0.1996          0.1491 52.8800  BEARISH (Death Cross)                   0
+   ICE     Financial Services       159.2000          64.6000  BUY         ▲      76.0000      46.7000      50.0000             0.3338          0.4856 59.1000  BEARISH (Death Cross)                   0
+    MA     Financial Services       497.9900          64.3000  BUY         ▲      76.0000      45.5000      50.0000             0.4565          0.3708 51.6500  BEARISH (Death Cross)                   0
+     V     Financial Services       307.1400          64.3000  BUY         ▲      76.0000      45.6000      50.0000             0.4975          0.3652 51.0600  BEARISH (Death Cross)                   0
+    VZ Communication Services        51.3800          64.2000  BUY         ▲      63.4000      70.5000      50.0000             0.1243          0.2923 65.1200 BULLISH (Golden Cross)                   0
+   CRH        Basic Materials        99.8200          63.9000  BUY         ▲      59.3000      77.7000      50.0000             0.0996          0.1996  8.8400 BULLISH (Golden Cross)                   0
+   EMR            Industrials       132.2400          63.6000  BUY         ▲      63.8000      67.7000      50.0000             0.1267          0.7605 33.7700 BULLISH (Golden Cross)                   0
+   SLB                 Energy        44.7200          63.3000  BUY         ▲      58.4000      77.6000      50.0000             0.0945          0.4211 19.2500 BULLISH (Golden Cross)                   0
+   CAT            Industrials       693.9900          63.2000  BUY         ▲      64.6000      64.9000      50.0000             0.1314          0.4743 34.0700 BULLISH (Golden Cross)                   0
+    GE            Industrials       299.6900          63.2000  BUY         ▲      62.0000      70.1000      50.0000             0.1876          0.0640 26.4500 BULLISH (Golden Cross)                   0
+  CDNS             Technology       287.0300          63.1000  BUY         ▲      76.0000      41.6000      50.0000             0.2094          1.3153 55.8400  BEARISH (Death Cross)                   0
+   HON            Industrials       234.5000          63.0000  BUY         ▲      62.4000      68.4000      50.0000             0.1182          0.6577 41.2900 BULLISH (Golden Cross)                   0
+   DUK              Utilities       133.1500          62.8000  BUY         ▲      68.4000      56.0000      50.0000             0.1543          0.1345 72.4800 BULLISH (Golden Cross)                   0
+  MSFT             Technology       395.5500          62.7000  BUY         ▲      76.0000      40.3000      50.0000             0.3904          0.1785 59.2000  BEARISH (Death Cross)                   0
+    DE            Industrials       577.5000          62.6000  BUY         ▲      59.9000      72.2000      50.0000             0.1030          0.3029 19.6500 BULLISH (Golden Cross)                   0
+   KMI                 Energy        33.3900          62.2000  BUY         ▲      62.1000      66.6000      50.0000             0.1795          0.0684 61.1600 BULLISH (Golden Cross)                   0
+  CTAS            Industrials       194.2800          62.2000  BUY         ▲      71.9000      47.0000      50.0000             0.1753          0.1694 43.0400  BEARISH (Death Cross)                   0
+  ORCL             Technology       155.1100          62.1000  BUY         ▲      76.0000      38.2000      50.0000             0.2526          0.4952 63.5600  BEARISH (Death Cross)                   0
+  CVNA      Consumer Cyclical       300.1500          61.8000  BUY         ▲      54.2000      81.0000      50.0000             0.0692          0.2605 41.6000 BULLISH (Golden Cross)                   0
+  NFLX Communication Services        95.3100          61.7000  BUY         ▲      76.0000      37.0000      50.0000             0.2430          0.5170 83.2500  BEARISH (Death Cross)                   0
+   PFE             Healthcare        26.5800          61.7000  BUY         ▲      63.3000      62.4000      50.0000             0.1238          1.0807 43.5100 BULLISH (Golden Cross)                   0
+   ABT             Healthcare       108.0300          61.6000  BUY         ▲      67.1000      54.5000      50.0000             0.1466          0.6783 28.6200  BEARISH (Death Cross)                   0
+   AMD             Technology       193.3900          61.5000  BUY         ▲      63.2000      61.8000      50.0000             0.1232          3.1706 48.1100 BULLISH (Golden Cross)                   0
+  INTU             Technology       439.9600          61.5000  BUY         ▲      76.0000      36.3000      50.0000             0.2157          0.7202 73.0800  BEARISH (Death Cross)                   0
+  HOOD     Financial Services        73.3900          61.5000  BUY         ▲      76.0000      36.4000      50.0000             0.4210          0.3405 52.1900  BEARISH (Death Cross)                   0
+   JCI            Industrials       130.1600          61.3000  BUY         ▲      56.0000      75.8000      50.0000             0.0798          0.8562 26.1200 BULLISH (Golden Cross)                   0
+   OKE                 Energy        85.3600          61.3000  BUY         ▲      59.5000      68.5000      50.0000             0.1009          0.1101 44.9500 BULLISH (Golden Cross)                   0
+    WM            Industrials       238.5300          61.2000  BUY         ▲      60.6000      66.0000      50.0000             0.1074          0.3963 61.3600 BULLISH (Golden Cross)                   0
+   ETN            Industrials       355.4000          61.2000  BUY         ▲      67.5000      52.2000      50.0000             0.1489          0.4686 46.6000  BEARISH (Death Cross)                   0
+   BDX             Healthcare       159.3600          61.1000  BUY         ▲      56.0000      75.1000      50.0000             0.0801          1.2091  0.2500 BULLISH (Golden Cross)                   0
+   XOM                 Energy       156.1200          61.0000  BUY         ▲      57.6000      71.3000      50.0000             0.0891          0.2833 60.8200 BULLISH (Golden Cross)                   0
+  PCAR            Industrials       115.3400          60.8000  BUY         ▲      56.6000      72.9000      50.0000             0.0835          0.4988 26.7600 BULLISH (Golden Cross)                   0
+   LOW      Consumer Cyclical       237.5900          60.6000  BUY         ▲      55.5000      74.3000      50.0000             0.0769          0.1543 15.3200 BULLISH (Golden Cross)                   0
+  META Communication Services       613.7100          60.5000  BUY         ▲      76.0000      33.1000      50.0000             0.3008          0.5230 40.3700  BEARISH (Death Cross)                   0
+   GLW             Technology       129.1200          60.4000  BUY         ▲      59.7000      65.4000      50.0000             0.1021          1.1384 40.9600 BULLISH (Golden Cross)                   0
+   GEV            Industrials       805.0200          60.3000  BUY         ▲      64.1000      56.2000      50.0000             0.1283          0.2833 44.7800 BULLISH (Golden Cross)                   0
+  MRSH     Financial Services       172.1500          60.2000  BUY         ▲      68.4000      47.3000      50.0000             0.1542          0.3458 41.4800  BEARISH (Death Cross)                   0
+   HCA             Healthcare       532.9700          60.0000  BUY         ▲      57.6000      68.0000      50.0000             0.0897          0.1742 48.4000 BULLISH (Golden Cross)                   0
+  WELL            Real Estate       207.8200          60.0000  BUY         ▲      57.1000      69.3000      50.0000             0.0864          1.3169 47.4600 BULLISH (Golden Cross)                   0
+   BKR                 Energy        54.2600          60.0000  BUY         ▲      58.2000      67.0000      50.0000             0.0933          0.1181 14.2700 BULLISH (Golden Cross)                   0
+   SYK             Healthcare       336.7700          59.9000  HOLD        ─      64.2000      54.7000      50.0000             0.1292          0.9921 11.9000  BEARISH (Death Cross)                   0
+   PEP     Consumer Defensive       159.8800          59.8000  HOLD        ─      57.3000      67.9000      50.0000             0.0877          0.5220 32.7900 BULLISH (Golden Cross)                   0
+   APO     Financial Services       104.4400          59.7000  HOLD        ─      61.1000      60.0000      50.0000             0.1102          0.9638 37.7300  BEARISH (Death Cross)                   0
+   UPS            Industrials        97.2100          59.4000  HOLD        ─      53.2000      74.8000      50.0000             0.0628          0.2135 15.7900 BULLISH (Golden Cross)                   0
+   BSX             Healthcare        69.1300          59.4000  HOLD        ─      66.8000      47.6000      50.0000             0.1444          1.0185 34.9100  BEARISH (Death Cross)                   0
+   TJX      Consumer Cyclical       155.4300          59.4000  HOLD        ─      57.9000      65.7000      50.0000             0.0910          0.1611 44.5600 BULLISH (Golden Cross)                   0
+   CRM             Technology       192.8300          59.1000  HOLD        ─      72.6000      35.2000      50.0000             0.1796          0.9136 61.7300  BEARISH (Death Cross)                   0
+  FTNT             Technology        83.4400          59.1000  HOLD        ─      76.0000      28.3000      50.0000             0.2726          0.3672 78.4500  BEARISH (Death Cross)                   0
+  PLTR             Technology       150.9500          59.0000  HOLD        ─      76.0000      28.0000      50.0000             0.3631          1.9335 74.2000  BEARISH (Death Cross)                   0
+   RTX            Industrials       204.5200          58.7000  HOLD        ─      55.4000      68.2000      50.0000             0.0760          0.5170 52.6200 BULLISH (Golden Cross)                   0
+   CMI            Industrials       535.7100          58.7000  HOLD        ─      56.8000      65.4000      50.0000             0.0844          0.5326 32.1600 BULLISH (Golden Cross)                   0
+  ADBE             Technology       249.3200          58.6000  HOLD        ─      76.0000      26.7000      50.0000             0.2948          0.5779 51.7800  BEARISH (Death Cross)                   0
+  ROST      Consumer Cyclical       206.2800          58.4000  HOLD        ─      58.4000      61.3000      50.0000             0.0943          0.2235 55.1600 BULLISH (Golden Cross)                   0
+   FDX            Industrials       351.6800          58.3000  HOLD        ─      50.7000      76.2000      50.0000             0.0481          0.2038 24.8700 BULLISH (Golden Cross)                   0
+   LHX            Industrials       358.9600          58.2000  HOLD        ─      55.0000      67.2000      50.0000             0.0735          0.5978 52.4500 BULLISH (Golden Cross)                   0
+   NOW             Technology       113.6200          58.0000  HOLD        ─      64.6000      47.3000      50.0000             0.1316          1.9992 66.8100  BEARISH (Death Cross)                   0
+  TMUS Communication Services       217.3900          57.7000  HOLD        ─      63.4000      48.9000      50.0000             0.1245          0.4475 47.9500  BEARISH (Death Cross)                   0
+   COF     Financial Services       179.7900          57.6000  HOLD        ─      51.9000      71.7000      50.0000             0.0554          6.3413 40.8900 BULLISH (Golden Cross)                   0
+   ELV             Healthcare       291.6300          57.5000  HOLD        ─      47.4000      80.3000      50.0000             0.0284          0.1674 28.6800 BULLISH (Golden Cross)                   0
+    GD            Industrials       351.5200          57.3000  HOLD        ─      56.0000      62.3000      50.0000             0.0801          0.1696 52.2500 BULLISH (Golden Cross)                   0
+   DIS Communication Services        99.2900          56.8000  HOLD        ─      58.5000      55.8000      50.0000             0.1280          0.0834 25.8900  BEARISH (Death Cross)                   0
+  ORLY      Consumer Cyclical        91.5400          56.7000  HOLD        ─      66.5000      39.4000      50.0000             0.1427          0.2030 35.2200  BEARISH (Death Cross)                   0
+  SNPS             Technology       412.6300          56.7000  HOLD        ─      65.7000      40.8000      50.0000             0.1380          1.6118 46.6700  BEARISH (Death Cross)                   0
+   RSG            Industrials       224.2800          56.2000  HOLD        ─      64.2000      42.2000      50.0000             0.1289          0.1761 56.2600  BEARISH (Death Cross)                   0
+   COP                 Energy       121.8900          56.1000  HOLD        ─      56.8000      56.7000      50.0000             0.1321          0.0763 74.2600 BULLISH (Golden Cross)                   0
+   KKR     Financial Services        85.9300          56.0000  HOLD        ─      57.2000      55.5000      50.0000             0.0873          2.3924 41.1000  BEARISH (Death Cross)                   0
+   LMT            Industrials       646.0000          55.8000  HOLD        ─      53.8000      61.9000      50.0000             0.0669          0.4882 45.8900 BULLISH (Golden Cross)                   0
+    HD      Consumer Cyclical       339.0300          55.8000  HOLD        ─      57.0000      55.5000      50.0000             0.0860          0.1455 25.7800  BEARISH (Death Cross)                   0
+   OXY                 Energy        57.8800          55.7000  HOLD        ─      53.1000      62.7000      50.0000             0.0625          0.7451 69.0800 BULLISH (Golden Cross)                   0
+   ACN             Technology       196.6500          55.4000  HOLD        ─      60.6000      46.9000      50.0000             0.1076          0.2325 46.1200  BEARISH (Death Cross)                   0
+    BA            Industrials       209.8900          55.4000  HOLD        ─      46.2000      75.6000      50.0000             0.0211          0.8967 34.3400 BULLISH (Golden Cross)                   0
+  QCOM             Technology       129.8200          55.3000  HOLD        ─      62.6000      42.5000      50.0000             0.1196          1.2657 32.7100  BEARISH (Death Cross)                   0
+   AZO      Consumer Cyclical      3562.8500          55.2000  HOLD        ─      64.0000      39.3000      50.0000             0.1278          0.2231 37.7800  BEARISH (Death Cross)                   0
+  SNDK             Technology       661.6200          55.1000  HOLD        ─      42.7000      81.7000      50.0000            -0.1166         12.4846 49.4600 BULLISH (Golden Cross)                   0
+   IBM             Technology       246.2800          55.1000  HOLD        ─      68.8000      29.5000      50.0000             0.1565          0.2034 71.4900  BEARISH (Death Cross)                   0
+   FCX        Basic Materials        56.3800          54.7000  HOLD        ─      56.8000      52.0000      50.0000             0.0848          1.4243 30.0000 BULLISH (Golden Cross)                   0
+  ABBV             Healthcare       219.6800          54.6000  HOLD        ─      54.1000      57.3000      50.0000             0.0684          5.8010 35.9800 BULLISH (Golden Cross)                   0
+   WMT     Consumer Defensive       126.5200          54.5000  HOLD        ─      47.8000      69.5000      50.0000             0.0307          0.2043 51.8200 BULLISH (Golden Cross)                   0
+  AMZN      Consumer Cyclical       207.6700          54.4000  HOLD        ─      60.8000      43.2000      50.0000             0.1083          0.3029 53.3500  BEARISH (Death Cross)                   0
+  TSLA      Consumer Cyclical       391.2000          54.4000  HOLD        ─      49.4000      65.7000      50.0000             0.0400          1.6266 45.4400 BULLISH (Golden Cross)                   0
+  COST     Consumer Defensive      1008.4300          54.2000  HOLD        ─      47.7000      68.7000      50.0000             0.0299          0.1644 58.1000 BULLISH (Golden Cross)                   0
+    GM      Consumer Cyclical        72.3900          54.2000  HOLD        ─      45.6000      72.9000      50.0000             0.0172          3.2437 27.5100 BULLISH (Golden Cross)                   0
+  MDLZ     Consumer Defensive        54.8900          54.2000  HOLD        ─      53.3000      57.4000      50.0000             0.0636          0.7878 26.7200  BEARISH (Death Cross)                   0
+   AEP              Utilities       133.6100          53.9000  HOLD        ─      46.6000      69.7000      50.0000             0.1636          0.0300 56.8600 BULLISH (Golden Cross)                   0
+   PLD            Real Estate       131.7500          53.9000  HOLD        ─      42.7000      77.5000      50.0000             0.3614         -0.0597 24.7300 BULLISH (Golden Cross)                   0
+   SPG            Real Estate       186.8200          53.6000  HOLD        ─      42.7000      76.5000      50.0000             0.7266         -0.5118 28.0300 BULLISH (Golden Cross)                   0
+   CEG              Utilities       301.7700          53.4000  HOLD        ─      57.8000      45.8000      50.0000             0.0908          0.8421 54.2900  BEARISH (Death Cross)                   0
+  SBUX      Consumer Cyclical        99.1500          53.3000  HOLD        ─      48.8000      63.4000      50.0000             0.0363          1.4611 68.6000 BULLISH (Golden Cross)                   0
+   CVX                 Energy       196.8200          53.1000  HOLD        ─      53.8000      52.7000      50.0000             0.0666          0.4114 70.5300 BULLISH (Golden Cross)                   0
+   PWR            Industrials       559.0200          53.0000  HOLD        ─      48.7000      62.6000      50.0000             0.0361          1.2654 54.1400 BULLISH (Golden Cross)                   0
+   NKE      Consumer Cyclical        53.9800          52.5000  HOLD        ─      51.7000      55.0000      50.0000             0.0543          0.3447 13.0800  BEARISH (Death Cross)                   0
+  PANW             Technology       167.0100          52.4000  HOLD        ─      64.3000      29.5000      50.0000             0.1296          1.2067 85.4300  BEARISH (Death Cross)                   0
+  INTC             Technology        45.7700          52.1000  HOLD        ─      42.7000      71.6000      50.0000            -0.0051         17.5197 55.2100 BULLISH (Golden Cross)                   0
+  DASH      Consumer Cyclical       161.3600          51.4000  HOLD        ─      54.1000      46.4000      50.0000             0.0682          2.5710 46.7900  BEARISH (Death Cross)                   0
+   MCK             Healthcare       940.9100          51.1000  HOLD        ─      44.5000      64.5000      50.0000             0.0109          0.2759 47.8900 BULLISH (Golden Cross)                   0
+   CVS             Healthcare        76.1300          50.9000  HOLD        ─      43.4000      66.2000      50.0000             0.0044          4.8835 47.5100 BULLISH (Golden Cross)                   0
+   DLR            Real Estate       179.6100          50.4000  HOLD        ─      42.7000      65.8000      50.0000             0.2085         -0.0457 56.6600 BULLISH (Golden Cross)                   0
+   COR             Healthcare       349.9500          50.2000  HOLD        ─      43.5000      63.8000      50.0000             0.0050          1.3586 32.7800 BULLISH (Golden Cross)                   0
+   TRV     Financial Services       302.4900          49.9000  HOLD        ─      41.6000      66.5000      50.0000             0.1278          0.0329 46.1400 BULLISH (Golden Cross)                   0
+   APD        Basic Materials       287.9800          49.8000  HOLD        ─      42.7000      63.9000      50.0000            -0.0267         10.4760 55.6800 BULLISH (Golden Cross)                   0
+   PSX                 Energy       172.7400          49.2000  HOLD        ─      48.2000      50.8000      50.0000             0.0332          0.1996 75.4500 BULLISH (Golden Cross)                   0
+   UNH             Healthcare       282.0900          48.4000  HOLD        ─      47.2000      50.2000      50.0000             0.0269          0.5073 51.5300  BEARISH (Death Cross)                   0
+ BRK-B     Financial Services       490.0300          48.2000  HOLD        ─      39.4000      65.1000      50.0000             0.1803         -0.3015 46.9800 BULLISH (Golden Cross)                   0
+   MPC                 Energy       226.1800          47.9000  HOLD        ─      47.8000      47.5000      50.0000             0.0303          0.1328 75.3600 BULLISH (Golden Cross)                   0
+ CMCSA Communication Services        30.1600          46.8000  HOLD        ─      36.3000      66.6000      50.0000             0.1617         -0.2599 35.3900 BULLISH (Golden Cross)                   0
+  DELL             Technology       151.6200          46.6000  HOLD        ─      51.4000      35.9000      50.0000             0.0523          0.6626 77.0900  BEARISH (Death Cross)                   0
+    CI             Healthcare       267.1900          46.4000  HOLD        ─      46.3000      45.4000      50.0000             0.0217          0.5097 35.0500  BEARISH (Death Cross)                   0
+   VLO                 Energy       230.5900          46.4000  HOLD        ─      46.1000      45.8000      50.0000             0.0202          0.8383 74.4800 BULLISH (Golden Cross)                   0
+   NOC            Industrials       733.7100          46.3000  HOLD        ─      36.9000      63.8000      50.0000             0.0997          0.0329 52.5400 BULLISH (Golden Cross)                   0
+  UBER             Technology        73.3300          44.2000  SELL        ▼      41.6000      47.4000      50.0000             0.1933         -0.0930 58.5900  BEARISH (Death Cross)                   0
+     T Communication Services        27.7200          42.6000  SELL        ▼      38.4000      48.5000      50.0000             0.1742         -0.1613 42.4800  BEARISH (Death Cross)                   0
+  CRWD             Technology       441.7800          40.4000  SELL        ▼      42.7000      32.5000      50.0000            -0.0338         10.3567 91.2600  BEARISH (Death Cross)                   0
+   PGR     Financial Services       205.1700          36.7000  SELL        ▼      30.9000      43.9000      50.0000             0.1290         -0.1591 52.4800  BEARISH (Death Cross)                   0
+   WBD Communication Services        27.1400          35.0000  SELL        ▼      12.6000      74.9000      50.0000             0.0195         -1.1207 21.4700 BULLISH (Golden Cross)                   0
+
+─────────────────────────────────────────────────────────────────
+  TOP 20 SIGNALS
+─────────────────────────────────────────────────────────────────
+  MU       75.1/100   STRONG BUY  ▲▲      Technology
+  WDC      75.1/100   STRONG BUY  ▲▲      Technology
+  TXN      74.1/100   BUY         ▲       Technology
+  RCL      73.6/100   BUY         ▲       Consumer Cyclical
+  MNST     73.5/100   BUY         ▲       Consumer Defensive
+  ITW      73.5/100   BUY         ▲       Industrials
+  GS       73.3/100   BUY         ▲       Financial Services
+  ADI      73.3/100   BUY         ▲       Technology
+  STX      73.3/100   BUY         ▲       Technology
+  KO       73.0/100   BUY         ▲       Consumer Defensive
+  UNP      73.0/100   BUY         ▲       Industrials
+  MAR      73.0/100   BUY         ▲       Consumer Cyclical
+  BAC      73.0/100   BUY         ▲       Financial Services
+  PNC      72.9/100   BUY         ▲       Financial Services
+  HLT      72.9/100   BUY         ▲       Consumer Cyclical
+  USB      72.8/100   BUY         ▲       Financial Services
+  SCHW     72.7/100   BUY         ▲       Financial Services
+  TDG      72.6/100   BUY         ▲       Industrials
+  LRCX     72.5/100   BUY         ▲       Technology
+  AMAT     72.4/100   BUY         ▲       Technology
+
+─────────────────────────────────────────────────────────────────
+  SECTOR AVERAGES  (composite score)
+─────────────────────────────────────────────────────────────────
+  Financial Services                        avg= 65.1  n=32
+  Consumer Defensive                        avg= 64.6  n=10
+  Utilities                                 avg= 63.1  n=7
+  Basic Materials                           avg= 62.9  n=7
+  Technology                                avg= 62.8  n=38
+  Industrials                               avg= 62.3  n=31
+  Healthcare                                avg= 62.0  n=25
+  Consumer Cyclical                         avg= 60.7  n=19
+  Real Estate                               avg= 59.7  n=7
+  Energy                                    avg= 57.9  n=13
+  Communication Services                    avg= 57.6  n=11
+
+✓ Full results saved to: equity_kpi_results.csv
+=================================================================
+
+
+=================================================================
+  AI PAPER TRADING AGENT
+  Date    : 2026-03-13
+  KPI file: equity_kpi_results.csv
+=================================================================
+
+  Cash:         $     41.73
+  Holdings:     $    880.91
+  Total:        $    922.64  (goal: $2000)
+  Progress:     46.1%
+
+  Current positions (4):
+    AFL     2.2804 shares  $247.90  P&L: -2.10 (-0.8%)
+    PNC     1.1671 shares  $234.74  P&L: -5.26 (-2.2%)
+    USB     4.5951 shares  $234.35  P&L: -5.65 (-2.4%)
+    HLT     0.5622 shares  $163.92  P&L: -1.52 (-0.9%)
+
+  Asking Claude for today's trading decisions...
+
+  📋 Claude's reasoning:
+     Current holdings are all underperforming slightly but remain above the -20% stop-loss threshold with similar scores (69.7-72.9). With VIX at 27 (elevated market fear), I should maintain defensive positioning and avoid high-beta technology stocks despite their higher scores. The portfolio is already well-diversified across financials, consumer cyclical, and insurance with reasonable scores and low risk flags. No positions warrant selling based on the rules, and available cash ($41.73) is insufficient for a meaningful new position after commissions.
+
+  No trades today — holding current positions.
+
+─────────────────────────────────────────────────────────────────
+  END OF DAY SUMMARY
+─────────────────────────────────────────────────────────────────
+  Cash:         $     41.73
+  Holdings:     $    880.91
+  Total:        $    922.64
+  Goal:         $   2000.00  (46.1% complete)
+
+  Positions (4):
+    AFL     2.2804 shares  $247.90  P&L: -2.10 (-0.8%)
+    PNC     1.1671 shares  $234.74  P&L: -5.26 (-2.2%)
+    USB     4.5951 shares  $234.35  P&L: -5.65 (-2.4%)
+    HLT     0.5622 shares  $163.92  P&L: -1.52 (-0.9%)
+
+  Transactions log: transactions.csv
+=================================================================
+
+[16:41:57.75] Daily run complete. 
+ 
+============================================ 
+ DAILY RUN: Fri 03/13/2026 20:08:43.23 
+============================================ 
+
+-------------------------------------------------------
+  UNIVERSE SELECTION
+-------------------------------------------------------
+  [UNIVERSE] Loaded 200 tickers from cache (refreshed 2026-03-11)
+  [UNIVERSE] Next refresh in < 7 days  |  mode=balanced
+-------------------------------------------------------
+
+=================================================================
+  EQUITY KPI DAILY ANALYSER
+  Run date : 2026-03-13
+  Universe : S&P 500 top 200 (balanced)  (200 tickers)
+=================================================================
+
+[1/3] Fetching macro data...
+  [MACRO] No FRED key provided — skipping macro data.
+          Get a free key at: https://fred.stlouisfed.org/docs/api/api_key.html
+
+[2/3] Fetching VIX & S&P 500 benchmark...
+  VIX = 27.19
+
+[3/3] Fetching data for 200 tickers...
+
+  [1/200] NVDA... composite=70.0
+  [2/200] AAPL... composite=71.6
+  [3/200] GOOGL... composite=70.4
+  [4/200] GOOG... composite=70.2
+  [5/200] MSFT... composite=62.7
+  [6/200] AMZN... composite=54.4
+  [7/200] META... composite=60.5
+  [8/200] AVGO... composite=66.7
+  [9/200] TSLA... composite=54.4
+  [10/200] BRK-B... composite=48.2
+  [11/200] WMT... composite=54.5
+  [12/200] LLY... composite=71.2
+  [13/200] JPM... composite=70.9
+  [14/200] XOM... composite=61.0
+  [15/200] V... composite=64.3
+  [16/200] JNJ... composite=70.1
+  [17/200] MU... composite=75.1
+  [18/200] ORCL... composite=62.1
+  [19/200] MA... composite=64.3
+  [20/200] COST... composite=54.2
+  [21/200] ABBV... composite=54.6
+  [22/200] NFLX... composite=61.7
+  [23/200] CVX... composite=53.1
+  [24/200] PLTR... composite=59.0
+  [25/200] PG... composite=69.3
+  [26/200] BAC... composite=73.0
+  [27/200] HD... composite=55.8
+  [28/200] GE... composite=63.2
+  [29/200] AMD... composite=61.5
+  [30/200] KO... composite=73.0
+  [31/200] CAT... composite=63.2
+  [32/200] CSCO... composite=70.2
+  [33/200] MRK... composite=70.0
+  [34/200] AMAT... composite=72.4
+  [35/200] RTX... composite=58.7
+  [36/200] LRCX... composite=72.5
+  [37/200] PM... composite=71.9
+  [38/200] UNH... composite=48.4
+  [39/200] MS... composite=71.2
+  [40/200] GS... composite=73.3
+  [41/200] WFC... composite=72.2
+  [42/200] INTC... composite=52.1
+  [43/200] TMUS... composite=57.7
+  [44/200] IBM... composite=55.1
+  [45/200] MCD... composite=71.2
+  [46/200] GEV... composite=60.3
+  [47/200] LIN... composite=71.3
+  [48/200] PEP... composite=59.8
+  [49/200] VZ... composite=64.2
+  [50/200] AXP... composite=66.1
+  [51/200] AMGN... composite=69.9
+  [52/200] T... composite=42.6
+  [53/200] KLAC... composite=71.6
+  [54/200] ABT... composite=61.6
+  [55/200] C... composite=68.2
+  [56/200] NEE... composite=71.7
+  [57/200] TMO... composite=66.4
+  [58/200] CRM... composite=59.1
+  [59/200] GILD... composite=70.2
+  [60/200] TXN... composite=74.1
+  [61/200] DIS... composite=56.8
+  [62/200] TJX... composite=59.4
+  [63/200] ISRG... composite=69.6
+  [64/200] ANET... composite=70.6
+  [65/200] BA... composite=55.4
+  [66/200] APH... composite=71.2
+  [67/200] SCHW... composite=72.7
+  [68/200] DE... composite=62.6
+  [69/200] APP... composite=67.2
+  [70/200] ADI... composite=73.3
+  [71/200] UBER... composite=44.2
+  [72/200] PFE... composite=61.7
+  [73/200] HON... composite=63.0
+  [74/200] LMT... composite=55.8
+  [75/200] UNP... composite=73.0
+  [76/200] BLK... composite=67.6
+  [77/200] WELL... composite=60.0
+  [78/200] QCOM... composite=55.3
+  [79/200] COP... composite=56.1
+  [80/200] BKNG... composite=64.9
+  [81/200] LOW... composite=60.6
+  [82/200] ETN... composite=61.2
+  [83/200] DHR... composite=68.9
+  [84/200] PANW... composite=52.4
+  [85/200] SYK... composite=59.9
+  [86/200] BX... composite=68.6
+  [87/200] SPGI... composite=65.0
+  [88/200] CB... composite=67.5
+  [89/200] NEM... composite=69.1
+  [90/200] VRTX... composite=68.5
+  [91/200] ACN... composite=55.4
+  [92/200] PLD... composite=53.9
+  [93/200] INTU... composite=61.5
+  [94/200] BMY... composite=65.2
+  [95/200] NOW... composite=58.0
+  [96/200] HCA... composite=60.0
+  [97/200] PH... composite=69.8
+  [98/200] PGR... composite=36.7
+  [99/200] IBKR... composite=65.6
+  [100/200] SBUX... composite=53.3
+  [101/200] MCK... composite=51.1
+  [102/200] MDT... composite=66.3
+  [103/200] COF... composite=57.6
+  [104/200] GLW... composite=60.4
+  [105/200] ADBE... composite=58.6
+  [106/200] CRWD... composite=40.4
+  [107/200] CMCSA... composite=46.8
+  [108/200] MO... composite=70.6
+  [109/200] CME... composite=70.3
+  [110/200] CEG... composite=53.4
+  [111/200] SO... composite=65.2
+  [112/200] NOC... composite=46.3
+  [113/200] BSX... composite=59.4
+  [114/200] HWM... composite=69.2
+  [115/200] DUK... composite=62.8
+  [116/200] DELL... composite=46.6
+  [117/200] SNDK... composite=55.1
+  [118/200] CVS... composite=50.9
+  [119/200] TT... composite=67.9
+  [120/200] GD... composite=57.3
+  [121/200] EQIX... composite=65.2
+  [122/200] WM... composite=61.2
+  [123/200] WDC... composite=75.1
+  [124/200] WMB... composite=70.3
+  [125/200] ICE... composite=64.6
+  [126/200] FCX... composite=54.7
+  [127/200] MAR... composite=73.0
+  [128/200] STX... composite=73.3
+  [129/200] ADP... composite=64.6
+  [130/200] AMT... composite=66.7
+  [131/200] UPS... composite=59.4
+  [132/200] FDX... composite=58.3
+  [133/200] MRSH... composite=60.2
+  [134/200] PWR... composite=53.0
+  [135/200] PNC... composite=72.9
+  [136/200] SNPS... composite=56.7
+  [137/200] JCI... composite=61.3
+  [138/200] NKE... composite=52.5
+  [139/200] REGN... composite=70.2
+  [140/200] MMM... composite=68.1
+  [141/200] BK... composite=70.0
+  [142/200] CDNS... composite=63.1
+  [143/200] USB... composite=72.8
+  [144/200] KKR... composite=56.0
+  [145/200] ABNB... composite=69.7
+  [146/200] SHW... composite=65.5
+  [147/200] CTAS... composite=62.2
+  [148/200] ORLY... composite=56.7
+  [149/200] MCO... composite=65.3
+  [150/200] EMR... composite=63.6
+  [151/200] ECL... composite=66.0
+  [152/200] ITW... composite=73.5
+  [153/200] RCL... composite=73.6
+  [154/200] MSI... composite=71.4
+  [155/200] CMI... composite=58.7
+  [156/200] MNST... composite=73.5
+  [157/200] CSX... composite=71.1
+  [158/200] DASH... composite=51.4
+  [159/200] KMI... composite=62.2
+  [160/200] SLB... composite=63.3
+  [161/200] EOG... composite=66.8
+  [162/200] CL... composite=64.7
+  [163/200] MDLZ... composite=54.2
+  [164/200] TDG... composite=72.6
+  [165/200] AEP... composite=53.9
+  [166/200] HOOD... composite=61.5
+  [167/200] VLO... composite=46.4
+  [168/200] GM... composite=54.2
+  [169/200] CI... composite=46.4
+  [170/200] CRH... composite=63.9
+  [171/200] RSG... composite=56.2
+  [172/200] ROST... composite=58.4
+  [173/200] HLT... composite=72.9
+  [174/200] WBD... composite=35.0
+  [175/200] MPC... composite=47.9
+  [176/200] COR... composite=50.2
+  [177/200] LHX... composite=58.2
+  [178/200] AON... composite=65.8
+  [179/200] PSX... composite=49.2
+  [180/200] CVNA... composite=61.8
+  [181/200] NSC... composite=65.8
+  [182/200] TRV... composite=49.9
+  [183/200] ELV... composite=57.5
+  [184/200] DLR... composite=50.4
+  [185/200] PCAR... composite=60.8
+  [186/200] FTNT... composite=59.1
+  [187/200] APD... composite=49.8
+  [188/200] SPG... composite=53.6
+  [189/200] APO... composite=59.7
+  [190/200] AZO... composite=55.2
+  [191/200] SRE... composite=65.8
+  [192/200] O... composite=68.0
+  [193/200] TEL... composite=66.1
+  [194/200] BDX... composite=61.1
+  [195/200] BKR... composite=60.0
+  [196/200] TFC... composite=72.4
+  [197/200] AFL... composite=69.7
+  [198/200] OXY... composite=55.7
+  [199/200] D... composite=69.1
+  [200/200] OKE... composite=61.3
+
+=================================================================
+  RESULTS  (sorted by composite score)
+=================================================================
+ticker                 sector  current_price  composite_score         signal  tier1_score  tier2_score  tier3_score  net_profit_margin  eps_growth_fwd  rsi_14              ma_signal  net_insider_shares
+    MU             Technology       426.1300          75.1000 STRONG BUY  ▲▲      76.0000      81.7000      50.0000             0.2815          3.7282 51.3000 BULLISH (Golden Cross)                   0
+   WDC             Technology       272.2900          75.1000 STRONG BUY  ▲▲      76.0000      81.7000      50.0000             0.3676          0.2711 47.1300 BULLISH (Golden Cross)                   0
+   TXN             Technology       190.7800          74.1000  BUY         ▲      76.0000      78.3000      50.0000             0.2812          0.4511 15.8000 BULLISH (Golden Cross)                   0
+   RCL      Consumer Cyclical       272.5400          73.6000  BUY         ▲      76.0000      76.5000      50.0000             0.2380          0.3263 36.9100 BULLISH (Golden Cross)                   0
+  MNST     Consumer Defensive        77.1100          73.5000  BUY         ▲      76.0000      76.4000      50.0000             0.2297          0.3168 26.0700 BULLISH (Golden Cross)                   0
+   ITW            Industrials       266.9900          73.5000  BUY         ▲      74.6000      79.0000      50.0000             0.1911          0.1586 14.4500 BULLISH (Golden Cross)                   0
+    GS     Financial Services       782.2100          73.3000  BUY         ▲      76.0000      75.5000      50.0000             0.2735          0.2666 26.8400 BULLISH (Golden Cross)                   0
+   ADI             Technology       306.0700          73.3000  BUY         ▲      76.0000      75.8000      50.0000             0.2302          1.3631 18.3400 BULLISH (Golden Cross)                   0
+   STX             Technology       383.7100          73.3000  BUY         ▲      75.4000      77.0000      50.0000             0.1959          1.2389 43.9500 BULLISH (Golden Cross)                   0
+    KO     Consumer Defensive        77.3400          73.0000  BUY         ▲      76.0000      74.5000      50.0000             0.2734          0.1400 28.3000 BULLISH (Golden Cross)                   0
+   UNP            Industrials       242.4400          73.0000  BUY         ▲      76.0000      74.7000      50.0000             0.2912          0.1262 23.3500 BULLISH (Golden Cross)                   0
+   MAR      Consumer Cyclical       313.8100          73.0000  BUY         ▲      76.0000      74.6000      50.0000             0.3725          0.3637 29.0500 BULLISH (Golden Cross)                   0
+   BAC     Financial Services        46.7200          73.0000  BUY         ▲      76.0000      74.7000      50.0000             0.2705          0.3004 29.9200 BULLISH (Golden Cross)                   0
+   PNC     Financial Services       201.1300          72.9000  BUY         ▲      76.0000      74.4000      50.0000             0.2946          0.2452 23.4200 BULLISH (Golden Cross)                   0
+   HLT      Consumer Cyclical       291.5500          72.9000  BUY         ▲      76.0000      74.2000      50.0000             0.2941          0.7024 29.4800 BULLISH (Golden Cross)                   0
+   USB     Financial Services        51.0000          72.8000  BUY         ▲      76.0000      74.0000      50.0000             0.2730          0.2075 27.1600 BULLISH (Golden Cross)                   0
+  SCHW     Financial Services        93.0600          72.7000  BUY         ▲      76.0000      73.5000      50.0000             0.3519          0.4601 51.0300 BULLISH (Golden Cross)                   0
+   TDG            Industrials      1214.6600          72.6000  BUY         ▲      75.8000      73.8000      50.0000             0.1985          0.4737 25.9400 BULLISH (Golden Cross)                   0
+  LRCX             Technology       212.2000          72.5000  BUY         ▲      76.0000      72.9000      50.0000             0.3022          0.4205 35.2100 BULLISH (Golden Cross)                   0
+  AMAT             Technology       341.5300          72.4000  BUY         ▲      76.0000      72.5000      50.0000             0.2778          0.4197 39.2500 BULLISH (Golden Cross)                   0
+   TFC     Financial Services        43.8300          72.4000  BUY         ▲      76.0000      72.7000      50.0000             0.2700          0.3382 21.3900 BULLISH (Golden Cross)                   0
+   WFC     Financial Services        74.1000          72.2000  BUY         ▲      76.0000      72.1000      50.0000             0.2534          0.2658 23.0400 BULLISH (Golden Cross)                   0
+    PM     Consumer Defensive       174.6600          71.9000  BUY         ▲      76.0000      71.0000      50.0000             0.2784          0.2671 35.4400 BULLISH (Golden Cross)                   0
+   NEE              Utilities        92.7800          71.7000  BUY         ▲      76.0000      70.3000      50.0000             0.2493          0.3269 47.5500 BULLISH (Golden Cross)                   0
+  KLAC             Technology      1418.6400          71.6000  BUY         ▲      76.0000      70.1000      50.0000             0.3576          0.3810 43.5700 BULLISH (Golden Cross)                   0
+  AAPL             Technology       250.1200          71.6000  BUY         ▲      76.0000      69.9000      50.0000             0.2704          0.1767 29.9100 BULLISH (Golden Cross)                   0
+   MSI             Technology       473.1200          71.4000  BUY         ▲      73.4000      74.5000      50.0000             0.1844          0.4212 56.0100 BULLISH (Golden Cross)                   0
+   LIN        Basic Materials       493.9200          71.3000  BUY         ▲      76.0000      69.0000      50.0000             0.2030          0.3321 48.3600 BULLISH (Golden Cross)                   0
+   MCD      Consumer Cyclical       326.4600          71.2000  BUY         ▲      76.0000      68.6000      50.0000             0.3185          0.1981 40.8400 BULLISH (Golden Cross)                   0
+   APH             Technology       133.9200          71.2000  BUY         ▲      73.5000      73.7000      50.0000             0.1849          0.5407 36.5000 BULLISH (Golden Cross)                   0
+   LLY             Healthcare       985.0800          71.2000  BUY         ▲      76.0000      68.5000      50.0000             0.3167          0.8264 31.5700 BULLISH (Golden Cross)                   0
+    MS     Financial Services       154.8700          71.2000  BUY         ▲      76.0000      68.5000      50.0000             0.2312          0.2063 35.0100 BULLISH (Golden Cross)                   0
+   CSX            Industrials        39.3000          71.1000  BUY         ▲      76.0000      68.2000      50.0000             0.2050          0.3553 34.2300 BULLISH (Golden Cross)                   0
+   JPM     Financial Services       283.4400          70.9000  BUY         ▲      76.0000      67.8000      50.0000             0.3310          0.1729 31.8800 BULLISH (Golden Cross)                   0
+  ANET             Technology       133.5700          70.6000  BUY         ▲      76.0000      66.8000      50.0000             0.3899          0.5503 55.6500 BULLISH (Golden Cross)                   0
+    MO     Consumer Defensive        67.8900          70.6000  BUY         ▲      76.0000      66.7000      50.0000             0.3440          0.4099 42.5200 BULLISH (Golden Cross)                   0
+ GOOGL Communication Services       302.2800          70.4000  BUY         ▲      76.0000      65.9000      50.0000             0.3281          0.2406 39.4300 BULLISH (Golden Cross)                   0
+   CME     Financial Services       311.4000          70.3000  BUY         ▲      76.0000      65.8000      50.0000             0.6180          0.1378 53.7600 BULLISH (Golden Cross)                   0
+   WMB                 Energy        73.3400          70.3000  BUY         ▲      76.0000      65.5000      50.0000             0.2210          0.2248 52.0600 BULLISH (Golden Cross)                   0
+  CSCO             Technology        78.3300          70.2000  BUY         ▲      74.0000      69.2000      50.0000             0.1876          0.6244 52.1600 BULLISH (Golden Cross)                   0
+  GILD             Healthcare       144.9900          70.2000  BUY         ▲      76.0000      65.3000      50.0000             0.2890          0.4183 41.1700 BULLISH (Golden Cross)                   0
+  GOOG Communication Services       301.4600          70.2000  BUY         ▲      76.0000      65.3000      50.0000             0.3281          0.2395 38.4800 BULLISH (Golden Cross)                   0
+  REGN             Healthcare       745.7700          70.2000  BUY         ▲      76.0000      65.4000      50.0000             0.3141          0.2721 39.4700 BULLISH (Golden Cross)                   0
+   JNJ             Healthcare       241.5200          70.1000  BUY         ▲      76.0000      64.9000      50.0000             0.2846          0.1380 43.9200 BULLISH (Golden Cross)                   0
+  NVDA             Technology       180.2500          70.0000  BUY         ▲      76.0000      64.5000      50.0000             0.5560          1.1997 39.3300 BULLISH (Golden Cross)                   0
+    BK     Financial Services       116.1700          70.0000  BUY         ▲      76.0000      64.5000      50.0000             0.2652          0.2643 51.8300 BULLISH (Golden Cross)                   0
+   MRK             Healthcare       115.6100          70.0000  BUY         ▲      76.0000      64.7000      50.0000             0.2808          0.3388 30.4600 BULLISH (Golden Cross)                   0
+  AMGN             Healthcare       366.2100          69.9000  BUY         ▲      76.0000      64.4000      50.0000             0.2098          0.6353 40.3400 BULLISH (Golden Cross)                   0
+    PH            Industrials       889.8600          69.8000  BUY         ▲      71.5000      72.9000      50.0000             0.1729          0.2396 21.8200 BULLISH (Golden Cross)                   0
+  ABNB      Consumer Cyclical       126.3000          69.7000  BUY         ▲      76.0000      63.7000      50.0000             0.2051          0.4366 54.9400 BULLISH (Golden Cross)                   0
+   AFL     Financial Services       108.7100          69.7000  BUY         ▲      76.0000      63.5000      50.0000             0.2124          0.1394 30.2200 BULLISH (Golden Cross)                   0
+  ISRG             Healthcare       472.1600          69.6000  BUY         ▲      76.0000      63.4000      50.0000             0.2838          0.4554 37.5700 BULLISH (Golden Cross)                   0
+    PG     Consumer Defensive       150.6500          69.3000  BUY         ▲      69.1000      76.0000      50.0000             0.1896          0.0844 23.5200 BULLISH (Golden Cross)                   0
+   HWM            Industrials       236.7500          69.2000  BUY         ▲      73.1000      67.7000      50.0000             0.1825          0.4838 29.5300 BULLISH (Golden Cross)                   0
+     D              Utilities        63.2100          69.1000  BUY         ▲      72.7000      68.3000      50.0000             0.1798          0.1009 46.2700 BULLISH (Golden Cross)                   0
+   NEM        Basic Materials       109.5800          69.1000  BUY         ▲      76.0000      61.5000      50.0000             0.3125          0.6942 28.5000 BULLISH (Golden Cross)                   0
+   DHR             Healthcare       187.3200          68.9000  BUY         ▲      67.1000      78.8000      50.0000             0.1465          0.8119 18.0900 BULLISH (Golden Cross)                   0
+    BX     Financial Services       106.7800          68.6000  BUY         ▲      76.0000      60.0000      50.0000             0.2124          1.0479 41.1000  BEARISH (Death Cross)                   0
+  VRTX             Healthcare       469.3400          68.5000  BUY         ▲      76.0000      59.5000      50.0000             0.3294          0.4308 46.1100 BULLISH (Golden Cross)                   0
+     C     Financial Services       105.6900          68.2000  BUY         ▲      71.4000      67.9000      50.0000             0.1720          0.7306 40.8500 BULLISH (Golden Cross)                   0
+   MMM            Industrials       150.9600          68.1000  BUY         ▲      64.4000      81.4000      50.0000             0.1303          0.5691 26.4500 BULLISH (Golden Cross)                   0
+     O            Real Estate        64.4400          68.0000  BUY         ▲      73.3000      63.5000      50.0000             0.1837          0.5006 35.2700 BULLISH (Golden Cross)                   0
+    TT            Industrials       422.4000          67.9000  BUY         ▲      65.8000      77.9000      50.0000             0.1386          0.2784 28.3800 BULLISH (Golden Cross)                   0
+   BLK     Financial Services       924.1100          67.6000  BUY         ▲      76.0000      56.8000      50.0000             0.2293          0.7493 18.3400  BEARISH (Death Cross)                   0
+    CB     Financial Services       328.9700          67.5000  BUY         ▲      71.5000      65.4000      50.0000             0.1729          0.1321 44.8700 BULLISH (Golden Cross)                   0
+   APP Communication Services       458.6700          67.2000  BUY         ▲      76.0000      55.3000      50.0000             0.6263          1.0218 65.5700  BEARISH (Death Cross)                   0
+   EOG                 Energy       133.6000          66.8000  BUY         ▲      76.0000      53.9000      50.0000             0.2198          0.2352 72.0100 BULLISH (Golden Cross)                   0
+  AVGO             Technology       322.1600          66.7000  BUY         ▲      76.0000      53.8000      50.0000             0.3657          2.4115 45.4700 BULLISH (Golden Cross)                   0
+   AMT            Real Estate       184.4100          66.7000  BUY         ▲      76.0000      53.6000      50.0000             0.2376          0.2793 42.3500  BEARISH (Death Cross)                   0
+   TMO             Healthcare       464.3700          66.4000  BUY         ▲      67.8000      68.9000      50.0000             0.1505          0.5150 25.0600 BULLISH (Golden Cross)                   0
+   MDT             Healthcare        87.1400          66.3000  BUY         ▲      64.4000      75.6000      50.0000             0.1300          0.7029 12.3900 BULLISH (Golden Cross)                   0
+   AXP     Financial Services       299.9600          66.1000  BUY         ▲      69.3000      65.2000      50.0000             0.1598          0.3089 35.4200 BULLISH (Golden Cross)                   0
+   TEL             Technology       199.4100          66.1000  BUY         ▲      61.7000      80.2000      50.0000             0.1142          0.7828 28.7300 BULLISH (Golden Cross)                   0
+   ECL        Basic Materials       274.1800          66.0000  BUY         ▲      64.2000      74.9000      50.0000             0.1291          0.3360 10.7700 BULLISH (Golden Cross)                   0
+   NSC            Industrials       289.3700          65.8000  BUY         ▲      63.5000      75.5000      50.0000             0.2356          0.0623 18.0500 BULLISH (Golden Cross)                   0
+   AON     Financial Services       321.4100          65.8000  BUY         ▲      76.0000      50.8000      50.0000             0.2151          0.2641 55.0600  BEARISH (Death Cross)                   0
+   SRE              Utilities        95.1100          65.8000  BUY         ▲      64.6000      73.3000      50.0000             0.1311          1.0057 57.3400 BULLISH (Golden Cross)                   0
+  IBKR     Financial Services        66.1900          65.6000  BUY         ▲      69.1000      63.9000      50.0000             0.1585          0.2339 33.3800 BULLISH (Golden Cross)                   0
+   SHW        Basic Materials       319.7800          65.5000  BUY         ▲      60.9000      79.7000      50.0000             0.1090          0.3182 17.1300 BULLISH (Golden Cross)                   0
+   MCO     Financial Services       430.0100          65.3000  BUY         ▲      76.0000      49.0000      50.0000             0.3186          0.3673 47.3200  BEARISH (Death Cross)                   0
+  EQIX            Real Estate       969.9000          65.2000  BUY         ▲      67.0000      66.5000      50.0000             0.1458          0.2748 59.9700 BULLISH (Golden Cross)                   0
+    SO              Utilities        98.0100          65.2000  BUY         ▲      67.2000      66.4000      50.0000             0.1469          0.2532 69.3600 BULLISH (Golden Cross)                   0
+   BMY             Healthcare        59.0800          65.2000  BUY         ▲      67.1000      66.3000      50.0000             0.1464          0.7707 37.3400 BULLISH (Golden Cross)                   0
+  SPGI     Financial Services       422.4900          65.0000  BUY         ▲      76.0000      48.0000      50.0000             0.2915          0.5064 61.1000  BEARISH (Death Cross)                   0
+  BKNG      Consumer Cyclical      4241.2600          64.9000  BUY         ▲      76.0000      47.7000      50.0000             0.2008          0.8890 64.1300  BEARISH (Death Cross)                   0
+    CL     Consumer Defensive        88.8400          64.7000  BUY         ▲      60.1000      78.9000      50.0000             0.1046          0.5773 28.0100 BULLISH (Golden Cross)                   0
+   ADP             Technology       208.5200          64.6000  BUY         ▲      76.0000      46.8000      50.0000             0.1996          0.1491 52.8800  BEARISH (Death Cross)                   0
+   ICE     Financial Services       159.2000          64.6000  BUY         ▲      76.0000      46.7000      50.0000             0.3338          0.4856 59.1000  BEARISH (Death Cross)                   0
+    MA     Financial Services       497.9900          64.3000  BUY         ▲      76.0000      45.5000      50.0000             0.4565          0.3708 51.6500  BEARISH (Death Cross)                   0
+     V     Financial Services       307.1400          64.3000  BUY         ▲      76.0000      45.6000      50.0000             0.4975          0.3652 51.0600  BEARISH (Death Cross)                   0
+    VZ Communication Services        51.3800          64.2000  BUY         ▲      63.4000      70.5000      50.0000             0.1243          0.2923 65.1200 BULLISH (Golden Cross)                   0
+   CRH        Basic Materials        99.8200          63.9000  BUY         ▲      59.3000      77.7000      50.0000             0.0996          0.1996  8.8400 BULLISH (Golden Cross)                   0
+   EMR            Industrials       132.2400          63.6000  BUY         ▲      63.8000      67.7000      50.0000             0.1267          0.7605 33.7700 BULLISH (Golden Cross)                   0
+   SLB                 Energy        44.7200          63.3000  BUY         ▲      58.4000      77.6000      50.0000             0.0945          0.4211 19.2500 BULLISH (Golden Cross)                   0
+   CAT            Industrials       693.9900          63.2000  BUY         ▲      64.6000      64.9000      50.0000             0.1314          0.4743 34.0700 BULLISH (Golden Cross)                   0
+    GE            Industrials       299.6900          63.2000  BUY         ▲      62.0000      70.1000      50.0000             0.1876          0.0640 26.4500 BULLISH (Golden Cross)                   0
+  CDNS             Technology       287.0300          63.1000  BUY         ▲      76.0000      41.6000      50.0000             0.2094          1.3153 55.8400  BEARISH (Death Cross)                   0
+   HON            Industrials       234.5000          63.0000  BUY         ▲      62.4000      68.4000      50.0000             0.1182          0.6577 41.2900 BULLISH (Golden Cross)                   0
+   DUK              Utilities       133.1500          62.8000  BUY         ▲      68.4000      56.0000      50.0000             0.1543          0.1345 72.4800 BULLISH (Golden Cross)                   0
+  MSFT             Technology       395.5500          62.7000  BUY         ▲      76.0000      40.3000      50.0000             0.3904          0.1785 59.2000  BEARISH (Death Cross)                   0
+    DE            Industrials       577.5000          62.6000  BUY         ▲      59.9000      72.2000      50.0000             0.1030          0.3029 19.6500 BULLISH (Golden Cross)                   0
+   KMI                 Energy        33.3900          62.2000  BUY         ▲      62.1000      66.6000      50.0000             0.1795          0.0684 61.1600 BULLISH (Golden Cross)                   0
+  CTAS            Industrials       194.2800          62.2000  BUY         ▲      71.9000      47.0000      50.0000             0.1753          0.1694 43.0400  BEARISH (Death Cross)                   0
+  ORCL             Technology       155.1100          62.1000  BUY         ▲      76.0000      38.2000      50.0000             0.2526          0.4952 63.5600  BEARISH (Death Cross)                   0
+  CVNA      Consumer Cyclical       300.1500          61.8000  BUY         ▲      54.2000      81.0000      50.0000             0.0692          0.2605 41.6000 BULLISH (Golden Cross)                   0
+  NFLX Communication Services        95.3100          61.7000  BUY         ▲      76.0000      37.0000      50.0000             0.2430          0.5170 83.2500  BEARISH (Death Cross)                   0
+   PFE             Healthcare        26.5800          61.7000  BUY         ▲      63.3000      62.4000      50.0000             0.1238          1.0807 43.5100 BULLISH (Golden Cross)                   0
+   ABT             Healthcare       108.0300          61.6000  BUY         ▲      67.1000      54.5000      50.0000             0.1466          0.6783 28.6200  BEARISH (Death Cross)                   0
+   AMD             Technology       193.3900          61.5000  BUY         ▲      63.2000      61.8000      50.0000             0.1232          3.1706 48.1100 BULLISH (Golden Cross)                   0
+  INTU             Technology       439.9600          61.5000  BUY         ▲      76.0000      36.3000      50.0000             0.2157          0.7202 73.0800  BEARISH (Death Cross)                   0
+  HOOD     Financial Services        73.3900          61.5000  BUY         ▲      76.0000      36.4000      50.0000             0.4210          0.3405 52.1900  BEARISH (Death Cross)                   0
+   JCI            Industrials       130.1600          61.3000  BUY         ▲      56.0000      75.8000      50.0000             0.0798          0.8562 26.1200 BULLISH (Golden Cross)                   0
+   OKE                 Energy        85.3600          61.3000  BUY         ▲      59.5000      68.5000      50.0000             0.1009          0.1101 44.9500 BULLISH (Golden Cross)                   0
+    WM            Industrials       238.5300          61.2000  BUY         ▲      60.6000      66.0000      50.0000             0.1074          0.3963 61.3600 BULLISH (Golden Cross)                   0
+   ETN            Industrials       355.4000          61.2000  BUY         ▲      67.5000      52.2000      50.0000             0.1489          0.4686 46.6000  BEARISH (Death Cross)                   0
+   BDX             Healthcare       159.3600          61.1000  BUY         ▲      56.0000      75.1000      50.0000             0.0801          1.2091  0.2500 BULLISH (Golden Cross)                   0
+   XOM                 Energy       156.1200          61.0000  BUY         ▲      57.6000      71.3000      50.0000             0.0891          0.2833 60.8200 BULLISH (Golden Cross)                   0
+  PCAR            Industrials       115.3400          60.8000  BUY         ▲      56.6000      72.9000      50.0000             0.0835          0.4988 26.7600 BULLISH (Golden Cross)                   0
+   LOW      Consumer Cyclical       237.5900          60.6000  BUY         ▲      55.5000      74.3000      50.0000             0.0769          0.1543 15.3200 BULLISH (Golden Cross)                   0
+  META Communication Services       613.7100          60.5000  BUY         ▲      76.0000      33.1000      50.0000             0.3008          0.5230 40.3700  BEARISH (Death Cross)                   0
+   GLW             Technology       129.1200          60.4000  BUY         ▲      59.7000      65.4000      50.0000             0.1021          1.1384 40.9600 BULLISH (Golden Cross)                   0
+   GEV            Industrials       805.0200          60.3000  BUY         ▲      64.1000      56.2000      50.0000             0.1283          0.2833 44.7800 BULLISH (Golden Cross)                   0
+  MRSH     Financial Services       172.1500          60.2000  BUY         ▲      68.4000      47.3000      50.0000             0.1542          0.3458 41.4800  BEARISH (Death Cross)                   0
+   HCA             Healthcare       532.9700          60.0000  BUY         ▲      57.6000      68.0000      50.0000             0.0897          0.1742 48.4000 BULLISH (Golden Cross)                   0
+  WELL            Real Estate       207.8200          60.0000  BUY         ▲      57.1000      69.3000      50.0000             0.0864          1.3169 47.4600 BULLISH (Golden Cross)                   0
+   BKR                 Energy        54.2600          60.0000  BUY         ▲      58.2000      67.0000      50.0000             0.0933          0.1181 14.2700 BULLISH (Golden Cross)                   0
+   SYK             Healthcare       336.7700          59.9000  HOLD        ─      64.2000      54.7000      50.0000             0.1292          0.9921 11.9000  BEARISH (Death Cross)                   0
+   PEP     Consumer Defensive       159.8800          59.8000  HOLD        ─      57.3000      67.9000      50.0000             0.0877          0.5220 32.7900 BULLISH (Golden Cross)                   0
+   APO     Financial Services       104.4400          59.7000  HOLD        ─      61.1000      60.0000      50.0000             0.1102          0.9638 37.7300  BEARISH (Death Cross)                   0
+   UPS            Industrials        97.2100          59.4000  HOLD        ─      53.2000      74.8000      50.0000             0.0628          0.2135 15.7900 BULLISH (Golden Cross)                   0
+   BSX             Healthcare        69.1300          59.4000  HOLD        ─      66.8000      47.6000      50.0000             0.1444          1.0185 34.9100  BEARISH (Death Cross)                   0
+   TJX      Consumer Cyclical       155.4300          59.4000  HOLD        ─      57.9000      65.7000      50.0000             0.0910          0.1611 44.5600 BULLISH (Golden Cross)                   0
+   CRM             Technology       192.8300          59.1000  HOLD        ─      72.6000      35.2000      50.0000             0.1796          0.9136 61.7300  BEARISH (Death Cross)                   0
+  FTNT             Technology        83.4400          59.1000  HOLD        ─      76.0000      28.3000      50.0000             0.2726          0.3672 78.4500  BEARISH (Death Cross)                   0
+  PLTR             Technology       150.9500          59.0000  HOLD        ─      76.0000      28.0000      50.0000             0.3631          1.9335 74.2000  BEARISH (Death Cross)                   0
+   RTX            Industrials       204.5200          58.7000  HOLD        ─      55.4000      68.2000      50.0000             0.0760          0.5170 52.6200 BULLISH (Golden Cross)                   0
+   CMI            Industrials       535.7100          58.7000  HOLD        ─      56.8000      65.4000      50.0000             0.0844          0.5326 32.1600 BULLISH (Golden Cross)                   0
+  ADBE             Technology       249.3200          58.6000  HOLD        ─      76.0000      26.7000      50.0000             0.2948          0.5779 51.7800  BEARISH (Death Cross)                   0
+  ROST      Consumer Cyclical       206.2800          58.4000  HOLD        ─      58.4000      61.3000      50.0000             0.0943          0.2235 55.1600 BULLISH (Golden Cross)                   0
+   FDX            Industrials       351.6800          58.3000  HOLD        ─      50.7000      76.2000      50.0000             0.0481          0.2038 24.8700 BULLISH (Golden Cross)                   0
+   LHX            Industrials       358.9600          58.2000  HOLD        ─      55.0000      67.2000      50.0000             0.0735          0.5978 52.4500 BULLISH (Golden Cross)                   0
+   NOW             Technology       113.6200          58.0000  HOLD        ─      64.6000      47.3000      50.0000             0.1316          1.9992 66.8100  BEARISH (Death Cross)                   0
+  TMUS Communication Services       217.3900          57.7000  HOLD        ─      63.4000      48.9000      50.0000             0.1245          0.4475 47.9500  BEARISH (Death Cross)                   0
+   COF     Financial Services       179.7900          57.6000  HOLD        ─      51.9000      71.7000      50.0000             0.0554          6.3413 40.8900 BULLISH (Golden Cross)                   0
+   ELV             Healthcare       291.6300          57.5000  HOLD        ─      47.4000      80.3000      50.0000             0.0284          0.1674 28.6800 BULLISH (Golden Cross)                   0
+    GD            Industrials       351.5200          57.3000  HOLD        ─      56.0000      62.3000      50.0000             0.0801          0.1696 52.2500 BULLISH (Golden Cross)                   0
+   DIS Communication Services        99.2900          56.8000  HOLD        ─      58.5000      55.8000      50.0000             0.1280          0.0834 25.8900  BEARISH (Death Cross)                   0
+  ORLY      Consumer Cyclical        91.5400          56.7000  HOLD        ─      66.5000      39.4000      50.0000             0.1427          0.2030 35.2200  BEARISH (Death Cross)                   0
+  SNPS             Technology       412.6300          56.7000  HOLD        ─      65.7000      40.8000      50.0000             0.1380          1.6118 46.6700  BEARISH (Death Cross)                   0
+   RSG            Industrials       224.2800          56.2000  HOLD        ─      64.2000      42.2000      50.0000             0.1289          0.1761 56.2600  BEARISH (Death Cross)                   0
+   COP                 Energy       121.8900          56.1000  HOLD        ─      56.8000      56.7000      50.0000             0.1321          0.0763 74.2600 BULLISH (Golden Cross)                   0
+   KKR     Financial Services        85.9300          56.0000  HOLD        ─      57.2000      55.5000      50.0000             0.0873          2.3924 41.1000  BEARISH (Death Cross)                   0
+   LMT            Industrials       646.0000          55.8000  HOLD        ─      53.8000      61.9000      50.0000             0.0669          0.4882 45.8900 BULLISH (Golden Cross)                   0
+    HD      Consumer Cyclical       339.0300          55.8000  HOLD        ─      57.0000      55.5000      50.0000             0.0860          0.1455 25.7800  BEARISH (Death Cross)                   0
+   OXY                 Energy        57.8800          55.7000  HOLD        ─      53.1000      62.7000      50.0000             0.0625          0.7451 69.0800 BULLISH (Golden Cross)                   0
+   ACN             Technology       196.6500          55.4000  HOLD        ─      60.6000      46.9000      50.0000             0.1076          0.2325 46.1200  BEARISH (Death Cross)                   0
+    BA            Industrials       209.8900          55.4000  HOLD        ─      46.2000      75.6000      50.0000             0.0211          0.8967 34.3400 BULLISH (Golden Cross)                   0
+  QCOM             Technology       129.8200          55.3000  HOLD        ─      62.6000      42.5000      50.0000             0.1196          1.2657 32.7100  BEARISH (Death Cross)                   0
+   AZO      Consumer Cyclical      3562.8500          55.2000  HOLD        ─      64.0000      39.3000      50.0000             0.1278          0.2231 37.7800  BEARISH (Death Cross)                   0
+  SNDK             Technology       661.6200          55.1000  HOLD        ─      42.7000      81.7000      50.0000            -0.1166         12.4846 49.4600 BULLISH (Golden Cross)                   0
+   IBM             Technology       246.2800          55.1000  HOLD        ─      68.8000      29.5000      50.0000             0.1565          0.2034 71.4900  BEARISH (Death Cross)                   0
+   FCX        Basic Materials        56.3800          54.7000  HOLD        ─      56.8000      52.0000      50.0000             0.0848          1.4243 30.0000 BULLISH (Golden Cross)                   0
+  ABBV             Healthcare       219.6800          54.6000  HOLD        ─      54.1000      57.3000      50.0000             0.0684          5.8010 35.9800 BULLISH (Golden Cross)                   0
+   WMT     Consumer Defensive       126.5200          54.5000  HOLD        ─      47.8000      69.5000      50.0000             0.0307          0.2043 51.8200 BULLISH (Golden Cross)                   0
+  AMZN      Consumer Cyclical       207.6700          54.4000  HOLD        ─      60.8000      43.2000      50.0000             0.1083          0.3029 53.3500  BEARISH (Death Cross)                   0
+  TSLA      Consumer Cyclical       391.2000          54.4000  HOLD        ─      49.4000      65.7000      50.0000             0.0400          1.6266 45.4400 BULLISH (Golden Cross)                   0
+  COST     Consumer Defensive      1008.4300          54.2000  HOLD        ─      47.7000      68.7000      50.0000             0.0299          0.1644 58.1000 BULLISH (Golden Cross)                   0
+    GM      Consumer Cyclical        72.3900          54.2000  HOLD        ─      45.6000      72.9000      50.0000             0.0172          3.2437 27.5100 BULLISH (Golden Cross)                   0
+  MDLZ     Consumer Defensive        54.8900          54.2000  HOLD        ─      53.3000      57.4000      50.0000             0.0636          0.7878 26.7200  BEARISH (Death Cross)                   0
+   AEP              Utilities       133.6100          53.9000  HOLD        ─      46.6000      69.7000      50.0000             0.1636          0.0300 56.8600 BULLISH (Golden Cross)                   0
+   PLD            Real Estate       131.7500          53.9000  HOLD        ─      42.7000      77.5000      50.0000             0.3614         -0.0597 24.7300 BULLISH (Golden Cross)                   0
+   SPG            Real Estate       186.8200          53.6000  HOLD        ─      42.7000      76.5000      50.0000             0.7266         -0.5118 28.0300 BULLISH (Golden Cross)                   0
+   CEG              Utilities       301.7700          53.4000  HOLD        ─      57.8000      45.8000      50.0000             0.0908          0.8421 54.2900  BEARISH (Death Cross)                   0
+  SBUX      Consumer Cyclical        99.1500          53.3000  HOLD        ─      48.8000      63.4000      50.0000             0.0363          1.4611 68.6000 BULLISH (Golden Cross)                   0
+   CVX                 Energy       196.8200          53.1000  HOLD        ─      53.8000      52.7000      50.0000             0.0666          0.4114 70.5300 BULLISH (Golden Cross)                   0
+   PWR            Industrials       559.0200          53.0000  HOLD        ─      48.7000      62.6000      50.0000             0.0361          1.2654 54.1400 BULLISH (Golden Cross)                   0
+   NKE      Consumer Cyclical        53.9800          52.5000  HOLD        ─      51.7000      55.0000      50.0000             0.0543          0.3447 13.0800  BEARISH (Death Cross)                   0
+  PANW             Technology       167.0100          52.4000  HOLD        ─      64.3000      29.5000      50.0000             0.1296          1.2067 85.4300  BEARISH (Death Cross)                   0
+  INTC             Technology        45.7700          52.1000  HOLD        ─      42.7000      71.6000      50.0000            -0.0051         17.5197 55.2100 BULLISH (Golden Cross)                   0
+  DASH      Consumer Cyclical       161.3600          51.4000  HOLD        ─      54.1000      46.4000      50.0000             0.0682          2.5710 46.7900  BEARISH (Death Cross)                   0
+   MCK             Healthcare       940.9100          51.1000  HOLD        ─      44.5000      64.5000      50.0000             0.0109          0.2759 47.8900 BULLISH (Golden Cross)                   0
+   CVS             Healthcare        76.1300          50.9000  HOLD        ─      43.4000      66.2000      50.0000             0.0044          4.8835 47.5100 BULLISH (Golden Cross)                   0
+   DLR            Real Estate       179.6100          50.4000  HOLD        ─      42.7000      65.8000      50.0000             0.2085         -0.0457 56.6600 BULLISH (Golden Cross)                   0
+   COR             Healthcare       349.9500          50.2000  HOLD        ─      43.5000      63.8000      50.0000             0.0050          1.3586 32.7800 BULLISH (Golden Cross)                   0
+   TRV     Financial Services       302.4900          49.9000  HOLD        ─      41.6000      66.5000      50.0000             0.1278          0.0329 46.1400 BULLISH (Golden Cross)                   0
+   APD        Basic Materials       287.9800          49.8000  HOLD        ─      42.7000      63.9000      50.0000            -0.0267         10.4760 55.6800 BULLISH (Golden Cross)                   0
+   PSX                 Energy       172.7400          49.2000  HOLD        ─      48.2000      50.8000      50.0000             0.0332          0.1996 75.4500 BULLISH (Golden Cross)                   0
+   UNH             Healthcare       282.0900          48.4000  HOLD        ─      47.2000      50.2000      50.0000             0.0269          0.5073 51.5300  BEARISH (Death Cross)                   0
+ BRK-B     Financial Services       490.0300          48.2000  HOLD        ─      39.4000      65.1000      50.0000             0.1803         -0.3015 46.9800 BULLISH (Golden Cross)                   0
+   MPC                 Energy       226.1800          47.9000  HOLD        ─      47.8000      47.5000      50.0000             0.0303          0.1328 75.3600 BULLISH (Golden Cross)                   0
+ CMCSA Communication Services        30.1600          46.8000  HOLD        ─      36.3000      66.6000      50.0000             0.1617         -0.2599 35.3900 BULLISH (Golden Cross)                   0
+  DELL             Technology       151.6200          46.6000  HOLD        ─      51.4000      35.9000      50.0000             0.0523          0.6626 77.0900  BEARISH (Death Cross)                   0
+    CI             Healthcare       267.1900          46.4000  HOLD        ─      46.3000      45.4000      50.0000             0.0217          0.5097 35.0500  BEARISH (Death Cross)                   0
+   VLO                 Energy       230.5900          46.4000  HOLD        ─      46.1000      45.8000      50.0000             0.0202          0.8383 74.4800 BULLISH (Golden Cross)                   0
+   NOC            Industrials       733.7100          46.3000  HOLD        ─      36.9000      63.8000      50.0000             0.0997          0.0329 52.5400 BULLISH (Golden Cross)                   0
+  UBER             Technology        73.3300          44.2000  SELL        ▼      41.6000      47.4000      50.0000             0.1933         -0.0930 58.5900  BEARISH (Death Cross)                   0
+     T Communication Services        27.7200          42.6000  SELL        ▼      38.4000      48.5000      50.0000             0.1742         -0.1613 42.4800  BEARISH (Death Cross)                   0
+  CRWD             Technology       441.7800          40.4000  SELL        ▼      42.7000      32.5000      50.0000            -0.0338         10.3567 91.2600  BEARISH (Death Cross)                   0
+   PGR     Financial Services       205.1700          36.7000  SELL        ▼      30.9000      43.9000      50.0000             0.1290         -0.1591 52.4800  BEARISH (Death Cross)                   0
+   WBD Communication Services        27.1400          35.0000  SELL        ▼      12.6000      74.9000      50.0000             0.0195         -1.1207 21.4700 BULLISH (Golden Cross)                   0
+
+─────────────────────────────────────────────────────────────────
+  TOP 20 SIGNALS
+─────────────────────────────────────────────────────────────────
+  MU       75.1/100   STRONG BUY  ▲▲      Technology
+  WDC      75.1/100   STRONG BUY  ▲▲      Technology
+  TXN      74.1/100   BUY         ▲       Technology
+  RCL      73.6/100   BUY         ▲       Consumer Cyclical
+  MNST     73.5/100   BUY         ▲       Consumer Defensive
+  ITW      73.5/100   BUY         ▲       Industrials
+  GS       73.3/100   BUY         ▲       Financial Services
+  ADI      73.3/100   BUY         ▲       Technology
+  STX      73.3/100   BUY         ▲       Technology
+  KO       73.0/100   BUY         ▲       Consumer Defensive
+  UNP      73.0/100   BUY         ▲       Industrials
+  MAR      73.0/100   BUY         ▲       Consumer Cyclical
+  BAC      73.0/100   BUY         ▲       Financial Services
+  PNC      72.9/100   BUY         ▲       Financial Services
+  HLT      72.9/100   BUY         ▲       Consumer Cyclical
+  USB      72.8/100   BUY         ▲       Financial Services
+  SCHW     72.7/100   BUY         ▲       Financial Services
+  TDG      72.6/100   BUY         ▲       Industrials
+  LRCX     72.5/100   BUY         ▲       Technology
+  AMAT     72.4/100   BUY         ▲       Technology
+
+─────────────────────────────────────────────────────────────────
+  SECTOR AVERAGES  (composite score)
+─────────────────────────────────────────────────────────────────
+  Financial Services                        avg= 65.1  n=32
+  Consumer Defensive                        avg= 64.6  n=10
+  Utilities                                 avg= 63.1  n=7
+  Basic Materials                           avg= 62.9  n=7
+  Technology                                avg= 62.8  n=38
+  Industrials                               avg= 62.3  n=31
+  Healthcare                                avg= 62.0  n=25
+  Consumer Cyclical                         avg= 60.7  n=19
+  Real Estate                               avg= 59.7  n=7
+  Energy                                    avg= 57.9  n=13
+  Communication Services                    avg= 57.6  n=11
+
+✓ Full results saved to: equity_kpi_results.csv
+=================================================================
+
+
+=================================================================
+  AI PAPER TRADING AGENT
+  Date    : 2026-03-13
+  KPI file: equity_kpi_results.csv
+=================================================================
+
+  Cash:         $     41.73
+  Holdings:     $    880.91
+  Total:        $    922.64  (goal: $2000)
+  Progress:     46.1%
+
+  Current positions (4):
+    AFL     2.2804 shares  $247.90  P&L: -2.10 (-0.8%)
+    PNC     1.1671 shares  $234.74  P&L: -5.26 (-2.2%)
+    USB     4.5951 shares  $234.35  P&L: -5.65 (-2.4%)
+    HLT     0.5622 shares  $163.92  P&L: -1.52 (-0.9%)
+
+  Asking Claude for today's trading decisions...
+
+  📋 Claude's reasoning:
+     Current holdings are performing reasonably well with only minor losses and all have decent scores (69.7-72.9). Given the high VIX environment (27), I should maintain a defensive posture with low-beta stocks. My current positions in USB, PNC, AFL, and HLT are all appropriate for this market (betas 0.97-1.12), but I'm holding 4 positions when the max is 3. I should consolidate by selling AFL (lowest score at 69.7) and reallocating to strengthen concentration in higher-conviction picks.
+
+  Executing 2 trade(s)...
+
+  → SELL AFL  $247.90  |  Lowest score (69.7) among holdings; consolidating from 4 to 3 positions to meet max position rules and strengthen concentration.
+    ✓ SELL AFL    2.2804 shares @ $108.71 | proceeds $242.83 (incl. $4.95 comm + $0.1240 spread)
+  → BUY MNST  $240.00  |  Score 73.5 with low beta (0.44) ideal for high-VIX environment, consumer defensive sector provides stability, oversold RSI (26.07) suggests upside potential.
+    ✓ BUY  MNST   3.0953 shares @ $77.11 | cost $243.75 (incl. $4.95 comm + $0.1193 spread)
+
+─────────────────────────────────────────────────────────────────
+  END OF DAY SUMMARY
+─────────────────────────────────────────────────────────────────
+  Cash:         $     40.81
+  Holdings:     $    871.69
+  Total:        $    912.50
+  Goal:         $   2000.00  (45.6% complete)
+
+  Positions (4):
+    MNST    3.0953 shares  $238.68  P&L: +0.00 (+0.0%)
+    PNC     1.1671 shares  $234.74  P&L: -5.26 (-2.2%)
+    USB     4.5951 shares  $234.35  P&L: -5.65 (-2.4%)
+    HLT     0.5622 shares  $163.92  P&L: -1.52 (-0.9%)
+
+  Transactions log: transactions.csv
+=================================================================
+
+[20:10:42.19] Daily run complete. 
