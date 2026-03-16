@@ -2,3 +2,6 @@ date,strategy_id,action,ticker,shares,price,commission,net_amount,cash_after,rea
 2026-03-15,10,BUY,CME,1.909931,311.4,4.95,-599.9999,400.0001,"Highest score (72.3) in defensive regime with VIX at 27.2, diversified financial services exposure"
 2026-03-15,10,BUY,MRK,5.117254,115.61,4.95,-596.8515,-196.8514,"Second highest score (72.1) in defensive regime, strong healthcare defensive position"
 2026-03-15,10,BUY,KO,7.649427,77.34,4.95,-596.8525,-793.7039,"Third highest score (70.3) in defensive regime, consumer staples for portfolio stability"
+2026-03-16,10,SELL,CME,1.909931,313.83,4.95,594.1439,-199.56,"Not in top-ranked candidates, freeing capital for higher-scoring aggressive opportunities with 10+ point score gap (top scores 65-68 vs CME not appearing)"
+2026-03-16,10,SELL,MRK,5.117254,115.43,4.95,585.4393,385.8793,"Not in top-ranked candidates, defensive stock inappropriate for aggressive posture (VIX=23.5), freeing capital for better opportunities"
+2026-03-16,10,SELL,KO,7.649427,77.82,4.95,590.0308,975.9101,"Not in top-ranked candidates, defensive stock inappropriate for aggressive posture (VIX=23.5), freeing capital for better opportunities"

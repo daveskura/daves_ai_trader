@@ -1,15 +1,15 @@
 rank,date,strategy_id,strategy_name,style,risk,cash,holdings_value,total,pnl,pct_return,trades
-1,2026-03-15,09,Insider buying signal,alt-data,med,1000.0,0.0,1000.0,0.0,0.0,0
-2,2026-03-15,11,Small-cap value (Fama-French),academic,med,1000.0,0.0,1000.0,0.0,0.0,0
-3,2026-03-15,01,Momentum / trend following,momentum,high,-793.7,1788.46,994.75,-5.25,-0.52,3
-4,2026-03-15,02,Mean reversion,contrarian,med,-793.7,1788.46,994.75,-5.25,-0.52,3
-5,2026-03-15,03,Value investing,value,low,-793.7,1788.46,994.75,-5.25,-0.52,3
-6,2026-03-15,04,Quality growth (GARP),growth,med,-793.7,1788.46,994.75,-5.25,-0.52,3
-7,2026-03-15,05,Sector rotation,macro,med,-196.85,1191.61,994.75,-5.25,-0.52,2
-8,2026-03-15,06,Low volatility / defensive,defensive,low,-196.85,1191.61,994.75,-5.25,-0.52,2
-9,2026-03-15,07,Earnings surprise (PEAD),event,high,-196.85,1191.61,994.75,-5.25,-0.52,2
-10,2026-03-15,08,Dividend growth,income,low,-793.7,1788.46,994.75,-5.25,-0.52,3
-11,2026-03-15,10,Macro-regime adaptive,macro,med,-793.7,1788.46,994.75,-5.25,-0.52,3
-12,2026-03-15,12,Momentum (academic / Asness),academic,high,-793.7,1788.46,994.75,-5.25,-0.52,3
-13,2026-03-15,13,Quality / profitability,academic,low,-196.85,1191.61,994.75,-5.25,-0.52,2
-14,2026-03-15,14,Passive S&P 500 benchmark,passive,low,-196.85,1191.61,994.75,-5.25,-0.52,2
+1,2026-03-16,07,Earnings surprise (PEAD),event,high,-196.85,1238.47,1041.62,41.62,4.16,2
+2,2026-03-16,14,Passive S&P 500 benchmark,passive,low,-196.85,1202.54,1005.69,5.69,0.57,2
+3,2026-03-16,02,Mean reversion,contrarian,med,-793.7,1798.02,1004.32,4.32,0.43,3
+4,2026-03-16,03,Value investing,value,low,-793.7,1795.16,1001.46,1.46,0.15,3
+5,2026-03-16,09,Insider buying signal,alt-data,med,1000.0,0.0,1000.0,0.0,0.0,0
+6,2026-03-16,11,Small-cap value (Fama-French),academic,med,1000.0,0.0,1000.0,0.0,0.0,0
+7,2026-03-16,13,Quality / profitability,academic,low,-196.85,1196.07,999.22,-0.78,-0.08,2
+8,2026-03-16,12,Momentum (academic / Asness),academic,high,-793.7,1791.57,997.87,-2.13,-0.21,3
+9,2026-03-16,06,Low volatility / defensive,defensive,low,-196.85,1190.08,993.23,-6.77,-0.68,2
+10,2026-03-16,01,Momentum / trend following,momentum,high,-210.26,1196.85,986.6,-13.4,-1.34,4
+11,2026-03-16,08,Dividend growth,income,low,-793.7,1778.55,984.85,-15.15,-1.52,3
+12,2026-03-16,04,Quality growth (GARP),growth,med,-214.27,1196.85,982.59,-17.41,-1.74,4
+13,2026-03-16,05,Sector rotation,macro,med,982.22,0.0,982.22,-17.78,-1.78,4
+14,2026-03-16,10,Macro-regime adaptive,macro,med,975.91,0.0,975.91,-24.09,-2.41,6

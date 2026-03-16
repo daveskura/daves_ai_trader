@@ -1,3 +1,5 @@
 date,strategy_id,action,ticker,shares,price,commission,net_amount,cash_after,reason
 2026-03-15,05,BUY,BAC,12.73015,46.72,4.95,-600.0,400.0,"Second highest score (73.0) in Financial Services sector, allocating ~33% of portfolio"
 2026-03-15,05,BUY,PNC,2.94141,201.13,4.95,-596.8516,-196.8516,"Third highest score (72.9) in Financial Services sector, allocating ~28% of portfolio to reach max 3 positions while maintaining 5% cash reserve"
+2026-03-16,05,SELL,BAC,12.73015,47.06,4.95,593.8313,396.9797,Financial sector no longer top-performing; Basic Materials sector (NEM score 80.6) shows 10+ point score gap indicating clearly better opportunity
+2026-03-16,05,SELL,PNC,2.94141,200.75,4.95,585.2428,982.2226,Financial sector no longer top-performing; Basic Materials sector showing significantly stronger performance with multiple high-scoring candidates
