@@ -5,3 +5,6 @@ date,strategy_id,action,ticker,shares,price,commission,net_amount,cash_after,rea
 2026-03-16,10,SELL,CME,1.909931,313.83,4.95,594.1439,-199.56,"Not in top-ranked candidates, freeing capital for higher-scoring aggressive opportunities with 10+ point score gap (top scores 65-68 vs CME not appearing)"
 2026-03-16,10,SELL,MRK,5.117254,115.43,4.95,585.4393,385.8793,"Not in top-ranked candidates, defensive stock inappropriate for aggressive posture (VIX=23.5), freeing capital for better opportunities"
 2026-03-16,10,SELL,KO,7.649427,77.82,4.95,590.0308,975.9101,"Not in top-ranked candidates, defensive stock inappropriate for aggressive posture (VIX=23.5), freeing capital for better opportunities"
+2026-03-16,10,BUY,WDC,2.027553,286.21,4.95,-585.5461,390.364,"Top-scored aggressive candidate (67.8) with VIX elevated at 23.5, allocating ~30% of portfolio"
+2026-03-16,10,BUY,WFC,7.619319,75.75,4.95,-582.402,-192.038,"Second-highest score (66.4) for diversification into financials, allocating ~30% of portfolio"
+2026-03-16,10,BUY,MU,1.306393,441.8,4.95,-582.403,-774.441,"Third-highest score (65.8) adding semiconductor exposure, allocating ~30% of portfolio"
