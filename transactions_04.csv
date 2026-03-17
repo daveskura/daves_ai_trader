@@ -4,3 +4,4 @@ date,strategy_id,action,ticker,shares,price,commission,net_amount,cash_after,rea
 2026-03-15,04,BUY,APP,1.289831,458.67,4.95,-596.8526,-793.7041,"Outstanding 62.6% margin with 101.8% EPS growth, best margin profile in top candidates, allocating ~27% of portfolio"
 2026-03-16,04,SELL,APP,1.289831,453.3,4.95,579.4381,-214.2661,"Account is negative cash (-$793.70), need to raise cash reserve above 5% minimum; APP has lowest score of holdings at 131.4"
 2026-03-16,04,SELL,NVDA,3.28214,183.22,4.95,596.103,381.8369,"Score of 139.7 is significantly lower than top candidates, and INTC offers 10+ point score gap opportunity (1067.6 vs 139.7), justifying reallocation"
+2026-03-17,04,BUY,INTC,7.683477,44.06,4.95,-343.6533,38.1837,"Top-scored candidate at 1067.5 points with 1752% EPS growth, massive score gap over current holdings, diversifies portfolio to 2 positions, purchase size ~$370 keeps within 60% position limit and 5% cash reserve"
