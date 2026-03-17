@@ -2,14 +2,14 @@ rank,date,strategy_id,strategy_name,style,risk,cash,holdings_value,total,pnl,pct
 1,2026-03-17,07,Earnings surprise (PEAD),event,high,-196.85,1326.2,1129.35,129.35,12.93,2
 2,2026-03-17,01,Momentum / trend following,momentum,high,-210.26,1326.2,1115.94,115.94,11.59,4
 3,2026-03-17,10,Macro-regime adaptive,macro,med,-774.44,1820.24,1045.8,45.8,4.58,9
-4,2026-03-17,02,Mean reversion,contrarian,med,-793.7,1813.33,1019.63,19.63,1.96,3
-5,2026-03-17,14,Passive S&P 500 benchmark,passive,low,-196.85,1201.62,1004.77,4.77,0.48,2
-6,2026-03-17,03,Value investing,value,low,-793.7,1795.41,1001.71,1.71,0.17,3
-7,2026-03-17,12,Momentum (academic / Asness),academic,high,-793.7,1794.7,1001.0,1.0,0.1,3
-8,2026-03-17,09,Insider buying signal,alt-data,med,1000.0,0.0,1000.0,0.0,0.0,0
-9,2026-03-17,11,Small-cap value (Fama-French),academic,med,1000.0,0.0,1000.0,0.0,0.0,0
-10,2026-03-17,06,Low volatility / defensive,defensive,low,-196.85,1191.37,994.52,-5.48,-0.55,2
-11,2026-03-17,13,Quality / profitability,academic,low,-196.85,1188.46,991.61,-8.39,-0.84,2
-12,2026-03-17,08,Dividend growth,income,low,-793.7,1774.96,981.26,-18.74,-1.87,3
-13,2026-03-17,04,Quality growth (GARP),growth,med,38.18,938.53,976.72,-23.28,-2.33,6
-14,2026-03-17,05,Sector rotation,macro,med,961.84,0.0,961.84,-38.16,-3.82,8
+4,2026-03-17,04,Quality growth (GARP),growth,med,38.18,982.92,1021.1,21.1,2.11,6
+5,2026-03-17,02,Mean reversion,contrarian,med,-793.7,1813.33,1019.63,19.63,1.96,3
+6,2026-03-17,14,Passive S&P 500 benchmark,passive,low,-196.85,1201.62,1004.77,4.77,0.48,2
+7,2026-03-17,03,Value investing,value,low,-793.7,1795.41,1001.71,1.71,0.17,3
+8,2026-03-17,12,Momentum (academic / Asness),academic,high,-793.7,1794.7,1001.0,1.0,0.1,3
+9,2026-03-17,09,Insider buying signal,alt-data,med,1000.0,0.0,1000.0,0.0,0.0,0
+10,2026-03-17,11,Small-cap value (Fama-French),academic,med,1000.0,0.0,1000.0,0.0,0.0,0
+11,2026-03-17,06,Low volatility / defensive,defensive,low,-196.85,1191.37,994.52,-5.48,-0.55,2
+12,2026-03-17,13,Quality / profitability,academic,low,-196.85,1188.46,991.61,-8.39,-0.84,2
+13,2026-03-17,08,Dividend growth,income,low,-793.7,1774.96,981.26,-18.74,-1.87,3
+14,2026-03-17,05,Sector rotation,macro,med,-189.23,1145.83,956.6,-43.4,-4.34,10
