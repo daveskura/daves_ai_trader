@@ -1,0 +1,3 @@
+date,strategy_id,action,ticker,shares,price,commission,net_amount,cash_after,reason
+2026-03-18,11,BUY,SPG,3.131925,189.9,4.95,-599.9999,400.0001,"Highest score by far (49.8), low P/E of 13.4, and exceptional 72.7% margin. Allocating ~55% of portfolio (~$550) to stay within 60% cap after accounting for commissions and spread."
+2026-03-18,11,BUY,USB,6.9149,51.32,4.95,-360.0001,40.0,"Second highest score (31.5) with low P/E of 11.1 and solid 27.3% margin. Allocating ~$300 (~30% of portfolio) as second position, leaving adequate cash reserve."
