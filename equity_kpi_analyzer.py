@@ -191,6 +191,18 @@ def fetch_ticker_data(ticker_symbol: str, market_prices: pd.Series) -> dict:
         row["sector"]      = info.get("sector", "Unknown")
         row["beta"]        = info.get("beta", 1.0)
 
+        # FIX-9: Dividend data for Strategy 08 (dividend growth)
+        # dividendYield is the trailing 12-month yield as a decimal (e.g. 0.015 = 1.5%)
+        # fiveYearAvgDividendYield is reported as a percentage by yfinance (e.g. 1.5)
+        # Normalise both to decimal form for consistent scoring.
+        raw_dy  = info.get("dividendYield")
+        raw_dy5 = info.get("fiveYearAvgDividendYield")
+        if raw_dy is not None:
+            row["dividend_yield"] = round(float(raw_dy), 6)
+        if raw_dy5 is not None:
+            # yfinance returns fiveYearAvgDividendYield as a % (e.g. 1.5 means 1.5%)
+            row["five_year_avg_dividend_yield"] = round(float(raw_dy5) / 100, 6)
+
         # ── TIER 2: Technical Indicators ───────────────────────────────
         hist = tk.history(period="1y")
         if not hist.empty:
@@ -478,8 +490,9 @@ def main():
     DISPLAY_COLS = [
         "ticker", "sector", "current_price", "composite_score", "signal",
         "tier1_score", "tier2_score", "tier3_score",
-        "net_profit_margin", "eps_growth_fwd", "current_ratio",
+        "net_profit_margin", "eps_ttm", "eps_growth_fwd", "current_ratio",
         "rsi_14", "ma_signal",
+        "dividend_yield", "five_year_avg_dividend_yield",
         "analyst_consensus", "net_insider_shares",
     ]
     available = [c for c in DISPLAY_COLS if c in df.columns]
