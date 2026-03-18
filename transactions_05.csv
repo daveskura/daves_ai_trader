@@ -7,3 +7,5 @@ date,strategy_id,action,ticker,shares,price,commission,net_amount,cash_after,rea
 2026-03-16,05,BUY,LIN,1.167946,497.41,4.95,-586.1885,-193.2995,"Second-ranked candidate with strong score (77.4) in Basic Materials sector, allocating ~35% of portfolio for diversification"
 2026-03-17,05,SELL,NEM,5.300767,111.04,4.95,583.3529,390.0534,Sector rotation strategy requires pivoting to Financial Services sector which dominates top 10 candidates with scores 80-84; NEM (Materials) no longer aligns with strongest performing sector
 2026-03-17,05,SELL,LIN,1.167946,494.05,4.95,571.7852,961.8386,Sector rotation strategy requires pivoting to Financial Services sector which dominates top 10 candidates with scores 80-84; LIN (Materials) no longer aligns with strongest performing sector
+2026-03-17,05,BUY,PNC,2.80437,203.92,4.95,-577.1031,384.7355,"Highest score (84.1) in top-performing Financial Services sector, allocating ~33% of portfolio"
+2026-03-17,05,BUY,MS,3.603416,157.83,4.95,-573.9615,-189.226,"Third highest score (83.8) in top-performing Financial Services sector, allocating ~33% of portfolio"
