@@ -1,16 +1,16 @@
 rank,date,strategy_id,strategy_name,style,risk,cash,holdings_value,total,pnl,pct_return,trades
-1,2026-03-19,01,Momentum / trend following,momentum,high,40.0,966.8,1006.8,6.8,0.68,2
-2,2026-03-19,13,Quality / profitability,academic,low,40.0,963.55,1003.55,3.55,0.36,2
-3,2026-03-19,09,Insider buying signal,alt-data,med,1000.0,0.0,1000.0,0.0,0.0,0
-4,2026-03-19,08,Dividend growth,income,low,40.0,957.72,997.72,-2.28,-0.23,2
-5,2026-03-19,14,Passive S&P 500 benchmark,passive,low,568.0,429.69,997.69,-2.31,-0.23,1
-6,2026-03-19,11,Large-cap value (Fama-French),academic,med,40.0,957.67,997.67,-2.33,-0.23,2
-7,2026-03-19,10,Macro-regime adaptive,macro,med,40.0,956.5,996.5,-3.5,-0.35,2
-8,2026-03-19,06,Low volatility / defensive,defensive,low,40.0,956.07,996.07,-3.93,-0.39,2
-9,2026-03-19,03,Value investing,value,low,40.0,954.67,994.67,-5.33,-0.53,2
-10,2026-03-19,07,Earnings surprise (PEAD),event,high,40.0,954.64,994.64,-5.36,-0.54,2
-11,2026-03-19,04,Quality growth (GARP),growth,med,40.0,954.5,994.5,-5.5,-0.55,2
-12,2026-03-19,15,Noise chaser,speculative,high,400.0,593.7,993.7,-6.3,-0.63,1
-13,2026-03-19,05,Sector rotation,macro,med,40.0,952.05,992.05,-7.95,-0.8,2
-14,2026-03-19,02,Mean reversion,contrarian,med,40.0,949.88,989.88,-10.12,-1.01,2
-15,2026-03-19,12,Momentum (academic / Asness),academic,high,40.0,949.67,989.67,-10.33,-1.03,2
+1,2026-03-19,01,Momentum / trend following,momentum,high,40.0,965.62,1005.62,5.62,0.56,2
+2,2026-03-19,09,Insider buying signal,alt-data,med,1000.0,0.0,1000.0,0.0,0.0,0
+3,2026-03-19,13,Quality / profitability,academic,low,40.0,958.65,998.65,-1.35,-0.13,2
+4,2026-03-19,08,Dividend growth,income,low,40.0,956.55,996.55,-3.45,-0.35,2
+5,2026-03-19,14,Passive S&P 500 benchmark,passive,low,568.0,426.96,994.96,-5.04,-0.5,1
+6,2026-03-19,11,Large-cap value (Fama-French),academic,med,40.0,952.71,992.71,-7.29,-0.73,2
+7,2026-03-19,06,Low volatility / defensive,defensive,low,40.0,952.01,992.01,-7.99,-0.8,2
+8,2026-03-19,10,Macro-regime adaptive,macro,med,40.0,950.53,990.53,-9.47,-0.95,2
+9,2026-03-19,03,Value investing,value,low,40.0,950.25,990.25,-9.75,-0.98,2
+10,2026-03-19,02,Mean reversion,contrarian,med,40.0,950.01,990.01,-9.99,-1.0,2
+11,2026-03-19,12,Momentum (academic / Asness),academic,high,40.0,946.84,986.84,-13.16,-1.32,2
+12,2026-03-19,07,Earnings surprise (PEAD),event,high,40.0,946.81,986.81,-13.19,-1.32,2
+13,2026-03-19,04,Quality growth (GARP),growth,med,40.0,944.58,984.58,-15.42,-1.54,2
+14,2026-03-19,15,Noise chaser,speculative,high,393.32,584.73,978.05,-21.95,-2.2,3
+15,2026-03-19,05,Sector rotation,macro,med,38.84,936.33,975.17,-24.83,-2.48,4
