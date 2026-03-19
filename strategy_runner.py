@@ -47,7 +47,8 @@ if _env_path.exists():
         line = line.strip()
         if line and not line.startswith("#") and "=" in line:
             k, v = line.split("=", 1)
-            os.environ.setdefault(k.strip(), v.strip())
+            v = v.strip().strip('"').strip("'")   # remove surrounding quotes
+            os.environ.setdefault(k.strip(), v)
 
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 MODEL             = "claude-sonnet-4-6"          # FIX-1: corrected model string
@@ -91,6 +92,18 @@ STRATEGIES = [
     ("15", "Noise chaser",                 "speculative", "high",  # NEW-15
      "Chase the largest single-day abnormal price movers with zero fundamental filter. "
      "Explicit degenerate baseline — demonstrates why noise-chasing loses money over time."),
+    ("16", "Estimate revision momentum",   "growth",      "med",   # NEW-16
+     "Buy stocks where sell-side EPS estimates have been revised upward most aggressively "
+     "vs the prior run. Accelerating estimate revisions are a leading signal of institutional "
+     "re-rating. Sell when revision momentum stalls or reverses."),
+    ("17", "High-beta quality growth",     "growth",      "high",  # NEW-17
+     "Explicitly targets high-beta stocks (1.5-2.5) where the volatility is JUSTIFIED by "
+     "accelerating revenue growth, expanding margins, and strong forward EPS. "
+     "NVDA-type setup: high beta + improving fundamentals = asymmetric upside."),
+    ("18", "Capex beneficiary / semis",    "thematic",    "high",  # NEW-18
+     "Semiconductor and hardware infrastructure stocks that benefit when hyperscaler capex "
+     "accelerates. Scores on: high net margin, high EPS growth, golden cross, and "
+     "Information Technology sector membership. Targets picks like NVDA before they run."),
 ]
 
 # ── File helpers ─────────────────────────────────────────────────────────────
@@ -180,7 +193,8 @@ def load_kpi(kpi_path="equity_kpi_results.csv"):
                     "pe_ratio","current_price","rsi_14","ma_50","ma_200","beta",
                     "market_cap","pct_from_52w_high","abnormal_return",
                     "net_insider_shares","vix",
-                    "dividend_yield","five_year_avg_dividend_yield"]:   # FIX-9
+                    "dividend_yield","five_year_avg_dividend_yield",
+                    "eps_revision_pct"]:   # NEW-16: revision delta
             if col in r:
                 try:    r[col] = float(r[col])
                 except: r[col] = 0.0
@@ -434,6 +448,146 @@ def score_noise_chaser(rows, kmap):
                     f"Noise chase: abnormal_return={ab*100:.2f}% (no fundamentals)"))
     return sorted(out, key=lambda x: -x[1])
 
+def score_estimate_revision(rows, kmap):
+    """
+    NEW-16: Estimate Revision Momentum.
+    Looks for stocks where forward EPS has been revised upward vs the prior
+    day's KPI run. The delta is stored in 'eps_revision_pct' by the KPI
+    analyser when a prior-day snapshot is available.  Falls back to using
+    the absolute forward EPS growth rate as a proxy when no delta data exists
+    (first-run case).
+    """
+    out = []
+    for r in rows:
+        eps_ttm  = r.get("eps_ttm", 0) or 0
+        eps_fwd  = r.get("eps_growth_fwd", 0) or 0
+        rev_pct  = r.get("eps_revision_pct", None)   # populated by KPI analyser
+        # load_kpi casts empty/None CSV cells to 0.0 — treat 0.0 as "no data"
+        # unless eps_growth_fwd itself changed (genuine zero revision is fine to skip)
+        if rev_pct == 0.0:
+            rev_pct = None
+        cs       = r.get("composite_score", 0)
+        npm      = r.get("net_profit_margin", 0) or 0
+        pe       = r.get("pe_ratio", 999) or 999
+
+        if eps_ttm <= 0:   continue   # must be profitable
+        if eps_fwd  <= 0:  continue   # must have positive forward growth
+
+        if rev_pct is not None and rev_pct > 0:
+            # Primary path: real upward revision detected today
+            # Large revision (e.g. +20%) = strong signal
+            score = rev_pct * 300 + eps_fwd * 80 + npm * 60 + cs * 0.2
+            reason = (f"EPS revision +{rev_pct*100:.1f}% today  "
+                      f"fwd_growth={eps_fwd*100:.1f}%  margin={npm*100:.1f}%")
+        else:
+            # Fallback path: use high forward growth as a proxy for stocks
+            # that analysts are likely upgrading (no delta data yet)
+            if eps_fwd < 0.15:  continue   # minimum bar when using proxy
+            score = eps_fwd * 80 + npm * 60 + cs * 0.3
+            reason = (f"High fwd EPS growth proxy: {eps_fwd*100:.1f}%  "
+                      f"margin={npm*100:.1f}%  P/E={pe:.1f}")
+
+        out.append((r["ticker"], round(score, 2), reason))
+    return sorted(out, key=lambda x: -x[1])
+
+
+def score_high_beta_quality(rows, kmap):
+    """
+    NEW-17: High-Beta Quality Growth.
+    Explicitly rewards high-beta stocks (1.5-2.5) WHERE the beta is backed by
+    genuine accelerating fundamentals: expanding margins, strong EPS growth,
+    and a bullish technical setup.  This is the opposite of S06 (low-vol) and
+    deliberately overlaps with where NVDA lived in 2022-2023.
+    Beta < 1.5 → excluded (use S04 for that).
+    Beta > 2.5 → excluded (pure speculation, no edge).
+    """
+    out = []
+    for r in rows:
+        beta     = r.get("beta", 1.0) or 1.0
+        eps_ttm  = r.get("eps_ttm", 0) or 0
+        eps_fwd  = r.get("eps_growth_fwd", 0) or 0
+        npm      = r.get("net_profit_margin", 0) or 0
+        cs       = r.get("composite_score", 0)
+        rsi      = r.get("rsi_14", 50) or 50
+        ma_sig   = r.get("ma_signal", "")
+
+        if not (1.5 <= beta <= 2.5):          continue
+        if eps_ttm <= 0:                       continue   # must be profitable
+        if eps_fwd < 0.10:                     continue   # needs meaningful growth
+        if npm < 0.10:                         continue   # minimum margin quality gate
+        if "BULLISH" not in ma_sig:            continue   # must be in uptrend
+        if rsi > 80:                           continue   # skip parabolic moves
+
+        # Reward: high beta justified by growth + margin expansion
+        beta_bonus = (beta - 1.0) * 20        # higher beta = more upside if thesis holds
+        score = (eps_fwd * 100 + npm * 80 + beta_bonus + cs * 0.3)
+        reason = (f"High-beta quality: beta={beta:.2f}  "
+                  f"fwd_growth={eps_fwd*100:.1f}%  margin={npm*100:.1f}%  "
+                  f"RSI={rsi:.1f}")
+        out.append((r["ticker"], round(score, 2), reason))
+    return sorted(out, key=lambda x: -x[1])
+
+
+def score_capex_beneficiary(rows, kmap):
+    """
+    NEW-18: Capex Beneficiary / Semiconductor Infrastructure.
+    Targets IT-sector stocks (semis, hardware, cloud infra) that benefit from
+    hyperscaler data-centre buildout.  Scoring heavily weights:
+      - Net margin (semis have exceptional margins at scale: NVDA ~55%)
+      - Forward EPS growth (capex waves flow through to earnings)
+      - Golden cross (institutional accumulation already underway)
+      - Positive abnormal return (market is beginning to price it in)
+    P/E guard is deliberately relaxed (≤ 80) because structural growers trade
+    at premium multiples before the market fully understands the thesis.
+    """
+    CAPEX_SECTORS = {
+        "Information Technology",
+        "Communication Services",   # hyperscalers: GOOGL, META
+    }
+    CAPEX_KEYWORDS = {   # sub-industry / name hints for hardware/semi companies
+        "Semiconductor", "semiconductor",
+        "Hardware", "hardware",
+        "Electronic", "electronic",
+        "Network", "network",
+        "Storage", "storage",
+        "Circuit", "circuit",
+    }
+
+    out = []
+    for r in rows:
+        sector  = r.get("sector", "") or ""
+        name    = r.get("ticker", "")        # we use ticker as a crude proxy here
+        eps_ttm = r.get("eps_ttm", 0) or 0
+        eps_fwd = r.get("eps_growth_fwd", 0) or 0
+        npm     = r.get("net_profit_margin", 0) or 0
+        pe      = r.get("pe_ratio", 999) or 999
+        ma_sig  = r.get("ma_signal", "")
+        ab      = r.get("abnormal_return", 0) or 0
+        cs      = r.get("composite_score", 0)
+        beta    = r.get("beta", 1.0) or 1.0
+        rsi     = r.get("rsi_14", 50) or 50
+
+        if sector not in CAPEX_SECTORS:      continue
+        if eps_ttm <= 0:                     continue   # profitable only
+        if eps_fwd < 0.08:                   continue   # needs growth
+        if npm < 0.12:                       continue   # decent margins
+        if pe > 80 or pe <= 0:               continue   # valuation sanity check
+        if "BULLISH" not in ma_sig:          continue   # uptrend required
+        if rsi > 82:                         continue   # skip parabolic
+
+        # Core score: margin quality + growth + trend confirmation
+        score = (npm * 120 +               # margin quality (NVDA ~55% → huge weight)
+                 eps_fwd * 100 +           # forward growth acceleration
+                 ab * 150 +                # market beginning to price it in
+                 cs * 0.25 +              # composite health
+                 min(beta, 2.0) * 8)      # beta bonus (up to 2.0)
+
+        reason = (f"Capex beneficiary: sector={sector}  "
+                  f"margin={npm*100:.1f}%  fwd_growth={eps_fwd*100:.1f}%  "
+                  f"P/E={pe:.1f}  beta={beta:.2f}")
+        out.append((r["ticker"], round(score, 2), reason))
+    return sorted(out, key=lambda x: -x[1])
+
 SCORE_FN = {
     "01": score_momentum,
     "02": score_mean_reversion,
@@ -450,6 +604,9 @@ SCORE_FN = {
     "13": score_quality_profitability,
     "14": score_passive,
     "15": score_noise_chaser,           # NEW-15
+    "16": score_estimate_revision,      # NEW-16
+    "17": score_high_beta_quality,      # NEW-17
+    "18": score_capex_beneficiary,      # NEW-18
 }
 
 # ── Trade execution helpers ───────────────────────────────────────────────────
@@ -629,6 +786,139 @@ Respond ONLY with a JSON object. No explanation outside the JSON.
     {{"type": "BUY",  "ticker": "AAPL", "reason": "why"}},
     {{"type": "SELL", "ticker": "XYZ",  "reason": "why"}},
     {{"type": "HOLD", "ticker": "MU",   "reason": "why"}}
+  ],
+  "summary": "one sentence summary of today's decisions"
+}}
+"""
+    elif strategy_id == "16":
+        prompt = f"""You are managing a paper trading account for strategy "16 - Estimate revision momentum".
+
+Strategy description: {strategy_desc}
+
+KEY INSIGHT: You are hunting for stocks where analysts have recently RAISED their EPS estimates.
+A high eps_revision_pct score means Wall Street just upgraded their outlook — that is the
+primary signal. Stocks with accelerating estimate revisions historically outperform for 3-6 months.
+Sell when revision momentum stalls (low/negative revision score on future runs) or the stock
+has run >20% above its cost basis with no new revision catalyst.
+
+Account:
+  Cash available: ${acct['cash']:.2f}
+  Holdings value: ${acct['holdings_value']:.2f}
+  Total: ${acct['cash']+acct['holdings_value']:.2f}
+  Goal: ${STARTING_CASH*2:.2f} (double the money)
+  Trades so far: {acct['trades']}
+
+Current holdings:
+{hold_str}
+
+Top-ranked candidates today (by estimate revision score):
+{cand_str}
+
+Rules:
+- Commission is $4.95 per trade + 0.05% spread
+- Max 3 positions at once
+- Max 60% of portfolio in any one stock
+- Keep at least 5% cash reserve
+- Sell if: revision momentum has clearly stalled, stock dropped >20% from avg cost,
+  or a clearly better revision opportunity exists (10+ point score gap)
+
+Respond ONLY with a JSON object. No explanation outside the JSON.
+{{
+  "actions": [
+    {{"type": "BUY",  "ticker": "AAPL", "reason": "why"}},
+    {{"type": "SELL", "ticker": "XYZ",  "reason": "why"}},
+    {{"type": "HOLD", "ticker": "MU",   "reason": "why"}}
+  ],
+  "summary": "one sentence summary of today's decisions"
+}}
+"""
+    elif strategy_id == "17":
+        prompt = f"""You are managing a paper trading account for strategy "17 - High-beta quality growth".
+
+Strategy description: {strategy_desc}
+
+KEY INSIGHT: This strategy is the OPPOSITE of low-volatility. You are specifically hunting
+high-beta (1.5-2.5) stocks where the volatility is JUSTIFIED by genuine business momentum:
+high and expanding margins, strong forward EPS growth, golden cross uptrend.
+NVDA was the archetype: very high beta, but 55% net margins and explosive EPS growth.
+Do NOT avoid a stock just because it is volatile — that is the entire point.
+Sell only if fundamentals deteriorate (margin compression, EPS miss) or a death cross forms.
+Normal 15-20% drawdowns are acceptable and expected — do NOT panic-sell on volatility alone.
+
+Account:
+  Cash available: ${acct['cash']:.2f}
+  Holdings value: ${acct['holdings_value']:.2f}
+  Total: ${acct['cash']+acct['holdings_value']:.2f}
+  Goal: ${STARTING_CASH*2:.2f} (double the money)
+  Trades so far: {acct['trades']}
+
+Current holdings:
+{hold_str}
+
+Top-ranked candidates today (high-beta + strong fundamentals):
+{cand_str}
+
+Rules:
+- Commission is $4.95 per trade + 0.05% spread
+- Max 3 positions at once
+- Max 60% of portfolio in any one stock
+- Keep at least 5% cash reserve
+- High volatility is EXPECTED and acceptable — do not sell on normal drawdowns
+- Sell only if: MA turns bearish (death cross), EPS growth collapses, or margins deteriorate
+
+Respond ONLY with a JSON object. No explanation outside the JSON.
+{{
+  "actions": [
+    {{"type": "BUY",  "ticker": "AAPL", "reason": "why"}},
+    {{"type": "SELL", "ticker": "XYZ",  "reason": "why"}},
+    {{"type": "HOLD", "ticker": "MU",   "reason": "why"}}
+  ],
+  "summary": "one sentence summary of today's decisions"
+}}
+"""
+    elif strategy_id == "18":
+        prompt = f"""You are managing a paper trading account for strategy "18 - Capex beneficiary / semis".
+
+Strategy description: {strategy_desc}
+
+THESIS: Hyperscalers (Microsoft, Google, Amazon, Meta) are in a multi-year AI infrastructure
+buildout, spending hundreds of billions on data centres. Every dollar of hyperscaler capex
+flows upstream to GPU makers, network chip designers, PCB manufacturers, power management ICs,
+and storage. You are positioned to capture that upstream demand wave BEFORE the market fully
+prices it in.
+
+The scoring function has already filtered for: IT/Comms sector, profitable, expanding margins,
+golden cross uptrend, and reasonable valuation (P/E ≤ 80). Your job is to pick the best 1-2
+positions from the candidates and hold them with conviction while the thesis plays out.
+Concentration is intentional — diversification dilutes the thesis.
+
+Account:
+  Cash available: ${acct['cash']:.2f}
+  Holdings value: ${acct['holdings_value']:.2f}
+  Total: ${acct['cash']+acct['holdings_value']:.2f}
+  Goal: ${STARTING_CASH*2:.2f} (double the money)
+  Trades so far: {acct['trades']}
+
+Current holdings:
+{hold_str}
+
+Top-ranked capex beneficiary candidates today (IT/Comms sector, scored by margin × growth × trend):
+{cand_str}
+
+Rules:
+- Commission is $4.95 per trade + 0.05% spread
+- Max 2 positions (concentrated conviction)
+- Max 70% of portfolio in any one stock (thesis warrants concentration)
+- Keep at least 5% cash reserve
+- Hold with conviction — only sell if: MA turns bearish (death cross), net margin drops below 10%,
+  forward EPS growth turns negative, or the AI capex cycle shows clear signs of ending
+
+Respond ONLY with a JSON object. No explanation outside the JSON.
+{{
+  "actions": [
+    {{"type": "BUY",  "ticker": "NVDA", "reason": "why"}},
+    {{"type": "SELL", "ticker": "XYZ",  "reason": "why"}},
+    {{"type": "HOLD", "ticker": "AMAT", "reason": "why"}}
   ],
   "summary": "one sentence summary of today's decisions"
 }}

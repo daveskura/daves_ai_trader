@@ -30,12 +30,24 @@ import argparse
 import warnings
 import datetime
 import sys
+import os
+from pathlib import Path
 
 import pandas as pd
 import numpy as np
 import yfinance as yf
 
 warnings.filterwarnings("ignore")
+
+# ── Load .env if present (mirrors strategy_runner.py) ────────────────────────
+_env_path = Path(__file__).parent / ".env"
+if _env_path.exists():
+    for _line in _env_path.read_text(encoding="utf-8").splitlines():
+        _line = _line.strip()
+        if _line and not _line.startswith("#") and "=" in _line:
+            _k, _v = _line.split("=", 1)
+            _v = _v.strip().strip('"').strip("'")   # remove surrounding quotes
+            os.environ.setdefault(_k.strip(), _v)
 
 # Force UTF-8 output on Windows to avoid Unicode errors in logs/console
 if sys.stdout.encoding != 'utf-8':
@@ -418,10 +430,15 @@ def main():
     parser.add_argument("--tickers",  nargs="+", default=None,
                         help="Explicit list of tickers (overrides --universe)")
     parser.add_argument("--fred-key", default=None,
-                        help="FRED API key (free at fred.stlouisfed.org)")
+                        help="FRED API key (free at fred.stlouisfed.org). "
+                             "Defaults to FRED_API_KEY environment variable / .env file.")
     parser.add_argument("--output",   default="equity_kpi_results.csv",
                         help="Output CSV filename")
     args = parser.parse_args()
+
+    # Fall back to env var so .env file works without passing --fred-key every time
+    if not args.fred_key:
+        args.fred_key = os.environ.get("FRED_API_KEY") or None
 
     # ── Universe info only ──────────────────────────────────────────────
     if args.universe_info:
@@ -485,6 +502,40 @@ def main():
     df = pd.DataFrame(results)
     df["signal"] = df["composite_score"].apply(signal_label)
     df = df.sort_values("composite_score", ascending=False)
+
+    # ── EPS revision delta (Strategy 16 signal) ─────────────────────────
+    # Compare today's eps_growth_fwd to yesterday's snapshot (if it exists).
+    # Snapshot is the previous output CSV — we read it before overwriting.
+    prev_path = Path(args.output)
+    if prev_path.exists() and "eps_growth_fwd" in df.columns:
+        try:
+            prev_df = pd.read_csv(prev_path, dtype=str)
+            if "ticker" in prev_df.columns and "eps_growth_fwd" in prev_df.columns:
+                prev_df["eps_growth_fwd"] = pd.to_numeric(
+                    prev_df["eps_growth_fwd"], errors="coerce")
+                prev_map = prev_df.set_index("ticker")["eps_growth_fwd"].to_dict()
+                def _revision_pct(row):
+                    prev = prev_map.get(row["ticker"])
+                    curr = row.get("eps_growth_fwd")
+                    if prev is None or curr is None or pd.isna(prev) or pd.isna(curr):
+                        return None
+                    if prev == 0:
+                        return None
+                    return round((curr - prev) / abs(prev), 4)
+                df["eps_revision_pct"] = df.apply(_revision_pct, axis=1)
+                n_revised = (df["eps_revision_pct"].fillna(0) > 0).sum()
+                print(f"  [S16] EPS revision delta computed — "
+                      f"{n_revised} tickers with upward revisions today")
+            else:
+                df["eps_revision_pct"] = None
+        except Exception as e:
+            print(f"  [S16] Could not compute EPS revision delta: {e}")
+            df["eps_revision_pct"] = None
+    else:
+        df["eps_revision_pct"] = None
+        if not prev_path.exists():
+            print(f"  [S16] No prior snapshot found at {args.output} — "
+                  f"eps_revision_pct will populate from tomorrow's run")
 
     # ── Console output ──────────────────────────────────────────────────
     DISPLAY_COLS = [

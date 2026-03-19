@@ -34,6 +34,9 @@ STRATEGIES = [
     ("13", "Quality / profitability",      "academic",    "low"),
     ("14", "Passive S&P 500 benchmark",    "passive",     "low"),
     ("15", "Noise chaser",                 "speculative", "high"),
+    ("16", "Estimate revision momentum",   "growth",      "med"),
+    ("17", "High-beta quality growth",     "growth",      "high"),
+    ("18", "Capex beneficiary / semis",    "thematic",    "high"),
 ]
 
 # ── File name helpers (must match strategy_runner.py) ────────────────────────
