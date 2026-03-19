@@ -1,0 +1,3 @@
+date,strategy_id,action,ticker,shares,price,commission,net_amount,cash_after,reason
+2026-03-19,07,BUY,CVS,8.090772,73.51,4.95,-600.0,400.0,"Top-ranked candidate with score 745.9, exceptional forward EPS growth of 488.4% and positive abnormal return 0.87% — strong PEAD signal. Allocating ~33% of portfolio (~$316 after costs, within 60% cap)."
+2026-03-19,07,BUY,AMD,1.780148,199.35,4.95,-359.9999,40.0001,"Third-ranked with score 482.4 and solid forward EPS growth of 311.7%. Diversifies into semiconductors. Allocating remaining ~27% after cash reserve (~$270 after costs, keeping ~5% cash reserve)."

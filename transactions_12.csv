@@ -1,0 +1,3 @@
+date,strategy_id,action,ticker,shares,price,commission,net_amount,cash_after,reason
+2026-03-19,12,BUY,UNP,2.539182,234.23,4.95,-600.0,400.0,"Top-ranked score 62.9, RSI=10.0 deeply oversold, beta=0.95 moderate risk, -12.3% from 52w high satisfies crash protection rule. Allocating ~33% of portfolio (~$316 after costs)."
+2026-03-19,12,BUY,AMGN,1.006559,352.56,4.95,-359.9999,40.0001,"Score 62.1, RSI=22.8 oversold, very low beta=0.42 defensive, -9.2% from 52w high meets >=5% threshold. Allocating ~27% of portfolio (~$270 after costs) to maintain 5%+ cash reserve."

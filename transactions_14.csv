@@ -1,0 +1,2 @@
+date,strategy_id,action,ticker,shares,price,commission,net_amount,cash_after,reason
+2026-03-19,14,BUY,NVDA,2.391107,178.51,4.95,-431.9999,568.0001,Passive: buy top market-cap

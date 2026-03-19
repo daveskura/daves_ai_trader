@@ -1,0 +1,3 @@
+date,strategy_id,action,ticker,shares,price,commission,net_amount,cash_after,reason
+2026-03-19,08,BUY,PGR,2.976889,199.79,4.95,-600.0,400.0,"Highest score (4147.5) with exceptional dividend yield and low beta (0.29), fits dividend growth strategy well. Allocating ~33% of portfolio (~$316 after costs)."
+2026-03-19,08,BUY,MO,5.427846,65.38,4.95,-360.0,40.0,"Third highest score (3904.4) with strong 5-year dividend growth (7.68%) and low beta (0.43), excellent dividend growth candidate. Allocating ~33% of portfolio (~$316 after costs)."

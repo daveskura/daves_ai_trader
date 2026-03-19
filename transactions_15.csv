@@ -1,0 +1,2 @@
+date,strategy_id,action,ticker,shares,price,commission,net_amount,cash_after,reason
+2026-03-19,15,BUY,ACN,2.891359,205.7,4.95,-599.9999,400.0001,"#1 highest abnormal return today at 5.94%, buying with available cash up to 60% max allocation minus 5% reserve"

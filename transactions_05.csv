@@ -1,0 +1,3 @@
+date,strategy_id,action,ticker,shares,price,commission,net_amount,cash_after,reason
+2026-03-19,05,BUY,MO,9.096859,65.38,4.95,-600.0,400.0,Highest score (77.0) in the dominant Consumer Defensive sector. Allocating ~33% of portfolio (~$316) to stay within 60% single-stock cap and maintain diversification across top 3 picks.
+2026-03-19,05,BUY,MNST,4.793632,74.03,4.95,-360.0,40.0,Second highest score (76.5) in Consumer Defensive sector. Allocating ~33% of portfolio (~$316) as part of concentrated 3-position sector rotation strategy.
