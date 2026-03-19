@@ -1,4 +1,0 @@
-date,strategy_id,action,ticker,shares,price,commission,net_amount,cash_after,reason
-2026-03-15,02,BUY,BDX,3.732132,159.36,4.95,-599.9999,400.0001,"Extremely oversold RSI=0.2, highest strategy score of 97.8, allocating ~30% of portfolio"
-2026-03-15,02,BUY,CRH,5.926726,99.82,4.95,-596.8516,-196.8515,"Strong oversold signal RSI=8.8, score=81.5, allocating ~30% of portfolio"
-2026-03-15,02,BUY,ECL,2.157731,274.18,4.95,-596.8525,-793.704,"Oversold RSI=10.8, score=78.3, allocating ~30% of portfolio to diversify across 3 positions"

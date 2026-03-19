@@ -1,3 +1,0 @@
-date,strategy_id,action,ticker,shares,price,commission,net_amount,cash_after,reason
-2026-03-15,07,BUY,MU,1.395707,426.13,4.95,-600.0,400.0,"Highest strategy score of 40.7 with strong 6.06% abnormal return, allocating ~33% of portfolio"
-2026-03-15,07,BUY,WDC,2.172705,272.29,4.95,-596.8516,-196.8516,"Third highest score of 38.7 with solid 5.38% abnormal return, allocating ~27% of portfolio to maintain 5% cash reserve"

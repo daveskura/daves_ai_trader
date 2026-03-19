@@ -1,16 +1,16 @@
 rank,date,strategy_id,strategy_name,style,risk,cash,holdings_value,total,pnl,pct_return,trades
-1,2026-03-18,05,Sector rotation,macro,med,96.18,1997.12,2093.3,1093.3,109.33,9
-2,2026-03-18,07,Earnings surprise (PEAD),event,high,-196.85,1306.9,1110.05,110.05,11.0,2
-3,2026-03-18,01,Momentum / trend following,momentum,high,-210.26,1306.9,1096.64,96.64,9.66,4
-4,2026-03-18,04,Quality growth (GARP),growth,med,379.05,644.44,1023.49,23.49,2.35,7
-5,2026-03-18,10,Macro-regime adaptive,macro,med,43.65,968.18,1011.82,11.82,1.18,12
-6,2026-03-18,09,Insider buying signal,alt-data,med,1000.0,0.0,1000.0,0.0,0.0,0
-7,2026-03-18,15,Noise chaser,speculative,high,1000.0,0.0,1000.0,0.0,0.0,0
-8,2026-03-18,11,Large-cap value (Fama-French),academic,med,40.0,949.63,989.63,-10.37,-1.04,2
-9,2026-03-18,14,Passive S&P 500 benchmark,passive,low,-196.85,1186.43,989.58,-10.42,-1.04,2
-10,2026-03-18,06,Low volatility / defensive,defensive,low,-196.85,1175.9,979.05,-20.95,-2.1,2
-11,2026-03-18,13,Quality / profitability,academic,low,-196.85,1170.11,973.26,-26.74,-2.67,2
-12,2026-03-18,03,Value investing,value,low,-793.7,1765.56,971.86,-28.14,-2.81,3
-13,2026-03-18,02,Mean reversion,contrarian,med,-793.7,1758.95,965.25,-34.75,-3.48,3
-14,2026-03-18,08,Dividend growth,income,low,-793.7,1743.46,949.76,-50.24,-5.02,3
-15,2026-03-18,12,Momentum (academic / Asness),academic,high,-793.7,1740.87,947.17,-52.83,-5.28,3
+1,2026-03-19,01,Momentum / trend following,momentum,high,1000.0,0.0,1000.0,0.0,0.0,0
+2,2026-03-19,02,Mean reversion,contrarian,med,1000.0,0.0,1000.0,0.0,0.0,0
+3,2026-03-19,03,Value investing,value,low,1000.0,0.0,1000.0,0.0,0.0,0
+4,2026-03-19,04,Quality growth (GARP),growth,med,1000.0,0.0,1000.0,0.0,0.0,0
+5,2026-03-19,05,Sector rotation,macro,med,1000.0,0.0,1000.0,0.0,0.0,0
+6,2026-03-19,06,Low volatility / defensive,defensive,low,1000.0,0.0,1000.0,0.0,0.0,0
+7,2026-03-19,07,Earnings surprise (PEAD),event,high,1000.0,0.0,1000.0,0.0,0.0,0
+8,2026-03-19,08,Dividend growth,income,low,1000.0,0.0,1000.0,0.0,0.0,0
+9,2026-03-19,09,Insider buying signal,alt-data,med,1000.0,0.0,1000.0,0.0,0.0,0
+10,2026-03-19,10,Macro-regime adaptive,macro,med,1000.0,0.0,1000.0,0.0,0.0,0
+11,2026-03-19,11,Large-cap value (Fama-French),academic,med,1000.0,0.0,1000.0,0.0,0.0,0
+12,2026-03-19,12,Momentum (academic / Asness),academic,high,1000.0,0.0,1000.0,0.0,0.0,0
+13,2026-03-19,13,Quality / profitability,academic,low,1000.0,0.0,1000.0,0.0,0.0,0
+14,2026-03-19,14,Passive S&P 500 benchmark,passive,low,1000.0,0.0,1000.0,0.0,0.0,0
+15,2026-03-19,15,Noise chaser,speculative,high,1000.0,0.0,1000.0,0.0,0.0,0

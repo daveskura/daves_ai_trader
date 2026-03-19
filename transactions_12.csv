@@ -1,4 +1,0 @@
-date,strategy_id,action,ticker,shares,price,commission,net_amount,cash_after,reason
-2026-03-15,12,BUY,ITW,2.227621,266.99,4.95,-599.9999,400.0001,Top momentum score (62.4) with low RSI (14.4) indicating oversold conditions and reasonable beta (1.12)
-2026-03-15,12,BUY,TXN,3.100984,190.78,4.95,-596.8515,-196.8514,Second highest momentum score (62.3) with low RSI (15.8) showing oversold entry point and moderate beta (0.98)
-2026-03-15,12,BUY,MNST,7.672244,77.11,4.95,-596.8525,-793.704,Strong momentum score (59.3) with low beta (0.44) for crash protection and low RSI (26.1) for entry timing
