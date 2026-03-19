@@ -2,6 +2,8 @@ name: Daily trading run
 
 on:
   schedule:
+    # 21:30 UTC = 4:30 PM EST (winter) / 5:30 PM EDT (summer) — post-market-close.
+    # Note: GitHub Actions cron is always UTC; no automatic DST adjustment.
     - cron: '30 21 * * 1-5'
   workflow_dispatch:
 
@@ -45,6 +47,15 @@ jobs:
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add leaderboard.csv account_*.csv holdings_*.csv transactions_*.csv equity_kpi_results.csv || true
+          # universe_cache.json is included so the weekly refresh survives
+          # across CI runs and Yahoo Finance isn't hammered every day.
+          git add leaderboard.csv account_*.csv holdings_*.csv transactions_*.csv equity_kpi_results.csv universe_cache.json || true
           git diff --staged --quiet || git commit -m "Daily trading run - $(date -u '+%Y-%m-%d %H:%M UTC')"
           git push
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "::error::Daily trading run FAILED at $(date -u '+%Y-%m-%d %H:%M UTC'). Check the logs above."
+          # To enable Slack/email alerts, add a secrets.SLACK_WEBHOOK and
+          # replace this step with the slackapi/slack-github-action action.

@@ -11,13 +11,15 @@ Sources (all free, no API key required):
 """
 
 import os
-import json
-import datetime
 import sys
 
 # Force UTF-8 output on Windows to avoid Unicode errors in logs/console
+# (moved here — immediately after sys import, before any other imports)
 if sys.stdout.encoding != 'utf-8':
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+
+import json
+import datetime
 import time
 
 import pandas as pd
@@ -39,17 +41,15 @@ FALLBACK_TICKERS = [
     "ORCL","QCOM","AMD","HON","UPS","AMGN","IBM","GE","CAT","BA",
 ]
 
+# Alphabet share-class deduplication: keep the higher-liquidity class only.
+# Map each duplicate → preferred ticker; the duplicate is dropped from the universe.
+DUPLICATE_SHARE_CLASSES: dict[str, str] = {
+    "GOOG": "GOOGL",   # Alphabet C → keep A (voting rights, more widely held)
+    "BRK-A": "BRK-B",  # Berkshire A → keep B (much lower price, more liquid)
+}
+
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
-
-def _cache_is_fresh() -> bool:
-    """Return True if the cache file exists and is less than REFRESH_DAYS old."""
-    if not os.path.exists(CACHE_FILE):
-        return False
-    mtime = datetime.datetime.fromtimestamp(os.path.getmtime(CACHE_FILE))
-    age   = (datetime.datetime.now() - mtime).days
-    return age < REFRESH_DAYS
-
 
 def _load_cache() -> dict | None:
     try:
@@ -57,6 +57,31 @@ def _load_cache() -> dict | None:
             return json.load(f)
     except Exception:
         return None
+
+
+def _cache_is_fresh(mode: str, n: int) -> bool:
+    """
+    Return True only if the cache:
+      1. Exists and is readable
+      2. Was refreshed less than REFRESH_DAYS ago   (using the stored date,
+         NOT the file's mtime which can be reset by git/deployment)
+      3. Was built with the same mode and a large enough n
+    """
+    cached = _load_cache()
+    if not cached or "tickers" not in cached or "refreshed" not in cached:
+        return False
+    try:
+        refreshed = datetime.date.fromisoformat(cached["refreshed"])
+    except ValueError:
+        return False
+    age = (datetime.date.today() - refreshed).days
+    if age >= REFRESH_DAYS:
+        return False
+    if cached.get("mode") != mode:
+        return False
+    if cached.get("n", 0) < n:
+        return False
+    return True
 
 
 def _save_cache(data: dict):
@@ -96,7 +121,8 @@ def _fetch_from_slickcharts() -> pd.DataFrame | None:
         headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
         resp = requests.get(url, headers=headers, timeout=15)
         resp.raise_for_status()
-        tickers = re.findall(r'/symbol/([A-Z]{1,5}(?:-[A-Z])?)"', resp.text)
+        # Fixed: allow up to 2 chars after the dash (e.g. BRK-B, BF-B)
+        tickers = re.findall(r'/symbol/([A-Z]{1,5}(?:-[A-Z]{1,2})?)\"', resp.text)
         seen, unique = set(), []
         for t in tickers:
             if t not in seen:
@@ -166,38 +192,82 @@ def fetch_sp500_constituents() -> pd.DataFrame:
     })
 
 
+def deduplicate_share_classes(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Remove duplicate share classes (e.g. GOOG when GOOGL is present).
+    The DUPLICATE_SHARE_CLASSES map defines which ticker to drop → keep.
+    """
+    tickers_in_df = set(df["ticker"].tolist())
+    to_drop = []
+    for dup, preferred in DUPLICATE_SHARE_CLASSES.items():
+        if dup in tickers_in_df and preferred in tickers_in_df:
+            to_drop.append(dup)
+            print(f"  [UNIVERSE] Dedup: dropping {dup} (keeping {preferred})")
+        elif dup in tickers_in_df:
+            # preferred not present — rename dup to preferred for consistency
+            df.loc[df["ticker"] == dup, "ticker"] = preferred
+            print(f"  [UNIVERSE] Dedup: renamed {dup} → {preferred}")
+    if to_drop:
+        df = df[~df["ticker"].isin(to_drop)].reset_index(drop=True)
+    return df
+
+
 # ── Step 2: Enrich with market cap ───────────────────────────────────────────
+
+def _fetch_market_cap_with_retry(sym: str, retries: int = 3, backoff: float = 2.0) -> float:
+    """Fetch a single ticker's market cap with exponential-backoff retries."""
+    for attempt in range(retries):
+        try:
+            info = yf.Ticker(sym).info
+            return float(info.get("marketCap") or 0)
+        except Exception:
+            if attempt < retries - 1:
+                time.sleep(backoff * (2 ** attempt))
+    return 0.0
+
 
 def enrich_with_market_cap(df: pd.DataFrame, batch_size: int = 50) -> pd.DataFrame:
     """
     Add market_cap column by querying yfinance in batches.
-    Uses yfinance download for speed; falls back to ticker-by-ticker.
+    Each ticker in a failed batch is retried individually with backoff,
+    so a single rate-limit hit doesn't zero-out an entire batch.
     """
     print(f"  [UNIVERSE] Fetching market caps for {len(df)} tickers (batched)...")
-    tickers  = df["ticker"].tolist()
-    cap_map  = {}
+    tickers = df["ticker"].tolist()
+    cap_map: dict[str, float] = {}
 
-    # Batch download is fastest — pull info via Tickers object
     for i in range(0, len(tickers), batch_size):
         batch = tickers[i : i + batch_size]
+        batch_failed: list[str] = []
+
         try:
             multi = yf.Tickers(" ".join(batch))
             for sym in batch:
                 try:
                     info = multi.tickers[sym].info
-                    cap_map[sym] = info.get("marketCap") or 0
+                    cap_map[sym] = float(info.get("marketCap") or 0)
                 except Exception:
-                    cap_map[sym] = 0
+                    batch_failed.append(sym)
         except Exception:
-            for sym in batch:
-                cap_map[sym] = 0
+            # Entire batch request failed — retry each ticker individually
+            batch_failed = batch
+
+        # Per-ticker retry with backoff for anything that failed
+        for sym in batch_failed:
+            cap_map[sym] = _fetch_market_cap_with_retry(sym)
+
         pct = min(100, int((i + batch_size) / len(tickers) * 100))
         print(f"    ...{pct}% complete", end="\r", flush=True)
-        time.sleep(0.3)   # be polite to Yahoo
+        time.sleep(0.5)   # slightly more polite to Yahoo
 
     print()
     df = df.copy()
     df["market_cap"] = df["ticker"].map(cap_map).fillna(0).astype(float)
+
+    zero_cap = (df["market_cap"] == 0).sum()
+    if zero_cap > 0:
+        print(f"  [UNIVERSE] Warning: {zero_cap} ticker(s) returned market_cap=0 "
+              f"(rate-limit or delisted). They will rank last.")
     return df
 
 
@@ -214,9 +284,11 @@ def select_sector_balanced(df: pd.DataFrame, n: int, max_per_sector: int) -> lis
     Select top N stocks with a per-sector cap.
     Fills slots proportionally: each sector gets up to max_per_sector picks,
     ranked by market cap within the sector.
+
+    Warns if sector caps prevent reaching n tickers.
     """
     df_sorted = df.sort_values("market_cap", ascending=False)
-    selected  = []
+    selected: list[str] = []
     sector_counts: dict[str, int] = {}
 
     for _, row in df_sorted.iterrows():
@@ -226,6 +298,11 @@ def select_sector_balanced(df: pd.DataFrame, n: int, max_per_sector: int) -> lis
             sector_counts[sec] = sector_counts.get(sec, 0) + 1
         if len(selected) >= n:
             break
+
+    if len(selected) < n:
+        print(f"  [UNIVERSE] Warning: only {len(selected)} tickers selected "
+              f"(requested {n}) — sector caps may be too restrictive. "
+              f"Consider raising MAX_PER_SECTOR or lowering n.")
 
     return selected
 
@@ -248,7 +325,7 @@ def get_universe(
     mode            : "balanced" applies sector cap; "market_cap" is pure ranking
     max_per_sector  : Max stocks per sector when mode="balanced"
     force_refresh   : Ignore cache and re-fetch everything
-    skip_market_cap : Use Wikipedia order only (faster but less accurate ranking)
+    skip_market_cap : Use source-list order only (faster but less accurate ranking)
 
     Returns
     -------
@@ -259,7 +336,9 @@ def get_universe(
     print("-" * 55)
 
     # ── Try cache first ──────────────────────────────────────────────
-    if not force_refresh and _cache_is_fresh():
+    # Cache validity is checked against the stored 'refreshed' date (not mtime),
+    # and must also match the requested mode and n.
+    if not force_refresh and _cache_is_fresh(mode=mode, n=n):
         cached = _load_cache()
         if cached and "tickers" in cached:
             tickers = cached["tickers"][:n]
@@ -272,8 +351,10 @@ def get_universe(
     # ── Fetch fresh data ─────────────────────────────────────────────
     constituents = fetch_sp500_constituents()
 
+    # Remove duplicate share classes (e.g. GOOG vs GOOGL, BRK-A vs BRK-B)
+    constituents = deduplicate_share_classes(constituents)
+
     if skip_market_cap:
-        # Wikipedia lists roughly in market-cap order already
         print("  [UNIVERSE] Skipping market-cap lookup (skip_market_cap=True)")
         constituents["market_cap"] = range(len(constituents), 0, -1)
     else:
@@ -299,7 +380,7 @@ def get_universe(
         "tickers":   tickers,
         "refreshed": str(datetime.date.today()),
         "mode":      mode,
-        "n":         n,
+        "n":         len(tickers),     # store actual count, not requested n
         "sector_breakdown": breakdown.to_dict(),
     }
     _save_cache(cache_data)
@@ -315,7 +396,7 @@ def refresh_universe(n: int = DEFAULT_UNIVERSE_N, mode: str = "balanced") -> lis
 
 
 def show_cache_info():
-    """Print current cache status."""
+    """Print current cache status using the stored refreshed date."""
     if not os.path.exists(CACHE_FILE):
         print("No universe cache found. Run get_universe() to create one.")
         return
@@ -323,12 +404,17 @@ def show_cache_info():
     if not cached:
         print("Cache file exists but could not be read.")
         return
-    mtime = datetime.datetime.fromtimestamp(os.path.getmtime(CACHE_FILE))
-    age   = (datetime.datetime.now() - mtime).days
+    try:
+        refreshed_date = datetime.date.fromisoformat(cached.get("refreshed", ""))
+        age = (datetime.date.today() - refreshed_date).days
+        is_fresh = age < REFRESH_DAYS
+    except ValueError:
+        age = "?"
+        is_fresh = False
     print(f"\nUniverse Cache Info")
     print(f"  File       : {CACHE_FILE}")
     print(f"  Refreshed  : {cached.get('refreshed')}")
-    print(f"  Age        : {age} day(s)  ({'fresh' if age < REFRESH_DAYS else 'STALE — will refresh on next run'})")
+    print(f"  Age        : {age} day(s)  ({'fresh' if is_fresh else 'STALE — will refresh on next run'})")
     print(f"  Tickers    : {cached.get('n')}  (mode={cached.get('mode')})")
     print(f"  Sectors    :")
     for sec, cnt in (cached.get("sector_breakdown") or {}).items():
