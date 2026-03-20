@@ -2,3 +2,5 @@ date,strategy_id,action,ticker,shares,price,commission,net_amount,cash_after,rea
 2026-03-19,15,BUY,ACN,2.891359,205.7,4.95,-599.9999,400.0001,"#1 highest abnormal return today at 5.94%, buying with available cash up to 60% max allocation minus 5% reserve"
 2026-03-19,15,SELL,ACN,2.891359,203.55,4.95,583.2919,983.292,"ACN is ranked #6 today, not in top 3 candidates; must sell to chase #1 abnormal return per strategy rules"
 2026-03-19,15,BUY,CIEN,1.417259,412.58,4.95,-589.9751,393.3169,#1 ranked candidate today with highest abnormal return of 7.39%; deploying available cash plus proceeds from ACN sale up to 60% cap while keeping 5% cash reserve
+2026-03-20,15,SELL,CIEN,1.417259,383.89,4.95,538.8495,932.1664,CIEN is not in the top 3 candidates today; must sell to chase the #1 abnormal return stock per strategy rules
+2026-03-20,15,BUY,MRSH,3.139578,176.48,4.95,-559.2998,372.8666,#1 ranked candidate today with highest abnormal return of 4.37%; deploying available cash after selling CIEN per noise-chasing strategy
