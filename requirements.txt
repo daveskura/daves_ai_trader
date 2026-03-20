@@ -4,3 +4,4 @@ fredapi
 ta
 requests
 lxml
+feedparser

@@ -28,11 +28,22 @@ Changes vs original:
                     when available, falls back to proxy otherwise
     NEW-15 Strategy 15 "Noise chaser" — explicit degenerate baseline that buys
                     the largest abnormal movers with no fundamental filter
+    NEW-19 Strategy 19 "News macro catalyst" — fetches RSS headlines daily, asks
+                    Claude to identify dominant macro themes, scores universe stocks
+                    by sector alignment with those themes. Cache in news_macro_cache.json
+                    so Claude is called only once per day regardless of run count.
+    NEW-20 Strategy 20 "News sentiment momentum" — overlays today's news sentiment
+                    on top of KPI composite scores. Requires minimum quality gate
+                    (CS > 40, positive EPS) then amplifies signal with macro sector
+                    tailwinds and company-specific catalysts from headlines.
 """
 
-import sys, os, re, json, csv, math, argparse, urllib.error
-from datetime import date
+import sys, os, re, json, csv, math, argparse, urllib.error, urllib.request
+from datetime import date, datetime, timezone
 from pathlib import Path
+from collections import defaultdict
+
+_urllib_req = urllib.request   # alias used by news infrastructure
 
 # ── UTF-8 output (Windows fix) ──────────────────────────────────────────────
 if hasattr(sys.stdout, "reconfigure"):
@@ -104,6 +115,14 @@ STRATEGIES = [
      "Semiconductor and hardware infrastructure stocks that benefit when hyperscaler capex "
      "accelerates. Scores on: high net margin, high EPS growth, golden cross, and "
      "Information Technology sector membership. Targets picks like NVDA before they run."),
+    ("19", "News macro catalyst",          "macro",       "med",   # NEW-19
+     "Fetches today's financial & world headlines via RSS, asks Claude to identify the "
+     "dominant macro theme (oil shock, deregulation, trade war, etc.), then scores universe "
+     "stocks by sector alignment. Cached once per day — no duplicate API calls."),
+    ("20", "News sentiment momentum",      "alt-data",    "med",   # NEW-20
+     "Overlays today's news sentiment on KPI composite scores. Requires CS > 40 and positive "
+     "EPS as a quality gate, then amplifies with macro sector tailwinds and company-specific "
+     "catalysts (earnings beats, scandals, upgrades) found in today's headlines."),
 ]
 
 # ── File helpers ─────────────────────────────────────────────────────────────
@@ -588,6 +607,458 @@ def score_capex_beneficiary(rows, kmap):
         out.append((r["ticker"], round(score, 2), reason))
     return sorted(out, key=lambda x: -x[1])
 
+# ── News strategy infrastructure (strategies 19 & 20) ────────────────────────
+# RSS news sources — all free, no API key required
+NEWS_FEEDS = [
+    ("Reuters Business",  "https://feeds.reuters.com/reuters/businessNews"),
+    ("Reuters Markets",   "https://feeds.reuters.com/reuters/financialsNews"),
+    ("Reuters World",     "https://feeds.reuters.com/Reuters/worldNews"),
+    ("AP Business",       "https://feeds.apnews.com/rss/apf-business"),
+    ("AP Top News",       "https://feeds.apnews.com/rss/apf-topnews"),
+    ("Yahoo Finance",     "https://finance.yahoo.com/news/rssindex"),
+    ("CNBC Economy",      "https://www.cnbc.com/id/20910258/device/rss/rss.html"),
+    ("MarketWatch",       "https://feeds.marketwatch.com/marketwatch/topstories/"),
+]
+
+# Macro theme id → (beneficiary sectors, loser sectors) — used alongside Claude's output
+MACRO_THEME_MAP = {
+    "oil_supply_shock":         (["Energy","Industrials"],                         ["Consumer Discretionary","Consumer Staples","Utilities"]),
+    "oil_demand_drop":          (["Consumer Discretionary","Consumer Staples"],    ["Energy"]),
+    "rate_hike":                (["Financial Services"],                           ["Real Estate","Utilities","Consumer Discretionary"]),
+    "rate_cut":                 (["Real Estate","Utilities","Technology"],         ["Financial Services"]),
+    "inflation_surge":          (["Energy","Materials","Consumer Staples"],        ["Technology","Consumer Discretionary","Real Estate"]),
+    "china_trade_tension":      (["Industrials","Energy","Materials"],             ["Technology","Consumer Discretionary"]),
+    "geopolitical_conflict":    (["Energy","Industrials","Healthcare"],            ["Consumer Discretionary","Communication Services"]),
+    "bank_deregulation":        (["Financial Services"],                           []),
+    "bank_regulation":          ([],                                               ["Financial Services"]),
+    "ai_investment_boom":       (["Technology","Communication Services"],          []),
+    "tech_selloff":             (["Energy","Consumer Staples","Healthcare"],       ["Technology","Communication Services"]),
+    "recession_fear":           (["Consumer Staples","Healthcare","Utilities"],    ["Consumer Discretionary","Industrials","Technology"]),
+    "strong_jobs":              (["Consumer Discretionary","Financial Services"],  ["Real Estate","Utilities"]),
+    "weak_jobs":                (["Real Estate","Utilities","Technology"],         ["Financial Services","Industrials"]),
+    "consumer_confidence_drop": (["Consumer Staples","Healthcare","Utilities"],    ["Consumer Discretionary"]),
+    "dollar_strength":          (["Financial Services","Consumer Staples"],        ["Technology","Industrials","Energy"]),
+    "dollar_weakness":          (["Technology","Industrials","Energy","Materials"],[]),
+}
+
+NEWS_CACHE_FILE = BASE_DIR / "news_macro_cache.json"
+
+
+def _fetch_rss(url: str, timeout: int = 8) -> list[dict]:
+    """Fetch an RSS feed and return list of {title, summary}. No external deps."""
+    try:
+        req = _urllib_req.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with _urllib_req.urlopen(req, timeout=timeout) as resp:
+            raw = resp.read().decode("utf-8", errors="replace")
+        items = []
+        titles = re.findall(r"<title[^>]*><!\[CDATA\[(.*?)\]\]></title>", raw, re.DOTALL)
+        if not titles:
+            titles = re.findall(r"<title[^>]*>(.*?)</title>", raw, re.DOTALL)
+        descs = re.findall(r"<description[^>]*><!\[CDATA\[(.*?)\]\]></description>", raw, re.DOTALL)
+        if not descs:
+            descs = re.findall(r"<description[^>]*>(.*?)</description>", raw, re.DOTALL)
+        for i, t in enumerate(titles[1:16]):
+            clean = re.sub(r"<[^>]+>", "", t).strip()
+            desc  = re.sub(r"<[^>]+>", "", descs[i] if i < len(descs) else "").strip()[:250]
+            if clean:
+                items.append({"title": clean, "summary": desc})
+        return items
+    except Exception:
+        return []
+
+
+def _gather_headlines(verbose: bool = True) -> list[dict]:
+    """Fetch and deduplicate headlines from all NEWS_FEEDS."""
+    if verbose:
+        print("  [NEWS] Fetching headlines...", end=" ", flush=True)
+    all_items, seen = [], set()
+    for name, url in NEWS_FEEDS:
+        for item in _fetch_rss(url):
+            key = item["title"].lower()[:60]
+            if key and key not in seen:
+                seen.add(key)
+                item["source"] = name
+                all_items.append(item)
+    if verbose:
+        print(f"{len(all_items)} unique headlines from {len(NEWS_FEEDS)} sources")
+    return all_items
+
+
+def _load_news_cache() -> dict | None:
+    """Return today's cached macro analysis, or None if stale/missing."""
+    if not NEWS_CACHE_FILE.exists():
+        return None
+    try:
+        data = json.loads(NEWS_CACHE_FILE.read_text(encoding="utf-8"))
+        if data.get("analysis_date") == date.today().isoformat():
+            return data
+    except Exception:
+        pass
+    return None
+
+
+def _save_news_cache(data: dict):
+    try:
+        NEWS_CACHE_FILE.write_text(json.dumps(data, indent=2), encoding="utf-8")
+    except Exception as e:
+        print(f"  [NEWS] Warning: could not save cache — {e}")
+
+
+def get_news_macro_analysis(force_refresh: bool = False, verbose: bool = True) -> dict | None:
+    """
+    Return today's macro analysis dict, cached after first call each day.
+    Fetches RSS headlines then asks Claude once to identify themes & catalysts.
+    Saves result to news_macro_cache.json so all subsequent strategy runs reuse it.
+    """
+    if not force_refresh:
+        cached = _load_news_cache()
+        if cached:
+            if verbose:
+                print(f"  [NEWS] Using cached analysis: "
+                      f"regime={cached.get('market_regime','?')}  "
+                      f"themes={len(cached.get('dominant_themes',[]))}")
+            return cached
+
+    headlines = _gather_headlines(verbose=verbose)
+    if not headlines:
+        print("  [NEWS] No headlines fetched — strategies 19/20 skipped today")
+        return None
+
+    headline_text = "\n".join(
+        f"[{h.get('source','')}] {h['title']} — {h.get('summary','')[:150]}"
+        for h in headlines[:60]
+    )
+
+    prompt = f"""Today is {date.today().isoformat()}.
+
+Here are today's top financial and world news headlines:
+
+{headline_text}
+
+Analyze these headlines and return ONLY valid JSON (no preamble, no markdown):
+
+{{
+  "analysis_date": "{date.today().isoformat()}",
+  "market_regime": "RISK-ON or RISK-OFF or NEUTRAL",
+  "regime_confidence": 7,
+  "regime_reasoning": "2-3 sentence explanation of overall market tone",
+  "dominant_themes": [
+    {{
+      "theme_id": "geopolitical_conflict",
+      "theme_name": "Human readable name",
+      "description": "2-3 sentences on why this matters today",
+      "strength": 8,
+      "duration_outlook": "1-3 days or 1-2 weeks or 1-3 months or structural",
+      "beneficiary_sectors": ["Energy"],
+      "loser_sectors": ["Consumer Discretionary"],
+      "supporting_headlines": ["headline 1"]
+    }}
+  ],
+  "company_catalysts": [
+    {{
+      "ticker": "FDX",
+      "catalyst_type": "earnings_beat or earnings_miss or upgrade or downgrade or guidance_up or guidance_down or ma or scandal or regulatory or other",
+      "sentiment": "positive or negative or neutral",
+      "magnitude": 8,
+      "description": "What happened in one sentence"
+    }}
+  ],
+  "macro_risk_factors": ["Risk factor 1"],
+  "trade_ideas": [
+    {{
+      "idea": "Short description",
+      "rationale": "Why",
+      "sectors": ["Energy"],
+      "direction": "long or short",
+      "timeframe": "today or week or month"
+    }}
+  ]
+}}
+
+Only include themes genuinely visible in today's headlines. Do not invent news.
+1-3 dominant themes max. company_catalysts only for tickers explicitly named."""
+
+    if verbose:
+        print("  [NEWS] Asking Claude to identify macro themes...", end=" ", flush=True)
+
+    payload = json.dumps({
+        "model": MODEL, "max_tokens": 2000,
+        "system": "You are a senior macro strategist. Respond only with valid JSON.",
+        "messages": [{"role": "user", "content": prompt}]
+    }).encode("utf-8")
+
+    req = _urllib_req.Request(
+        "https://api.anthropic.com/v1/messages",
+        data=payload,
+        headers={"Content-Type": "application/json",
+                 "x-api-key": ANTHROPIC_API_KEY,
+                 "anthropic-version": "2023-06-01"},
+        method="POST",
+    )
+    try:
+        with _urllib_req.urlopen(req, timeout=90) as resp:
+            resp_data = json.loads(resp.read().decode("utf-8"))
+        text = resp_data["content"][0]["text"].strip()
+        text = re.sub(r"^```[a-z]*\n?", "", text)
+        text = re.sub(r"\n?```$", "", text)
+        analysis = json.loads(text)
+        analysis["headline_count"] = len(headlines)
+        analysis["fetched_at"] = datetime.now(timezone.utc).isoformat()
+        _save_news_cache(analysis)
+        if verbose:
+            print(f"done  (regime={analysis.get('market_regime','?')}  "
+                  f"themes={len(analysis.get('dominant_themes',[]))}  "
+                  f"catalysts={len(analysis.get('company_catalysts',[]))})")
+        return analysis
+    except json.JSONDecodeError as e:
+        print(f"\n  [NEWS] JSON parse error: {e}")
+        return None
+    except Exception as e:
+        print(f"\n  [NEWS] API error: {e}")
+        return None
+
+
+def score_news_macro(rows: list, kmap: dict, macro: dict) -> list[tuple]:
+    """
+    Strategy 19 — News Macro Catalyst scorer.
+    Scores each stock by sector alignment with today's dominant macro themes.
+    Theme strength, duration, and market regime all adjust the final score.
+    """
+    if not macro or not macro.get("dominant_themes"):
+        return []
+
+    regime = macro.get("market_regime", "NEUTRAL")
+    sector_scores: dict[str, float] = defaultdict(float)
+    sector_labels: dict[str, list]  = defaultdict(list)
+
+    for theme in macro.get("dominant_themes", []):
+        strength = theme.get("strength", 5) / 10.0
+        dur_mult = {"1-3 days": 0.8, "1-2 weeks": 1.0,
+                    "1-3 months": 1.2, "structural": 1.5}.get(
+                        theme.get("duration_outlook", "1-2 weeks"), 1.0)
+
+        # Merge Claude's sectors with our built-in theme map for extra coverage
+        builtin  = MACRO_THEME_MAP.get(theme.get("theme_id", ""), ([], []))
+        ben_secs = list(set(theme.get("beneficiary_sectors", []) + builtin[0]))
+        los_secs = list(set(theme.get("loser_sectors", []) + builtin[1]))
+
+        for sec in ben_secs:
+            sector_scores[sec] += strength * dur_mult * 10
+            sector_labels[sec].append(f"{theme['theme_name']}(+)")
+        for sec in los_secs:
+            sector_scores[sec] -= strength * dur_mult * 10
+            sector_labels[sec].append(f"{theme['theme_name']}(-)")
+
+    # Per-company catalysts from news
+    catalyst_map: dict[str, tuple] = {}
+    for cat in macro.get("company_catalysts", []):
+        ticker = (cat.get("ticker") or "").upper()
+        if not ticker: continue
+        mag  = cat.get("magnitude", 5) / 10.0
+        sign = (1  if cat.get("sentiment") == "positive" else
+               -1  if cat.get("sentiment") == "negative" else 0)
+        if sign:
+            catalyst_map[ticker] = (sign * mag * 15, cat.get("description", "")[:80])
+
+    out = []
+    for r in rows:
+        ticker = r["ticker"]
+        sector = r.get("sector", "Unknown")
+        beta   = r.get("beta", 1.0) or 1.0
+        cs     = r.get("composite_score", 0) or 0
+
+        sec_adj = sector_scores.get(sector, 0.0)
+
+        # Regime modifier
+        if regime == "RISK-OFF":
+            if beta > 1.3:  sec_adj -= 5
+            elif beta < 0.8: sec_adj += 3
+        elif regime == "RISK-ON":
+            if beta > 1.2:  sec_adj += 3
+
+        cat_score, cat_desc = catalyst_map.get(ticker, (0, ""))
+        score = sec_adj + cs * 0.3 + cat_score
+
+        if score <= 2 and not cat_score:
+            continue
+
+        labels = " ".join(sector_labels.get(sector, []))
+        reason = f"News macro: {sector} adj={sec_adj:+.1f} regime={regime}"
+        if labels:   reason += f" [{labels}]"
+        if cat_desc: reason += f" | catalyst: {cat_desc}"
+
+        out.append((ticker, round(score, 2), reason))
+
+    return sorted(out, key=lambda x: -x[1])
+
+
+def score_news_sentiment(rows: list, kmap: dict, macro: dict) -> list[tuple]:
+    """
+    Strategy 20 — News Sentiment Momentum scorer.
+    Quality gate (CS > 40, positive EPS) then amplified by macro sector tailwinds
+    and company-specific catalysts. Fundamentals + news together.
+    """
+    if not macro:
+        return []
+
+    sector_scores: dict[str, float] = defaultdict(float)
+    for theme in macro.get("dominant_themes", []):
+        strength = theme.get("strength", 5) / 10.0
+        builtin  = MACRO_THEME_MAP.get(theme.get("theme_id", ""), ([], []))
+        for sec in set(theme.get("beneficiary_sectors", []) + builtin[0]):
+            sector_scores[sec] += strength * 8
+        for sec in set(theme.get("loser_sectors", []) + builtin[1]):
+            sector_scores[sec] -= strength * 8
+
+    catalyst_map: dict[str, tuple] = {}
+    for cat in macro.get("company_catalysts", []):
+        ticker = (cat.get("ticker") or "").upper()
+        if not ticker: continue
+        mag  = cat.get("magnitude", 5) / 10.0
+        sign = (1  if cat.get("sentiment") == "positive" else
+               -1  if cat.get("sentiment") == "negative" else 0)
+        if sign:
+            catalyst_map[ticker] = (sign * mag * 20, cat.get("description", "")[:80])
+
+    out = []
+    for r in rows:
+        ticker = r["ticker"]
+        cs     = r.get("composite_score", 0) or 0
+        eps_g  = r.get("eps_growth_fwd", 0) or 0
+        npm    = r.get("net_profit_margin", 0) or 0
+        sector = r.get("sector", "Unknown")
+
+        if cs < 40: continue                         # quality gate
+        if (r.get("eps_ttm") or 0) < 0: continue    # must be profitable
+
+        sec_adj           = sector_scores.get(sector, 0.0)
+        cat_adj, cat_desc = catalyst_map.get(ticker, (0, ""))
+        score = cs * 0.5 + sec_adj + cat_adj + eps_g * 30 + npm * 20
+
+        if score <= 15 and not cat_adj:
+            continue
+
+        parts = [f"Sentiment: CS={cs:.0f}"]
+        if sec_adj:  parts.append(f"sector_adj={sec_adj:+.1f}")
+        if cat_adj:  parts.append(f"catalyst={cat_adj:+.1f} ({cat_desc})")
+        parts.append(f"[{sector}]")
+
+        out.append((ticker, round(score, 2), "  ".join(parts)))
+
+    return sorted(out, key=lambda x: -x[1])
+
+
+def _build_news_prompt(strategy_id, strategy_name, strategy_desc,
+                       candidates, holdings, acct, today, macro):
+    """Build the Claude trading prompt for news-driven strategies 19 & 20."""
+    hold_str = "\n".join(
+        f"  {h['ticker']}: {h['shares']:.4f} sh  cost ${h['cost_basis']:.2f}  avg ${h['avg_cost']:.4f}"
+        for h in holdings
+    ) or "  (none)"
+
+    cand_str = "\n".join(
+        f"  {t}: score={s:.1f}  {r}"
+        for t, s, r in candidates[:12]
+    )
+
+    regime          = macro.get("market_regime", "NEUTRAL")
+    regime_conf     = macro.get("regime_confidence", 5)
+    regime_reasoning = macro.get("regime_reasoning", "")
+
+    themes_str = ""
+    for th in macro.get("dominant_themes", [])[:3]:
+        themes_str += (
+            f"\n  • {th.get('theme_name','')} "
+            f"(strength {th.get('strength',5)}/10, {th.get('duration_outlook','?')})\n"
+            f"    Tailwind: {', '.join(th.get('beneficiary_sectors',[]) or ['none'])}\n"
+            f"    Headwind: {', '.join(th.get('loser_sectors',[]) or ['none'])}\n"
+            f"    {th.get('description','')}"
+        )
+
+    cats_str = ""
+    for cat in macro.get("company_catalysts", [])[:6]:
+        sign = "+" if cat.get("sentiment") == "positive" else ("-" if cat.get("sentiment") == "negative" else "~")
+        cats_str += (f"\n  [{sign}] {cat.get('ticker','?')}: "
+                     f"{cat.get('description','')} (mag {cat.get('magnitude',5)}/10)")
+
+    ideas_str = ""
+    for idea in macro.get("trade_ideas", [])[:3]:
+        ideas_str += (f"\n  • {idea.get('idea','')} "
+                      f"[{idea.get('direction','?').upper()}, {idea.get('timeframe','?')}]: "
+                      f"{idea.get('rationale','')}")
+
+    return f"""You are managing a paper trading account for strategy "{strategy_id} - {strategy_name}".
+
+Strategy: {strategy_desc}
+
+=== TODAY'S NEWS-DRIVEN MACRO CONTEXT ({today}) ===
+Market Regime: {regime} (confidence {regime_conf}/10)
+{regime_reasoning}
+
+Dominant macro themes:{themes_str if themes_str else chr(10) + "  None — treat as NEUTRAL"}
+
+Company catalysts from headlines:{cats_str if cats_str else chr(10) + "  None identified"}
+
+Trade ideas:{ideas_str if ideas_str else chr(10) + "  None"}
+
+=== ACCOUNT ===
+Cash ${acct['cash']:.2f}  Holdings ${acct['holdings_value']:.2f}  Total ${acct['cash']+acct['holdings_value']:.2f}
+Goal ${STARTING_CASH*2:.2f}  |  Trades so far: {acct['trades']}
+
+Current holdings:
+{hold_str}
+
+Top-ranked candidates (news-macro scoring):
+{cand_str}
+
+=== RULES ===
+- Commission $4.95 + 0.05% spread per trade
+- Max 3 positions, max 60% per stock, keep ≥5% cash reserve
+- BUY: sector aligns with bullish theme AND KPI score > 40
+- SELL: sector is a headwind loser OR negative company catalyst OR >20% loss from avg cost
+- HOLD: signal strength < 5/10 or ambiguous — don't overtrade noise
+- RISK-OFF regime: prefer beta < 1.0 even in tailwind sectors
+- Strong company catalyst (earnings beat, guidance raise) overrides sector headwinds
+
+Respond ONLY with a JSON object. No explanation outside the JSON.
+{{
+  "actions": [
+    {{"type": "BUY",  "ticker": "XOM",  "reason": "Energy tailwind from oil shock"}},
+    {{"type": "SELL", "ticker": "NVDA", "reason": "Tech headwind + RISK-OFF regime"}},
+    {{"type": "HOLD", "ticker": "JPM",  "reason": "Deregulation tailwind, awaiting confirmation"}}
+  ],
+  "summary": "one sentence: what news theme drove today's decisions"
+}}"""
+
+
+def print_news_briefing(macro: dict):
+    """Print a formatted daily news macro briefing."""
+    if not macro:
+        return
+    print("\n" + "─"*65)
+    print("  TODAY'S NEWS MACRO BRIEFING")
+    print(f"  {macro.get('analysis_date','?')}  |  "
+          f"{macro.get('headline_count','?')} headlines analyzed")
+    print("─"*65)
+    regime = macro.get("market_regime", "NEUTRAL")
+    sym    = {"RISK-ON": "▲", "RISK-OFF": "▼", "NEUTRAL": "─"}.get(regime, "─")
+    print(f"  {sym} {regime}  (confidence {macro.get('regime_confidence',5)}/10)")
+    print(f"  {macro.get('regime_reasoning','')}")
+    for i, th in enumerate(macro.get("dominant_themes", []), 1):
+        print(f"\n  Theme {i}: {th.get('theme_name','')}  "
+              f"[{th.get('strength',5)}/10  {th.get('duration_outlook','?')}]")
+        print(f"    {th.get('description','')}")
+        if th.get("beneficiary_sectors"):
+            print(f"    Tailwind: {', '.join(th['beneficiary_sectors'])}")
+        if th.get("loser_sectors"):
+            print(f"    Headwind: {', '.join(th['loser_sectors'])}")
+    for cat in macro.get("company_catalysts", []):
+        sym2 = {"positive": "▲", "negative": "▼"}.get(cat.get("sentiment",""), "─")
+        print(f"  {sym2} {cat.get('ticker','?'):<6}  "
+              f"[{cat.get('catalyst_type','')}]  {cat.get('description','')[:70]}")
+    print("─"*65)
+
+
 SCORE_FN = {
     "01": score_momentum,
     "02": score_mean_reversion,
@@ -607,6 +1078,8 @@ SCORE_FN = {
     "16": score_estimate_revision,      # NEW-16
     "17": score_high_beta_quality,      # NEW-17
     "18": score_capex_beneficiary,      # NEW-18
+    "19": score_news_macro,             # NEW-19
+    "20": score_news_sentiment,         # NEW-20
 }
 
 # ── Trade execution helpers ───────────────────────────────────────────────────
@@ -1079,6 +1552,64 @@ def run_strategy(sid, name, style, risk, desc, rows, kmap, today, dry_run=False)
     # FIX-4: passive strategy bypasses Claude entirely
     if sid == "14":
         run_passive(sid, rows, kmap, today, dry_run)
+        return
+
+    # NEW-19/20: news-driven strategies — fetch macro analysis then use news prompt
+    if sid in ("19", "20"):
+        macro = get_news_macro_analysis(verbose=True)
+        if not macro:
+            print("       No news macro analysis available today — skipping")
+            return
+        print_news_briefing(macro)
+        acct     = read_account(sid)
+        holdings = read_holdings(sid)
+        acct["holdings_value"] = calc_holdings_value(holdings, kmap)
+        acct["total"]          = round(acct["cash"] + acct["holdings_value"], 2)
+        save_account(sid, acct)
+        print(f"       Cash: ${acct['cash']:>9.2f}  |  "
+              f"Holdings: ${acct['holdings_value']:>9.2f}  |  "
+              f"Total: ${acct['total']:>9.2f}")
+        score_fn   = SCORE_FN.get(sid)
+        candidates = score_fn(rows, kmap, macro) if score_fn else []
+        if not candidates:
+            print("       No candidates matched today's news themes")
+            return
+        print(f"       Top candidate: {candidates[0][0]} (score {candidates[0][1]:.1f})")
+        prompt = _build_news_prompt(sid, name, desc, candidates, holdings, acct, today, macro)
+        payload = json.dumps({"model": MODEL, "max_tokens": 1200,
+                               "messages": [{"role": "user", "content": prompt}]}).encode("utf-8")
+        req = urllib.request.Request(
+            "https://api.anthropic.com/v1/messages", data=payload,
+            headers={"Content-Type": "application/json", "x-api-key": ANTHROPIC_API_KEY,
+                     "anthropic-version": "2023-06-01"}, method="POST")
+        try:
+            with urllib.request.urlopen(req, timeout=60) as resp:
+                resp_data = json.loads(resp.read().decode("utf-8"))
+            text = resp_data["content"][0]["text"].strip()
+            text = re.sub(r"^```[a-z]*\n?", "", text)
+            text = re.sub(r"\n?```$", "", text)
+            decision = json.loads(text)
+        except Exception as e:
+            print(f"       Claude error: {e}")
+            return
+        print(f"       Summary: {decision.get('summary','')}")
+        for action in decision.get("actions", []):
+            atype  = action.get("type","").upper()
+            ticker = action.get("ticker","")
+            reason = action.get("reason","")
+            if not ticker or ticker not in kmap: continue
+            price = kmap[ticker].get("current_price", 0)
+            if price <= 0: continue
+            if atype == "BUY":
+                ok, msg = buy(sid, ticker, price, acct["cash"], reason, today, kmap, dry_run)
+                print(f"       BUY  {ticker}: {msg}")
+                acct = read_account(sid)
+            elif atype == "SELL":
+                ok, msg = sell(sid, ticker, price, reason, today, kmap, dry_run)
+                print(f"       SELL {ticker}: {msg}")
+                acct = read_account(sid)
+            elif atype == "HOLD":
+                print(f"       HOLD {ticker}: {reason[:60]}")
         return
 
     acct     = read_account(sid)

@@ -1,0 +1,51 @@
+ticker,name,sector,industry,day_return_pct,market_return_pct,abnormal_return_pct,actually_gained,beta,pe_ratio,forward_pe,net_margin_pct,dividend_yield_pct,market_cap_B,short_pct_float,pct_from_52w_high,50d_vs_200d_ma,debt_to_equity,current_ratio,insider_pct,analyst_rating
+DELL,Dell Technologies Inc.,Technology,Computer Hardware,5.209,-0.84,6.049,YES,1.036,19.000576,11.428086,5.2,161.0,109.3,8.7,-2.9,DEATH,,0.91,7.7,1.80769
+T,AT&T Inc.,Communication Services,Telecom Services,3.136,-0.84,3.977,YES,0.576,9.411184,11.226608,17.5,400.0,202.8,1.5,-4.0,DEATH,124.179,0.906,0.1,1.88
+MRSH,Marsh,Financial Services,Insurance Brokers,2.779,-0.84,3.62,YES,0.731,20.83867,15.502802,15.4,211.0,86.1,1.1,-29.2,DEATH,140.052,1.102,0.1,2.54545
+OKE,"ONEOK, Inc.",Energy,Oil & Gas Midstream,2.755,-0.84,3.595,YES,0.88,16.750923,15.048,10.1,471.0,57.2,4.7,-12.4,GOLDEN,146.453,0.705,0.2,2.13636
+MS,Morgan Stanley,Financial Services,Capital Markets,2.542,-0.84,3.382,YES,1.207,15.926542,13.214513,24.0,252.0,258.2,1.3,-15.6,GOLDEN,455.747,2.053,24.0,2.36
+OXY,Occidental Petroleum Corporatio,Energy,Oil & Gas E&P,2.526,-0.84,3.366,YES,0.351,45.237038,25.255157,10.8,175.0,60.2,4.5,-0.5,GOLDEN,63.804,0.936,27.2,2.65385
+AON,Aon plc,Financial Services,Insurance Brokers,2.506,-0.84,3.347,YES,0.828,19.091362,15.09353,21.5,94.0,69.8,1.1,-19.3,DEATH,168.318,1.11,2.8,2.0
+XOM,Exxon Mobil Corporation,Energy,Oil & Gas Integrated,2.384,-0.84,3.224,YES,0.348,24.132637,18.653467,8.9,260.0,674.7,1.3,-0.3,GOLDEN,18.936,1.153,0.1,2.28
+GS,"Goldman Sachs Group, Inc. (The)",Financial Services,Capital Markets,1.878,-0.84,2.718,YES,1.336,16.06976,12.6795,28.9,222.0,247.4,2.1,-16.2,GOLDEN,596.073,1.528,0.5,2.53846
+VZ,Verizon Communications Inc.,Communication Services,Telecom Services,1.789,-0.84,2.629,YES,0.281,12.403941,9.57127,12.4,572.0,212.4,2.7,-2.5,GOLDEN,174.78,0.913,0.1,2.24
+WFC,Wells Fargo & Company,Financial Services,Banks - Diversified,1.689,-0.84,2.529,YES,1.071,12.407348,9.802276,26.7,236.0,243.8,0.9,-20.6,GOLDEN,,,0.1,2.0
+FDX,FedEx Corporation,Industrials,Integrated Freight & Logistics,1.671,-0.84,2.511,YES,1.281,20.058727,16.335493,4.8,163.0,85.4,1.4,-7.8,GOLDEN,,1.274,7.6,1.96667
+PGR,Progressive Corporation (The),Financial Services,Insurance - Property & Casualty,1.554,-0.84,2.395,YES,0.29,10.7035885,12.737832,12.9,686.0,120.6,1.2,-29.0,DEATH,23.421,0.356,0.2,2.58333
+CVX,Chevron Corporation,Energy,Oil & Gas Integrated,1.376,-0.84,2.216,YES,0.658,30.806938,21.660194,6.7,353.0,408.4,1.1,-0.4,GOLDEN,24.323,1.155,6.6,2.03846
+MA,Mastercard Incorporated,Financial Services,Credit Services,1.366,-0.84,2.207,YES,0.836,30.15909,21.974993,45.6,71.0,444.1,0.8,-17.3,DEATH,256.042,1.035,0.5,1.37838
+CMCSA,Comcast Corporation,Communication Services,Telecom Services,1.294,-0.84,2.134,YES,0.78,5.4461966,7.371664,16.2,455.0,107.0,2.2,-17.0,GOLDEN,107.863,0.882,0.8,2.66667
+NSC,Norfolk Southern Corporation,Industrials,Railroads,1.258,-0.84,2.099,YES,1.303,22.110676,20.794071,23.6,194.0,63.3,4.7,-12.0,GOLDEN,114.742,0.847,0.1,2.6087
+TMUS,"T-Mobile US, Inc.",Communication Services,Telecom Services,1.222,-0.84,2.063,YES,0.412,21.536045,14.877753,12.4,197.0,233.9,3.1,-23.3,DEATH,208.851,0.998,55.8,1.82759
+TJX,"TJX Companies, Inc. (The)",Consumer Cyclical,Apparel Retail,1.057,-0.84,1.897,YES,0.736,32.097538,27.587612,9.1,110.0,174.0,1.1,-3.9,GOLDEN,132.375,1.138,0.1,
+TMO,Thermo Fisher Scientific Inc,Healthcare,Diagnostics & Research,0.977,-0.84,1.818,YES,0.971,26.784548,17.659958,15.0,37.0,176.4,1.0,-26.3,GOLDEN,77.255,1.89,0.2,1.48148
+COP,ConocoPhillips,Energy,Oil & Gas E&P,0.96,-0.84,1.801,YES,0.279,20.03937,18.816116,13.3,267.0,155.5,1.6,-0.7,GOLDEN,37.828,1.297,0.1,1.82143
+EOG,"EOG Resources, Inc.",Energy,Oil & Gas E&P,0.911,-0.84,1.752,YES,0.427,15.360198,12.201272,22.0,294.0,76.0,2.8,-0.6,GOLDEN,30.62,1.632,0.3,2.22581
+C,"Citigroup, Inc.",Financial Services,Banks - Diversified,0.819,-0.84,1.66,YES,1.131,15.848355,9.157892,18.9,218.0,193.8,1.6,-11.5,GOLDEN,,,0.3,1.69565
+V,Visa Inc.,Financial Services,Credit Services,0.787,-0.84,1.628,YES,0.791,28.397554,20.784922,50.2,89.0,582.6,1.6,-19.5,DEATH,54.612,1.111,0.6,1.34211
+BAC,Bank of America Corporation,Financial Services,Banks - Diversified,0.766,-0.84,1.606,YES,1.263,12.430447,9.558948,28.4,238.0,345.8,1.3,-17.7,GOLDEN,,,7.3,1.57692
+ELV,"Elevance Health, Inc.",Healthcare,Healthcare Plans,0.656,-0.84,1.496,YES,0.468,11.623761,9.952853,2.8,236.0,64.7,1.9,-36.1,GOLDEN,74.388,1.535,0.2,1.86364
+SCHW,Charles Schwab Corporation (The,Financial Services,Capital Markets,0.638,-0.84,1.479,YES,0.919,20.341934,13.93195,37.0,136.0,168.1,0.8,-12.0,GOLDEN,115.32,0.63,6.3,1.66667
+JPM,JP Morgan Chase & Co.,Financial Services,Banks - Diversified,0.629,-0.84,1.469,YES,1.059,14.47826,12.332115,33.9,208.0,781.4,0.9,-14.1,GOLDEN,,,0.4,2.11538
+COF,Capital One Financial Corporati,Financial Services,Credit Services,0.623,-0.84,1.464,YES,1.139,53.81399,7.352986,7.5,178.0,112.5,1.4,-30.4,DEATH,,,1.9,1.65217
+CI,The Cigna Group,Healthcare,Healthcare Plans,0.488,-0.84,1.328,YES,0.234,11.983312,7.9344606,2.2,236.0,71.0,2.6,-24.1,DEATH,75.137,0.849,1.4,1.48
+ADP,"Automatic Data Processing, Inc.",Technology,Software - Application,0.46,-0.84,1.301,YES,0.854,20.330452,17.688745,20.0,323.0,85.6,2.9,-35.9,DEATH,70.044,1.032,0.2,3.05882
+BKNG,Booking Holdings Inc. Common St,Consumer Cyclical,Travel Services,0.44,-0.84,1.28,YES,1.227,26.023106,13.770585,20.1,92.0,139.0,2.6,-26.1,DEATH,,1.333,0.2,1.57895
+COST,Costco Wholesale Corporation,Consumer Defensive,Discount Stores,0.437,-0.84,1.277,YES,0.993,50.979424,43.621227,3.0,53.0,434.5,1.4,-8.3,GOLDEN,25.976,1.058,0.2,1.94595
+ADBE,Adobe Inc.,Technology,Software - Application,0.427,-0.84,1.267,YES,1.532,14.386138,9.372069,29.5,0.0,101.4,3.9,-41.6,DEATH,58.217,0.912,0.2,2.35897
+VLO,Valero Energy Corporation,Energy,Oil & Gas Refining & Marketing,0.425,-0.84,1.266,YES,0.734,32.07058,16.990479,2.0,198.0,74.1,5.1,-0.7,GOLDEN,43.988,1.645,0.6,2.10526
+TFC,Truist Financial Corporation,Financial Services,Banks - Regional,0.41,-0.84,1.251,YES,0.861,11.534032,8.618919,28.8,474.0,55.0,2.1,-21.6,GOLDEN,,,0.2,2.0
+UNH,UnitedHealth Group Incorporated,Healthcare,Healthcare Plans,0.389,-0.84,1.229,YES,0.38,21.26624,14.140191,2.7,315.0,255.6,1.6,-53.6,DEATH,81.618,0.788,0.8,1.82759
+ICE,Intercontinental Exchange Inc.,Financial Services,Financial Data & Stock Exchanges,0.347,-0.84,1.187,YES,1.051,27.564125,18.543758,33.4,131.0,90.7,1.3,-16.0,DEATH,70.077,1.02,0.9,1.46667
+MRK,"Merck & Company, Inc.",Healthcare,Drug Manufacturers - General,0.32,-0.84,1.16,YES,0.264,15.758597,11.697779,28.1,298.0,283.2,1.4,-8.5,GOLDEN,95.959,1.536,0.1,1.89655
+UNP,Union Pacific Corporation,Industrials,Railroads,0.312,-0.84,1.152,YES,0.952,19.592161,17.392727,29.1,236.0,139.4,4.7,-12.4,GOLDEN,177.733,0.908,0.2,1.88462
+KMI,"Kinder Morgan, Inc.",Energy,Oil & Gas Midstream,0.299,-0.84,1.139,YES,0.648,24.478102,22.93603,18.0,350.0,74.6,2.7,-2.1,GOLDEN,99.71,0.637,12.8,2.04545
+BRK-B,Berkshire Hathaway Inc. New,Financial Services,Insurance - Diversified,0.285,-0.84,1.125,YES,0.688,15.548938,22.179665,18.0,0.0,1041.9,0.9,-10.9,GOLDEN,18.809,7.067,0.3,2.0
+BKR,Baker Hughes Company,Energy,Oil & Gas Equipment & Services,0.28,-0.84,1.12,YES,0.879,23.407694,20.934736,9.3,152.0,60.1,3.0,-9.2,GOLDEN,35.255,1.357,0.2,1.72727
+INTU,Intuit Inc.,Technology,Software - Application,0.242,-0.84,1.082,YES,1.282,29.651396,17.235981,21.6,102.0,127.0,2.8,-43.9,DEATH,,1.323,2.4,1.54286
+MCO,Moody's Corporation,Financial Services,Financial Data & Stock Exchanges,0.234,-0.84,1.074,YES,1.442,31.931286,23.342905,31.9,95.0,77.8,1.5,-20.1,DEATH,176.813,1.74,14.0,1.73913
+PNC,"PNC Financial Services Group, I",Financial Services,Banks - Regional,0.223,-0.84,1.063,YES,0.974,12.19982,9.8006935,31.1,337.0,81.8,1.7,-17.0,GOLDEN,,,0.3,1.86957
+CTAS,Cintas Corporation,Industrials,Specialty Business Services,0.209,-0.84,1.049,YES,0.944,39.44589,33.712563,17.6,99.0,73.2,2.7,-20.5,DEATH,72.656,1.705,15.0,2.47619
+AXP,American Express Company,Financial Services,Credit Services,0.193,-0.84,1.034,YES,1.152,19.21568,14.661285,16.2,129.0,203.4,1.8,-23.8,GOLDEN,190.921,1.405,22.2,2.39286
+PG,Procter & Gamble Company (The),Consumer Defensive,Household & Personal Products,0.173,-0.84,1.013,YES,0.34,21.491512,19.78912,19.3,292.0,339.5,1.0,-17.0,GOLDEN,68.719,0.724,0.1,2.08333
+APO,"Apollo Global Management, Inc. ",Financial Services,Asset Management,0.166,-0.84,1.006,YES,1.638,20.13177,10.286137,11.0,183.0,64.7,5.5,-29.1,DEATH,99.468,1.659,27.0,1.75
