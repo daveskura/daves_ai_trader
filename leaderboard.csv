@@ -1,21 +1,21 @@
 rank,date,strategy_id,strategy_name,style,risk,cash,holdings_value,total,pnl,pct_return,trades
-1,2026-03-23,08,Dividend growth,income,low,40.0,960.06,1000.06,0.06,0.01,2
-2,2026-03-23,09,Insider buying signal,alt-data,med,1000.0,0.0,1000.0,0.0,0.0,0
-3,2026-03-23,19,News macro catalyst,macro,med,1000.0,0.0,1000.0,0.0,0.0,0
-4,2026-03-23,20,News sentiment momentum,alt-data,med,1000.0,0.0,1000.0,0.0,0.0,0
-5,2026-03-23,02,Mean reversion,contrarian,med,40.0,959.69,999.69,-0.31,-0.03,2
-6,2026-03-23,13,Quality / profitability,academic,low,40.0,958.91,998.91,-1.09,-0.11,2
-7,2026-03-23,12,Momentum (academic / Asness),academic,high,40.0,957.33,997.33,-2.67,-0.27,2
-8,2026-03-23,10,Macro-regime adaptive,macro,med,40.0,954.99,994.99,-5.01,-0.5,2
-9,2026-03-23,06,Low volatility / defensive,defensive,low,40.0,954.97,994.97,-5.03,-0.5,2
-10,2026-03-23,14,Passive S&P 500 benchmark,passive,low,568.0,419.97,987.97,-12.03,-1.2,1
-11,2026-03-23,18,Capex beneficiary / semis,thematic,high,40.0,944.07,984.07,-15.93,-1.59,2
-12,2026-03-23,07,Earnings surprise (PEAD),event,high,40.0,937.59,977.59,-22.41,-2.24,2
-13,2026-03-23,11,Large-cap value (Fama-French),academic,med,40.0,923.66,963.66,-36.34,-3.63,2
-14,2026-03-23,01,Momentum / trend following,momentum,high,40.0,920.17,960.17,-39.83,-3.98,2
-15,2026-03-23,03,Value investing,value,low,40.0,920.04,960.04,-39.96,-4.0,2
-16,2026-03-23,16,Estimate revision momentum,growth,med,40.0,904.61,944.61,-55.39,-5.54,2
-17,2026-03-23,05,Sector rotation,macro,med,37.86,898.22,936.08,-63.92,-6.39,10
-18,2026-03-23,17,High-beta quality growth,growth,high,40.0,890.38,930.38,-69.62,-6.96,2
-19,2026-03-23,04,Quality growth (GARP),growth,med,40.0,885.79,925.79,-74.21,-7.42,2
-20,2026-03-23,15,Noise chaser,speculative,high,365.41,542.89,908.3,-91.7,-9.17,7
+1,2026-03-24,02,Mean reversion,contrarian,med,40.0,970.23,1010.23,10.23,1.02,2
+2,2026-03-24,08,Dividend growth,income,low,40.0,962.98,1002.98,2.98,0.3,2
+3,2026-03-24,09,Insider buying signal,alt-data,med,1000.0,0.0,1000.0,0.0,0.0,0
+4,2026-03-24,19,News macro catalyst,macro,med,1000.0,0.0,1000.0,0.0,0.0,0
+5,2026-03-24,20,News sentiment momentum,alt-data,med,1000.0,0.0,1000.0,0.0,0.0,0
+6,2026-03-24,12,Momentum (academic / Asness),academic,high,40.0,959.28,999.28,-0.72,-0.07,2
+7,2026-03-24,10,Macro-regime adaptive,macro,med,40.0,958.36,998.36,-1.64,-0.16,2
+8,2026-03-24,07,Earnings surprise (PEAD),event,high,40.0,954.6,994.6,-5.4,-0.54,2
+9,2026-03-24,06,Low volatility / defensive,defensive,low,40.0,954.12,994.12,-5.88,-0.59,2
+10,2026-03-24,01,Momentum / trend following,momentum,high,40.0,953.87,993.87,-6.13,-0.61,2
+11,2026-03-24,14,Passive S&P 500 benchmark,passive,low,568.0,418.92,986.92,-13.08,-1.31,1
+12,2026-03-24,13,Quality / profitability,academic,low,40.0,946.52,986.52,-13.48,-1.35,2
+13,2026-03-24,18,Capex beneficiary / semis,thematic,high,40.0,923.91,963.91,-36.09,-3.61,2
+14,2026-03-24,11,Large-cap value (Fama-French),academic,med,40.0,917.95,957.95,-42.05,-4.2,2
+15,2026-03-24,03,Value investing,value,low,40.0,912.58,952.58,-47.42,-4.74,2
+16,2026-03-24,05,Sector rotation,macro,med,37.86,912.67,950.53,-49.47,-4.95,10
+17,2026-03-24,16,Estimate revision momentum,growth,med,40.0,894.07,934.07,-65.93,-6.59,2
+18,2026-03-24,15,Noise chaser,speculative,high,372.66,553.77,926.43,-73.57,-7.36,9
+19,2026-03-24,17,High-beta quality growth,growth,high,40.0,877.7,917.7,-82.3,-8.23,2
+20,2026-03-24,04,Quality growth (GARP),growth,med,40.0,873.21,913.21,-86.79,-8.68,2

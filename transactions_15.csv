@@ -6,3 +6,5 @@ date,strategy_id,action,ticker,shares,price,commission,net_amount,cash_after,rea
 2026-03-20,15,BUY,MRSH,3.139578,176.48,4.95,-559.2998,372.8666,#1 ranked candidate today with highest abnormal return of 4.37%; deploying available cash after selling CIEN per noise-chasing strategy
 2026-03-23,15,SELL,MRSH,3.139578,173.87,4.95,540.6555,913.5221,"MRSH is not in today's top 3 candidates (CIEN, SLB, PLTR); strategy rules require selling any holding not in the top 3"
 2026-03-23,15,BUY,CIEN,1.330943,407.9,4.95,-548.1131,365.409,CIEN is the #1 noise candidate today with highest abnormal return of 5.01% (score=25.1); buying with available cash after MRSH sale per strategy rules
+2026-03-24,15,SELL,CIEN,1.330943,429.38,4.95,566.2446,931.6536,CIEN is ranked #4 today; GLW is the #1 abnormal-return candidate so we must sell CIEN to free up capital to chase GLW
+2026-03-24,15,BUY,GLW,3.899481,142.01,4.95,-558.9922,372.6614,GLW is the #1 noise candidate with highest abnormal return of 8.81% (score=44.0); buying with all available cash minus 5% reserve as required by the strategy
