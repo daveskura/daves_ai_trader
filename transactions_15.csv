@@ -10,3 +10,5 @@ date,strategy_id,action,ticker,shares,price,commission,net_amount,cash_after,rea
 2026-03-24,15,BUY,GLW,3.899481,142.01,4.95,-558.9922,372.6614,GLW is the #1 noise candidate with highest abnormal return of 8.81% (score=44.0); buying with all available cash minus 5% reserve as required by the strategy
 2026-03-25,15,SELL,GLW,3.899481,146.35,4.95,565.4537,938.1151,"GLW is ranked #8 today, not in top 3 candidates; must sell per strategy rules to chase the #1 mover"
 2026-03-25,15,BUY,INTC,11.81942,47.18,4.95,-562.8691,375.246,INTC is the #1 noise candidate today with highest abnormal return of 6.34%; deploying available cash after GLW sale up to 60% position limit minus 5% cash reserve
+2026-03-26,15,SELL,INTC,11.81942,44.1,4.95,516.0258,891.2718,INTC is not in the top 3 candidates today; must sell to chase #1 abnormal return candidate VLO per strategy rules
+2026-03-26,15,BUY,VLO,2.134071,248.14,4.95,-534.7632,356.5086,"#1 noise candidate with highest abnormal return of 7.08%; buying with all available funds after selling INTC, keeping 5% cash reserve"
