@@ -33,11 +33,8 @@ ACCOUNT_NUM   = "123456789"
 BASE_DIR      = Path(__file__).parent
 
 STRATEGIES = [
-    ("01", "Momentum / trend following",    "momentum",    "high"),
     ("02", "Mean reversion",                "contrarian",  "med"),
     ("03", "Value investing",               "value",       "low"),
-    ("04", "Quality growth (GARP)",         "growth",      "med"),
-    ("05", "Sector rotation",               "macro",       "med"),
     ("06", "Low volatility / defensive",    "defensive",   "low"),
     ("07", "Earnings surprise (PEAD)",      "event",       "high"),
     ("08", "Dividend growth",               "income",      "low"),
@@ -47,10 +44,10 @@ STRATEGIES = [
     ("12", "Momentum (academic / Asness)",  "academic",    "high"),
     ("13", "Quality / profitability",       "academic",    "low"),
     ("14", "Passive S&P 500 benchmark",     "passive",     "low"),
-    ("15", "Noise chaser",                  "speculative", "high"),
-    ("16", "Estimate revision momentum",    "growth",      "med"),
-    ("17", "High-beta quality growth",      "growth",      "high"),
     ("18", "Capex beneficiary / semis",     "thematic",    "high"),
+    ("19", "News macro catalyst",           "macro",       "med"),
+    ("20", "News sentiment momentum",       "alt-data",    "med"),
+    ("21", "Defense & war economy",         "thematic",    "med"),
 ]
 
 # ── File helpers ──────────────────────────────────────────────────────────────

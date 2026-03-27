@@ -26,8 +26,7 @@ Changes vs original:
                     stock must be >= 5% below 52-week high
     FIX-9  score_dividend_growth: uses actual dividend_yield from KPI data
                     when available, falls back to proxy otherwise
-    NEW-15 Strategy 15 "Noise chaser" — explicit degenerate baseline that buys
-                    the largest abnormal movers with no fundamental filter
+    REMOVED Strategies 01, 04, 05, 15, 16, 17 — retired underperformers
     NEW-19 Strategy 19 "News macro catalyst" — fetches RSS headlines daily, asks
                     Claude to identify dominant macro themes, scores universe stocks
                     by sector alignment with those themes. Cache in news_macro_cache.json
@@ -36,6 +35,10 @@ Changes vs original:
                     on top of KPI composite scores. Requires minimum quality gate
                     (CS > 40, positive EPS) then amplifies signal with macro sector
                     tailwinds and company-specific catalysts from headlines.
+    NEW-21 Strategy 21 "Defense & war economy" — targets defense primes, energy,
+                    and cybersecurity stocks that benefit from sustained US military
+                    spending. Scores on: sector membership, net margin, EPS growth,
+                    golden cross, and a backlog/contract proxy via abnormal return.
 """
 
 import sys, os, re, json, csv, math, argparse, urllib.error, urllib.request
@@ -72,16 +75,10 @@ BASE_DIR          = Path(__file__).parent
 # ── Strategy definitions ─────────────────────────────────────────────────────
 STRATEGIES = [
     # id,  name,                          style,         risk,   description
-    ("01", "Momentum / trend following",   "momentum",    "high",
-     "Buy the strongest 3-12 month performers. Sell when trend breaks (RSI drops, MA death cross)."),
     ("02", "Mean reversion",               "contrarian",  "med",
      "Buy oversold stocks (RSI < 38). Sell when RSI recovers above 50."),
     ("03", "Value investing",              "value",       "low",
      "Buy fundamentally cheap stocks: low P/E, low P/B. Hold until fair value."),
-    ("04", "Quality growth (GARP)",        "growth",      "med",
-     "Growth at a reasonable price. High margins, strong EPS growth, not overvalued. Only profitable companies (positive trailing EPS)."),
-    ("05", "Sector rotation",              "macro",       "med",
-     "Concentrate in the strongest-performing sector based on relative sector composite scores."),
     ("06", "Low volatility / defensive",   "defensive",   "low",
      "Lowest beta stocks with stable earnings. Hold through high-VIX environments."),
     ("07", "Earnings surprise (PEAD)",     "event",       "high",
@@ -100,17 +97,6 @@ STRATEGIES = [
      "Novy-Marx gross profitability factor: high gross margin, low debt, stable ROE."),
     ("14", "Passive S&P 500 benchmark",    "passive",     "low",
      "Buy and hold the top market-cap stocks. No active trading. No Claude call. Reality-check baseline."),
-    ("15", "Noise chaser",                 "speculative", "high",  # NEW-15
-     "Chase the largest single-day abnormal price movers with zero fundamental filter. "
-     "Explicit degenerate baseline — demonstrates why noise-chasing loses money over time."),
-    ("16", "Estimate revision momentum",   "growth",      "med",   # NEW-16
-     "Buy stocks where sell-side EPS estimates have been revised upward most aggressively "
-     "vs the prior run. Accelerating estimate revisions are a leading signal of institutional "
-     "re-rating. Sell when revision momentum stalls or reverses."),
-    ("17", "High-beta quality growth",     "growth",      "high",  # NEW-17
-     "Explicitly targets high-beta stocks (1.5-2.5) where the volatility is JUSTIFIED by "
-     "accelerating revenue growth, expanding margins, and strong forward EPS. "
-     "NVDA-type setup: high beta + improving fundamentals = asymmetric upside."),
     ("18", "Capex beneficiary / semis",    "thematic",    "high",  # NEW-18
      "Semiconductor and hardware infrastructure stocks that benefit when hyperscaler capex "
      "accelerates. Scores on: high net margin, high EPS growth, golden cross, and "
@@ -123,6 +109,12 @@ STRATEGIES = [
      "Overlays today's news sentiment on KPI composite scores. Requires CS > 40 and positive "
      "EPS as a quality gate, then amplifies with macro sector tailwinds and company-specific "
      "catalysts (earnings beats, scandals, upgrades) found in today's headlines."),
+    ("21", "Defense & war economy",        "thematic",    "med",   # NEW-21
+     "Targets defense primes (LMT, RTX, NOC, GD, LHX), energy majors, and cybersecurity "
+     "stocks that benefit from sustained US military spending in the Middle East. "
+     "Scores on: sector/sub-industry membership, net margin, EPS growth, golden cross, "
+     "and contract-flow proxy via abnormal return. Hold with conviction — defense budgets "
+     "are multi-year commitments. Sell only on death cross or margin collapse."),
 ]
 
 # ── File helpers ─────────────────────────────────────────────────────────────
@@ -1059,12 +1051,93 @@ def print_news_briefing(macro: dict):
     print("─"*65)
 
 
+def score_defense_war_economy(rows, kmap):
+    """
+    NEW-21: Defense & War Economy.
+
+    Targets the beneficiaries of sustained US military spending:
+      - Defense primes & contractors (LMT, RTX, NOC, GD, LHX, BA, HWM, TDG, HII)
+      - Cybersecurity (CRWD, PANW, FTNT) — wartime elevates state-sponsored threats
+      - Energy majors (XOM, CVX, COP, XLE proxies) — Middle East conflict = supply risk
+
+    Scoring weights:
+      - Sector / ticker whitelist membership (hard gate)
+      - Net profit margin (defense primes have very stable, contract-locked margins)
+      - Forward EPS growth (backlog conversion proxy)
+      - Golden cross (institutional accumulation already underway)
+      - Abnormal return bonus (contract-announcement days produce real spikes)
+      - RSI guard: skip if overbought (> 78) — don't chase a spike
+
+    Hold philosophy: defense budgets are multi-year — turnover should be LOW.
+    Only sell on death cross, margin collapse below 8%, or EPS growth turning negative.
+    """
+    # Tickers with direct defense / war-economy exposure in the universe
+    DEFENSE_TICKERS = {
+        # Defense primes & Tier-1 contractors
+        "LMT", "RTX", "NOC", "GD", "LHX", "BA", "HWM", "TDG",
+        # Cyber (DoD's fastest-growing budget line)
+        "CRWD", "PANW", "FTNT",
+        # Industrials with large DoD exposure
+        "GE", "GEV", "HON", "CAT", "EMR",
+        # Energy — geopolitical risk premium
+        "XOM", "CVX", "COP", "OXY", "SLB", "BKR", "EOG",
+    }
+    DEFENSE_SECTORS = {"Industrials", "Energy", "Information Technology"}
+
+    out = []
+    for r in rows:
+        ticker  = r["ticker"]
+        sector  = r.get("sector", "") or ""
+        eps_ttm = r.get("eps_ttm", 0) or 0
+        eps_fwd = r.get("eps_growth_fwd", 0) or 0
+        npm     = r.get("net_profit_margin", 0) or 0
+        ma_sig  = r.get("ma_signal", "")
+        ab      = r.get("abnormal_return", 0) or 0
+        cs      = r.get("composite_score", 0)
+        rsi     = r.get("rsi_14", 50) or 50
+        beta    = r.get("beta", 1.0) or 1.0
+
+        # Hard gates: must be a known defense/war-economy ticker OR be in a
+        # qualifying sector with a direct ticker-level signal.
+        in_whitelist = ticker in DEFENSE_TICKERS
+        in_sector    = sector in DEFENSE_SECTORS
+
+        if not in_whitelist and not in_sector:
+            continue
+        if eps_ttm <= 0:              continue   # must be profitable
+        if npm < 0.08:                continue   # minimum margin quality
+        if "BULLISH" not in ma_sig:   continue   # uptrend required
+        if rsi > 78:                  continue   # skip overbought
+
+        # Whitelist bonus: known defense prime gets a structural premium
+        whitelist_bonus = 15 if in_whitelist else 0
+
+        # Cyber stocks get a moderate extra bonus (fastest DoD budget growth)
+        cyber_bonus = 10 if ticker in {"CRWD", "PANW", "FTNT"} else 0
+
+        # Core score
+        score = (
+            npm * 100 +              # margin quality (defense margins are sticky)
+            eps_fwd * 80 +           # backlog/contract conversion growth
+            ab * 120 +               # contract-announcement momentum
+            cs * 0.25 +              # composite KPI health
+            whitelist_bonus +
+            cyber_bonus
+        )
+
+        reason = (
+            f"Defense/war economy: {ticker}  "
+            f"margin={npm*100:.1f}%  fwd_growth={eps_fwd*100:.1f}%  "
+            f"RSI={rsi:.1f}  beta={beta:.2f}"
+        )
+        out.append((ticker, round(score, 2), reason))
+
+    return sorted(out, key=lambda x: -x[1])
+
+
 SCORE_FN = {
-    "01": score_momentum,
     "02": score_mean_reversion,
     "03": score_value,
-    "04": score_quality_growth,
-    "05": score_sector_rotation,
     "06": score_low_volatility,
     "07": score_earnings_surprise,
     "08": score_dividend_growth,
@@ -1074,12 +1147,10 @@ SCORE_FN = {
     "12": score_academic_momentum,      # FIX-8
     "13": score_quality_profitability,
     "14": score_passive,
-    "15": score_noise_chaser,           # NEW-15
-    "16": score_estimate_revision,      # NEW-16
-    "17": score_high_beta_quality,      # NEW-17
     "18": score_capex_beneficiary,      # NEW-18
     "19": score_news_macro,             # NEW-19
     "20": score_news_sentiment,         # NEW-20
+    "21": score_defense_war_economy,    # NEW-21
 }
 
 # ── Trade execution helpers ───────────────────────────────────────────────────
@@ -1392,6 +1463,52 @@ Respond ONLY with a JSON object. No explanation outside the JSON.
     {{"type": "BUY",  "ticker": "NVDA", "reason": "why"}},
     {{"type": "SELL", "ticker": "XYZ",  "reason": "why"}},
     {{"type": "HOLD", "ticker": "AMAT", "reason": "why"}}
+  ],
+  "summary": "one sentence summary of today's decisions"
+}}
+"""
+    elif strategy_id == "21":
+        prompt = f"""You are managing a paper trading account for strategy "21 - Defense & war economy".
+
+Strategy description: {strategy_desc}
+
+THESIS: The US has been spending ~$1B per week sustaining military operations in the Middle East.
+That spending flows directly into defense primes (LMT, RTX, NOC, GD, LHX), industrial suppliers
+(GE, HON, CAT), cybersecurity firms (CRWD, PANW, FTNT — DoD's fastest-growing budget line), and
+energy majors (XOM, CVX, COP — Middle East conflict = sustained supply risk premium).
+Defense contracts are multi-year. Backlogs take years to convert. This is a HOLD-with-conviction
+strategy — do NOT churn positions on day-to-day volatility.
+
+Account:
+  Cash available: ${acct['cash']:.2f}
+  Holdings value: ${acct['holdings_value']:.2f}
+  Total: ${acct['cash']+acct['holdings_value']:.2f}
+  Goal: ${STARTING_CASH*2:.2f} (double the money)
+  Trades so far: {acct['trades']}
+
+Current holdings:
+{hold_str}
+
+Top-ranked war-economy candidates today (scored by margin × growth × trend):
+{cand_str}
+
+Rules:
+- Commission is $4.95 per trade + 0.05% spread
+- Max 3 positions at once
+- Max 60% of portfolio in any one stock
+- Keep at least 5% cash reserve
+- HOLD with conviction — only sell if: MA turns bearish (death cross), net margin drops below 8%,
+  or forward EPS growth turns negative. Normal 10-15% drawdowns are EXPECTED — do not sell on them.
+- BUY the top-scoring candidate if a slot is open and candidate score > 20
+- Prefer defense primes (LMT, RTX, NOC, GD, LHX) and cyber (CRWD, PANW, FTNT) over pure energy
+  when scores are close — defense has more direct budget exposure
+
+Respond ONLY with a JSON object. No explanation outside the JSON.
+{{
+  "actions": [
+    {{"type": "BUY",  "ticker": "LMT",  "reason": "why"}},
+    {{"type": "SELL", "ticker": "XYZ",  "reason": "why"}},
+    {{"type": "HOLD", "ticker": "RTX",  "reason": "why"}}
   ],
   "summary": "one sentence summary of today's decisions"
 }}

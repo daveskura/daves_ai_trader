@@ -68,6 +68,7 @@ echo ============================================
 echo  STAGE 1 - PRE-MARKET NEWS RUN
 echo  Fetching headlines and running strategies
 echo  19 ^(News macro^) and 20 ^(News sentiment^)
+echo  [Strategy 21 runs post-market with KPI data]
 echo ============================================
 echo.
 
