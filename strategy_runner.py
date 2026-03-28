@@ -3,7 +3,7 @@ strategy_runner.py  —  Multi-strategy paper trading engine
 Runs 13 active strategies + 1 passive benchmark concurrently.
 Each strategy has its own account, holdings, and transactions CSV.
 Produces a daily leaderboard CSV for the dashboard.
-
+ 
 Usage:
     python strategy_runner.py                  # run all strategies
     python strategy_runner.py --dry-run        # preview decisions only
