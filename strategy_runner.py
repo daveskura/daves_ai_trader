@@ -3,7 +3,7 @@ strategy_runner.py  —  Multi-strategy paper trading engine
 Runs 13 active strategies + 1 passive benchmark concurrently.
 Each strategy has its own account, holdings, and transactions CSV.
 Produces a daily leaderboard CSV for the dashboard.
- 
+
 Usage:
     python strategy_runner.py                  # run all strategies
     python strategy_runner.py --dry-run        # preview decisions only
@@ -31,6 +31,36 @@ Changes vs original:
     FIX-10 score_earnings_surprise: PEAD threshold tightened — abnormal_return
                     raised from 0.5% to 2% and min fwd EPS growth raised to 20%
                     to filter genuine post-earnings drift from daily noise
+    FIX-11 enforce_stop_losses(): hard 20% stop-loss executed in code before
+                    Claude is called — prevents Claude from holding deep losers.
+                    Applies to all active strategies except passive (S14).
+    FIX-12 MIN_HOLD_DAYS = 3: minimum holding period enforced in sell(). A
+                    position bought fewer than 3 trading days ago cannot be sold
+                    by Claude unless the hard stop-loss (FIX-11) fires first.
+                    Eliminates commission churn from day-trading behaviour.
+    FIX-13 score_mean_reversion: added death-cross guard — skip stocks with a
+                    BEARISH (Death Cross) MA signal to avoid catching falling knives.
+    FIX-14 score_value: added minimum 5% net margin gate — removes value traps
+                    with cheap P/E but no real profitability.
+    FIX-15 score_insider_buying: replaced log-scale with tiered scoring —
+                    large insider purchases now score meaningfully higher than
+                    token 1-share purchases.
+    FIX-16 score_macro_adaptive: VIX defensive threshold raised from 25 to 22
+                    so the strategy differentiates more often. Aggressive mode
+                    now requires CS > 55 to avoid buying mediocre stocks.
+    FIX-17 score_large_cap_value: added beta <= 1.2 gate to keep the value
+                    flavour and avoid high-beta deep-cyclicals.
+    FIX-18 score_academic_momentum: beta cap raised from 1.8 to 2.2 — the
+                    original cap was too restrictive and excluded many of the
+                    best Asness-style momentum names without justification.
+    FIX-19 score_capex_beneficiary: Communication Services sector removed.
+                    GOOGL/META have very different margin/capex profiles from
+                    pure semis; keeping them caused the strategy to over-index
+                    on hyperscalers instead of their infrastructure suppliers.
+                    Restricted to Information Technology only.
+    FIX-20 prompts updated across all strategies: min_hold_days rule added
+                    to every Claude prompt, and sell threshold language tightened
+                    to reinforce the minimum holding period to Claude.
     RETIRED Strategy 01 (Momentum/trend) — overlaps with S12 (Asness academic
                     momentum) which is strictly better: same signal + crash
                     protection. Running both wastes tokens on identical picks.
@@ -99,6 +129,8 @@ COMMISSION        = 4.95          # flat per trade
 SPREAD_PCT        = 0.0005        # 0.05% spread
 ACCOUNT_NUM       = "123456789"
 BASE_DIR          = Path(__file__).parent
+MIN_HOLD_DAYS     = 3             # FIX-12: minimum trading days before Claude may sell
+STOP_LOSS_PCT     = 0.20          # FIX-11: hard stop-loss — sell if down >= 20% from avg cost
 
 # ── Strategy definitions ─────────────────────────────────────────────────────
 STRATEGIES = [
@@ -244,22 +276,32 @@ def load_kpi(kpi_path="equity_kpi_results.csv"):
 # Each returns a sorted list of (ticker, score, reason) tuples.
 
 def score_mean_reversion(rows, kmap):
-    """Buy oversold (RSI < 38). The lower the RSI the better."""
+    """Buy oversold (RSI < 38). The lower the RSI the better.
+    FIX-13: skip stocks in a death cross — don't catch falling knives.
+    Mean reversion works when the trend is intact but the stock has pulled back;
+    it fails badly when the downtrend is structural (death cross = institutional selling).
+    """
     out = []
     for r in rows:
         rsi = r.get("rsi_14", 50)
         if rsi > 38: continue
+        if r.get("ma_signal", "") == "BEARISH (Death Cross)": continue   # FIX-13
         score = (40 - rsi) * 2 + r.get("composite_score", 0) * 0.3
         out.append((r["ticker"], round(score, 2), f"Oversold RSI={rsi:.1f}"))
     return sorted(out, key=lambda x: -x[1])
 
 def score_value(rows, kmap):
-    """Low P/E + high profit margin."""
+    """Low P/E + high profit margin.
+    FIX-14: added npm >= 0.05 minimum gate to avoid value traps — a stock with
+    P/E of 8 and 2% margins is cheap for a reason. Require at least 5% net margin
+    to confirm the business is genuinely profitable at the bottom line.
+    """
     out = []
     for r in rows:
         pe  = r.get("pe_ratio", 999)
         npm = r.get("net_profit_margin", 0)
         if pe <= 0 or pe > 25: continue
+        if npm < 0.05: continue   # FIX-14: minimum profitability gate
         score = (25 - pe) * 2 + npm * 100
         out.append((r["ticker"], round(score, 2), f"P/E={pe:.1f} margin={npm*100:.1f}%"))
     return sorted(out, key=lambda x: -x[1])
@@ -328,27 +370,50 @@ def score_dividend_growth(rows, kmap):
     return sorted(out, key=lambda x: -x[1])
 
 def score_insider_buying(rows, kmap):
-    """Positive net insider shares = confidence signal."""
+    """Positive net insider shares = confidence signal.
+    FIX-15: replaced log1p scale with tiered scoring. The log scale was too
+    compressed — a CEO buying 1 share scored nearly as high as one buying $5M
+    worth. Tiers now meaningfully separate token purchases from meaningful ones:
+      >100,000 shares = strong signal (large dollar commitment)
+      >10,000  shares = moderate signal
+      >1,000   shares = weak signal (still above noise)
+    """
     out = []
     for r in rows:
         ins = r.get("net_insider_shares", 0)
         if ins <= 0: continue
-        score = math.log1p(ins) * 5 + r.get("composite_score", 0) * 0.4
+        # FIX-15: tiered scoring — large purchases get meaningfully higher scores
+        if ins > 100_000:
+            ins_score = 40
+        elif ins > 10_000:
+            ins_score = 25
+        elif ins > 1_000:
+            ins_score = 12
+        else:
+            ins_score = 5
+        score = ins_score + r.get("composite_score", 0) * 0.4
         out.append((r["ticker"], round(score, 2), f"Net insider buy={int(ins):,} shares"))
     return sorted(out, key=lambda x: -x[1])
 
 def score_macro_adaptive(rows, kmap):
-    """Switch between aggressive (low VIX) and defensive (high VIX)."""
+    """Switch between aggressive (low VIX) and defensive (high VIX).
+    FIX-16: VIX defensive threshold raised from 25 to 22. The old threshold
+    meant the strategy almost never went defensive in normal markets (VIX rarely
+    hits 25 except during brief spikes). At 22 it triggers more usefully.
+    Aggressive mode now requires CS > 55 to avoid buying mediocre stocks just
+    because VIX is low — quality still matters in calm markets.
+    """
     vix = rows[0].get("vix", 20) if rows else 20
     out = []
     for r in rows:
         beta = r.get("beta", 1)
         cs   = r.get("composite_score", 0)
-        if vix > 25:
+        if vix > 22:                              # FIX-16: raised from 25
             if beta > 1.0: continue
             score = cs * 0.5 + (1.5 - beta) * 30
             label = f"Defensive (VIX={vix:.1f})"
         else:
+            if cs < 55: continue                  # FIX-16: quality gate in aggressive mode
             score = cs * 0.8 + r.get("abnormal_return", 0) * 100
             label = f"Aggressive (VIX={vix:.1f})"
         out.append((r["ticker"], round(score, 2), label))
@@ -360,6 +425,8 @@ def score_large_cap_value(rows, kmap):
     Now dynamically computes the bottom-third market cap within the loaded
     universe so there are always real candidates. Low P/E + high margin filter
     applies the Fama-French value tilt to the relatively smaller large-caps.
+    FIX-17: added beta <= 1.2 gate to preserve the low-risk value character
+    and avoid high-beta deep-cyclicals that happen to have low P/E ratios.
     """
     caps = sorted([r.get("market_cap", 0) for r in rows if r.get("market_cap", 0) > 0])
     if not caps:
@@ -368,14 +435,16 @@ def score_large_cap_value(rows, kmap):
 
     out = []
     for r in rows:
-        cap = r.get("market_cap", 1e15)
-        pe  = r.get("pe_ratio", 999)
-        npm = r.get("net_profit_margin", 0)
+        cap  = r.get("market_cap", 1e15)
+        pe   = r.get("pe_ratio", 999)
+        npm  = r.get("net_profit_margin", 0)
+        beta = r.get("beta", 1.0) or 1.0
         if cap > cap_threshold: continue
         if pe <= 0 or pe > 20: continue
+        if beta > 1.2: continue              # FIX-17: exclude high-beta deep-cyclicals
         score = (cap_threshold - cap) / 1e9 * 0.01 + (20 - pe) * 2 + npm * 50
         out.append((r["ticker"], round(score, 2),
-                    f"Value tilt: cap=${cap/1e9:.0f}B P/E={pe:.1f} margin={npm*100:.1f}%"))
+                    f"Value tilt: cap=${cap/1e9:.0f}B P/E={pe:.1f} margin={npm*100:.1f}% beta={beta:.2f}"))
     return sorted(out, key=lambda x: -x[1])
 
 def score_academic_momentum(rows, kmap):
@@ -384,6 +453,9 @@ def score_academic_momentum(rows, kmap):
     Requires the stock to be AT LEAST 5% below its 52-week high (pct_from_52w_high
     <= -0.05). This ensures we buy momentum with upside room, not stocks already
     at the top. Differentiates S12 from S01 which has no pullback requirement.
+    FIX-18: beta cap raised from 1.8 to 2.2. The original 1.8 cap was too tight —
+    Asness's published momentum factor does not cap on beta, and the restriction
+    was excluding many of the strongest momentum names without academic justification.
     """
     out = []
     for r in rows:
@@ -393,9 +465,9 @@ def score_academic_momentum(rows, kmap):
         pct_from_high = r.get("pct_from_52w_high", 0)  # negative = below 52w high
 
         if r.get("ma_signal","") != "BULLISH (Golden Cross)": continue
-        if rsi > 75:           continue   # skip overbought
-        if beta > 1.8:         continue   # skip extreme beta
-        if pct_from_high > -0.05: continue  # FIX-8: must be >=5% below 52w high
+        if rsi > 75:              continue   # skip overbought
+        if beta > 2.2:            continue   # FIX-18: raised from 1.8
+        if pct_from_high > -0.05: continue   # FIX-8: must be >=5% below 52w high
 
         score = cs * 0.6 + (100 - rsi) * 0.2 + r.get("abnormal_return", 0) * 100
         out.append((r["ticker"], round(score, 2),
@@ -437,24 +509,19 @@ def score_capex_beneficiary(rows, kmap):
       - Positive abnormal return (market is beginning to price it in)
     P/E guard is deliberately relaxed (≤ 80) because structural growers trade
     at premium multiples before the market fully understands the thesis.
+    FIX-19: Communication Services sector removed. GOOGL/META are hyperscalers
+    (capex spenders) not infrastructure suppliers. Keeping them caused the
+    strategy to pick the buyers of chips rather than the makers of chips.
+    Restricted to Information Technology only.
     """
     CAPEX_SECTORS = {
-        "Information Technology",
-        "Communication Services",   # hyperscalers: GOOGL, META
-    }
-    CAPEX_KEYWORDS = {   # sub-industry / name hints for hardware/semi companies
-        "Semiconductor", "semiconductor",
-        "Hardware", "hardware",
-        "Electronic", "electronic",
-        "Network", "network",
-        "Storage", "storage",
-        "Circuit", "circuit",
+        "Information Technology",    # FIX-19: IT only — pure infra suppliers
+        # "Communication Services" removed: hyperscalers are spenders, not beneficiaries
     }
 
     out = []
     for r in rows:
         sector  = r.get("sector", "") or ""
-        name    = r.get("ticker", "")        # we use ticker as a crude proxy here
         eps_ttm = r.get("eps_ttm", 0) or 0
         eps_fwd = r.get("eps_growth_fwd", 0) or 0
         npm     = r.get("net_profit_margin", 0) or 0
@@ -831,7 +898,8 @@ def _build_news_prompt(strategy_id, strategy_name, strategy_desc,
                        candidates, holdings, acct, today, macro):
     """Build the Claude trading prompt for news-driven strategies 19 & 20."""
     hold_str = "\n".join(
-        f"  {h['ticker']}: {h['shares']:.4f} sh  cost ${h['cost_basis']:.2f}  avg ${h['avg_cost']:.4f}"
+        f"  {h['ticker']}: {h['shares']:.4f} sh  cost ${h['cost_basis']:.2f}  "
+        f"avg ${h['avg_cost']:.4f}  held since {h.get('purchase_date','?')}"
         for h in holdings
     ) or "  (none)"
 
@@ -893,9 +961,12 @@ Top-ranked candidates (news-macro scoring):
 === RULES ===
 - Commission $4.95 + 0.05% spread per trade
 - Max 3 positions, max 60% per stock, keep ≥5% cash reserve
+- MINIMUM HOLD: do NOT sell a position held fewer than {MIN_HOLD_DAYS} trading days
+  (hard stop-losses are handled automatically before this prompt runs — don't re-trigger them)
 - BUY: sector aligns with bullish theme AND KPI score > 40
-- SELL: sector is a headwind loser OR negative company catalyst OR >20% loss from avg cost
-- HOLD: signal strength < 5/10 or ambiguous — don't overtrade noise
+- SELL: sector is a confirmed headwind loser (not just mixed signal) OR strong negative
+  company catalyst OR MA has turned bearish. The hold period must be met first.
+- HOLD: signal strength < 5/10, ambiguous, or position is too young — don't overtrade noise
 - RISK-OFF regime: prefer beta < 1.0 even in tailwind sectors
 - Strong company catalyst (earnings beat, guidance raise) overrides sector headwinds
 
@@ -1042,6 +1113,55 @@ SCORE_FN = {
 
 # ── Trade execution helpers ───────────────────────────────────────────────────
 
+def _trading_days_held(purchase_date_str: str, today_str: str) -> int:
+    """
+    Return the approximate number of weekdays between purchase_date and today.
+    Uses calendar days * 5/7 as a fast proxy — good enough for a 3-day gate.
+    """
+    try:
+        from datetime import date as _date
+        d0 = _date.fromisoformat(purchase_date_str)
+        d1 = _date.fromisoformat(today_str)
+        delta = (d1 - d0).days
+        # Count weekdays (Mon-Fri) between the two dates
+        weekdays = sum(
+            1 for i in range(delta)
+            if (_date.fromisoformat(purchase_date_str).__class__.fromordinal(
+                d0.toordinal() + i)).weekday() < 5
+        )
+        return weekdays
+    except Exception:
+        return 999  # if we can't parse, don't block the sell
+
+
+def enforce_stop_losses(sid: str, holdings: list, kmap: dict, today: str,
+                        dry_run: bool = False) -> list:
+    """
+    FIX-11: Hard stop-loss executed in code BEFORE Claude is called.
+    If any holding is down >= STOP_LOSS_PCT (20%) from avg_cost at today's
+    market price, it is sold immediately without asking Claude.
+    This prevents Claude from rationalising holding deep losers.
+    Returns the updated holdings list after any stops are executed.
+    """
+    fired = []
+    for h in holdings:
+        ticker    = h["ticker"]
+        avg_cost  = float(h["avg_cost"])
+        price     = kmap.get(ticker, {}).get("current_price") or avg_cost
+        loss_pct  = (price - avg_cost) / avg_cost   # negative = loss
+
+        if loss_pct <= -STOP_LOSS_PCT:
+            reason = (f"Hard stop-loss: price ${price:.2f} is "
+                      f"{loss_pct*100:.1f}% below avg cost ${avg_cost:.2f}")
+            print(f"       [STOP-LOSS] {ticker}: {reason}")
+            ok, msg = sell(sid, ticker, price, reason, today, kmap, dry_run)
+            print(f"       SELL {ticker}: {msg}")
+            fired.append(ticker)
+
+    if fired:
+        holdings = read_holdings(sid)   # reload after stops executed
+    return holdings
+
 def buy(sid, ticker, price, cash_available, reason, today, kmap, dry_run=False):
     """Buy as many shares as cash allows (up to 60% of total account).
     FIX-2: recalculate holdings_value using market prices for ALL positions.
@@ -1092,11 +1212,24 @@ def buy(sid, ticker, price, cash_available, reason, today, kmap, dry_run=False):
 def sell(sid, ticker, price, reason, today, kmap, dry_run=False):
     """Sell the full position in ticker.
     FIX-3: recalculate holdings_value using market prices for remaining positions.
+    FIX-12: enforce minimum holding period (MIN_HOLD_DAYS trading days). Sells
+    requested by Claude within the holding window are silently blocked unless the
+    reason string contains 'stop-loss' (hard stop from enforce_stop_losses) or
+    'stop loss'. This eliminates commission churn from day-trading behaviour.
     """
     holdings = read_holdings(sid)
     pos = next((h for h in holdings if h["ticker"] == ticker), None)
     if not pos:
         return False, "No position"
+
+    # FIX-12: minimum hold check — allow stop-losses through unconditionally
+    is_stop = "stop-loss" in reason.lower() or "stop loss" in reason.lower()
+    if not is_stop:
+        days_held = _trading_days_held(pos.get("purchase_date", today), today)
+        if days_held < MIN_HOLD_DAYS:
+            return False, (f"Min-hold period not met ({days_held}/{MIN_HOLD_DAYS} "
+                           f"trading days) — holding {ticker}")
+
     shares   = pos["shares"]
     proceeds = round(shares * price * (1 - SPREAD_PCT) - COMMISSION, 4)
     if proceeds <= 0:
@@ -1172,7 +1305,8 @@ def ask_claude(strategy_id, strategy_name, strategy_desc, candidates, holdings, 
         return None, "urllib not available"
 
     hold_str = "\n".join(
-        f"  {h['ticker']}: {h['shares']:.4f} shares, cost basis ${h['cost_basis']:.2f}, avg ${h['avg_cost']:.4f}"
+        f"  {h['ticker']}: {h['shares']:.4f} shares, cost basis ${h['cost_basis']:.2f}, "
+        f"avg ${h['avg_cost']:.4f}, held since {h.get('purchase_date','?')}"
         for h in holdings
     ) or "  (none)"
 
@@ -1192,7 +1326,7 @@ flows upstream to GPU makers, network chip designers, PCB manufacturers, power m
 and storage. You are positioned to capture that upstream demand wave BEFORE the market fully
 prices it in.
 
-The scoring function has already filtered for: IT/Comms sector, profitable, expanding margins,
+The scoring function has already filtered for: IT sector only, profitable, expanding margins,
 golden cross uptrend, and reasonable valuation (P/E ≤ 80). Your job is to pick the best 1-2
 positions from the candidates and hold them with conviction while the thesis plays out.
 Concentration is intentional — diversification dilutes the thesis.
@@ -1204,19 +1338,21 @@ Account:
   Goal: ${STARTING_CASH*2:.2f} (double the money)
   Trades so far: {acct['trades']}
 
-Current holdings:
+Current holdings (with purchase date):
 {hold_str}
 
-Top-ranked capex beneficiary candidates today (IT/Comms sector, scored by margin × growth × trend):
+Top-ranked capex beneficiary candidates today (IT sector, scored by margin × growth × trend):
 {cand_str}
 
 Rules:
 - Commission is $4.95 per trade + 0.05% spread
-- Max 2 positions (concentrated conviction)
-- Max 70% of portfolio in any one stock (thesis warrants concentration)
+- Max 2 positions (concentrated conviction); max 70% of portfolio in any one stock
 - Keep at least 5% cash reserve
-- Hold with conviction — only sell if: MA turns bearish (death cross), net margin drops below 10%,
-  forward EPS growth turns negative, or the AI capex cycle shows clear signs of ending
+- MINIMUM HOLD: do NOT sell a position held fewer than {MIN_HOLD_DAYS} trading days
+  (hard stop-losses are handled automatically before this prompt runs).
+- Hold with conviction — only sell if: MA turns bearish (death cross), net margin
+  drops below 10%, forward EPS growth turns negative, or the AI capex cycle shows
+  clear signs of ending. Normal 15-20% drawdowns are expected — do NOT sell on volatility.
 
 Respond ONLY with a JSON object. No explanation outside the JSON.
 {{
@@ -1247,7 +1383,7 @@ Account:
   Goal: ${STARTING_CASH*2:.2f} (double the money)
   Trades so far: {acct['trades']}
 
-Current holdings:
+Current holdings (with purchase date):
 {hold_str}
 
 Top-ranked war-economy candidates today (scored by margin × growth × trend):
@@ -1255,9 +1391,10 @@ Top-ranked war-economy candidates today (scored by margin × growth × trend):
 
 Rules:
 - Commission is $4.95 per trade + 0.05% spread
-- Max 3 positions at once
-- Max 60% of portfolio in any one stock
+- Max 3 positions at once; max 60% of portfolio in any one stock
 - Keep at least 5% cash reserve
+- MINIMUM HOLD: do NOT sell a position held fewer than {MIN_HOLD_DAYS} trading days
+  (hard stop-losses are handled automatically before this prompt runs).
 - HOLD with conviction — only sell if: MA turns bearish (death cross), net margin drops below 8%,
   or forward EPS growth turns negative. Normal 10-15% drawdowns are EXPECTED — do not sell on them.
 - BUY the top-scoring candidate if a slot is open and candidate score > 20
@@ -1286,7 +1423,7 @@ Account:
   Goal: ${STARTING_CASH*2:.2f} (double the money)
   Trades so far: {acct['trades']}
 
-Current holdings:
+Current holdings (with purchase date):
 {hold_str}
 
 Top-ranked candidates today (by strategy scoring):
@@ -1294,10 +1431,15 @@ Top-ranked candidates today (by strategy scoring):
 
 Rules:
 - Commission is $4.95 per trade + 0.05% spread
-- Max 3 positions at once
-- Max 60% of portfolio in any one stock
+- Max 3 positions at once; max 60% of portfolio in any one stock
 - Keep at least 5% cash reserve
-- Only sell if: stock dropped >20% from your avg cost, score is genuinely terrible, or a clearly better opportunity exists (10+ point score gap)
+- MINIMUM HOLD: do NOT sell a position held fewer than {MIN_HOLD_DAYS} trading days
+  unless it has triggered a hard stop-loss (already handled automatically).
+  Premature selling wastes $9.90 round-trip commission on no alpha.
+- SELL only if: score has genuinely deteriorated (not just a quiet day), MA has
+  turned bearish (death cross), or a clearly better opportunity exists (15+ point
+  score gap). Patience with winners is part of the strategy.
+- HOLD is the correct action when signals are mixed or the position is young.
 
 Respond ONLY with a JSON object. No explanation outside the JSON.
 {{
@@ -1447,6 +1589,10 @@ def run_strategy(sid, name, style, risk, desc, rows, kmap, today, dry_run=False)
         print(f"       Cash: ${acct['cash']:>9.2f}  |  "
               f"Holdings: ${acct['holdings_value']:>9.2f}  |  "
               f"Total: ${acct['total']:>9.2f}")
+
+        # FIX-11: enforce hard stop-losses before asking Claude
+        holdings = enforce_stop_losses(sid, holdings, kmap, today, dry_run)
+        acct     = read_account(sid)   # reload after any stops fired
         score_fn   = SCORE_FN.get(sid)
         candidates = score_fn(rows, kmap, macro) if score_fn else []
         if not candidates:
@@ -1501,6 +1647,10 @@ def run_strategy(sid, name, style, risk, desc, rows, kmap, today, dry_run=False)
     print(f"       Cash: ${acct['cash']:>9.2f}  |  "
           f"Holdings: ${acct['holdings_value']:>9.2f}  |  "
           f"Total: ${acct['total']:>9.2f}")
+
+    # FIX-11: enforce hard stop-losses before asking Claude
+    holdings = enforce_stop_losses(sid, holdings, kmap, today, dry_run)
+    acct     = read_account(sid)   # reload after any stops fired
 
     score_fn = SCORE_FN.get(sid)
     if not score_fn or not rows:

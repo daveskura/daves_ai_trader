@@ -1,196 +1,215 @@
-# Dave's AI Trader
+# Dave's AI Trader 🤖📈
 
-An automated paper trading system that runs 20 competing investment strategies daily, powered by Claude AI. Every weekday the system scores the S&P 500 universe, asks Claude to make buy/sell decisions for each strategy, and produces a leaderboard showing which approach is winning.
-
-**Goal:** Start with $1,000 per strategy and see which one doubles first.
+A fully automated paper trading engine that runs **20 concurrent strategies** on S&P 500 stocks, powered by Claude AI. Each strategy manages its own $1,000 account, makes daily buy/sell decisions, and competes on a live leaderboard.
 
 ---
 
-## Strategies
+## What It Does
 
-| ID | Name | Style | Risk |
-|----|------|-------|------|
-| 01 | Momentum / trend following | Momentum | High |
-| 02 | Mean reversion (oversold bounce) | Contrarian | Med |
-| 03 | Value investing | Value | Low |
-| 04 | Quality growth (GARP) | Growth | Med |
-| 05 | Sector rotation | Macro | Med |
-| 06 | Low volatility / defensive | Defensive | Low |
-| 07 | Earnings surprise (PEAD) | Event-driven | High |
-| 08 | Dividend growth | Income | Low |
-| 09 | Insider buying signal | Alt-data | Med |
-| 10 | Macro-regime adaptive | Macro | Med |
-| 11 | Large-cap value (Fama-French) | Academic | Med |
-| 12 | Momentum (academic / Asness) | Academic | High |
-| 13 | Quality / profitability (Novy-Marx) | Academic | Low |
-| 14 | Passive S&P 500 benchmark | Passive | Low |
-| 15 | Noise chaser *(degenerate baseline)* | Speculative | High |
-| 16 | Estimate revision momentum | Growth | Med |
-| 17 | High-beta quality growth | Growth | High |
-| 18 | Capex beneficiary / semis | Thematic | High |
-| 19 | News macro catalyst | Macro | Med |
-| 20 | News sentiment momentum | Alt-data | Med |
-
-Strategy 14 is a buy-and-hold passive baseline — if none of the active strategies beat it over time, that's a valuable finding in itself. Strategy 15 is a deliberately degenerate noise-chaser that serves as a lower bound; it demonstrates why chasing yesterday's price movers loses money.
-
-Strategies 19 and 20 are news-driven. They fetch live RSS headlines each morning, ask Claude to identify the dominant macro theme (oil shock, deregulation, trade war, etc.), and score the universe by sector alignment. The analysis is cached once per day so there are no duplicate API calls.
+- Runs daily via **GitHub Actions** (pre-market + post-market schedule)
+- Fetches live KPI data from **Yahoo Finance** and macro data from **FRED**
+- Feeds signals to **Claude (claude-sonnet-4-6)** for trade decisions
+- Tracks P&L, holdings, and transactions per strategy in CSV files
+- Publishes a ranked leaderboard after every run
 
 ---
 
-## How it works
-
-The pipeline runs in two stages each weekday:
+## Repository Structure
 
 ```
-Stage 1 — Pre-market (6:30 AM ET):
-  1. strategy_runner.py --strategy 19   — news macro catalyst
-  2. strategy_runner.py --strategy 20   — news sentiment momentum
-     ↳ Fetches RSS headlines, calls Claude once, saves news_macro_cache.json
-
-Stage 2 — Post-market (4:30 PM ET):
-  1. equity_kpi_analyzer.py --universe  — scores top 200 S&P 500 stocks on 15+ KPIs
-  2. strategy_runner.py                 — runs all 20 strategies, asks Claude for decisions
-     ↳ Strategies 19 & 20 reuse the morning cache — no duplicate Claude call
-  3. leaderboard.csv                    — updated with current rankings
-  4. Results committed back to repo
+daves_ai_trader/
+├── strategy_runner.py        # Main engine — runs all 20 strategies
+├── equity_kpi_analyzer.py    # Fetches fundamentals + technicals for universe
+├── universe_manager.py       # Manages S&P 500 constituent list (cached weekly)
+├── update_quotes.py          # Refresh live prices mid-day (no trading logic)
+├── reset_accounts.py         # Hard reset all accounts to $1,000
+├── down_day_analyzer.py      # Research tool: what held up on bad market days?
+├── run_daily.bat             # Windows local runner (pre/post-market aware)
+├── deploy_from_github.sh     # Linux deploy + dry-run validator
+├── .github/workflows/
+│   └── daily_trading.yml     # GitHub Actions schedule (UTC)
+├── account_XX.csv            # Per-strategy account state
+├── holdings_XX.csv           # Per-strategy open positions
+├── transactions_XX.csv       # Per-strategy trade log
+├── leaderboard.csv           # Daily ranked results
+├── equity_kpi_results.csv    # Today's scored universe (200 tickers)
+├── universe_cache.json       # Weekly S&P 500 constituent cache
+└── news_macro_cache.json     # Daily news analysis cache (strategies 19 & 20)
 ```
 
-Each strategy has its own isolated account:
-- `account_XX.csv` — cash, holdings value, total
-- `holdings_XX.csv` — current positions
-- `transactions_XX.csv` — full trade ledger
+---
+
+## The 20 Strategies
+
+| ID | Name | Style | Risk | Key Signal |
+|----|------|-------|------|------------|
+| 01 | Momentum / trend following | momentum | high | Golden cross + strong RSI |
+| 02 | Mean reversion | contrarian | med | RSI < 38 oversold |
+| 03 | Value investing | value | low | Low P/E + high margin |
+| 04 | Quality growth (GARP) | growth | med | EPS growth + margin + P/E ≤ 50 |
+| 05 | Sector rotation | macro | med | Top sector composite score |
+| 06 | Low volatility / defensive | defensive | low | Beta < 1.0 + stable earnings |
+| 07 | Earnings surprise (PEAD) | event | high | Profitable + fwd EPS growth + positive abnormal return |
+| 08 | Dividend growth | income | low | High yield + growing payout |
+| 09 | Insider buying signal | alt-data | med | Net C-suite open-market buys |
+| 10 | Macro-regime adaptive | macro | med | VIX-driven aggressive/defensive switch |
+| 11 | Large-cap value (Fama-French) | academic | med | Bottom-third market cap + low P/E |
+| 12 | Momentum (Asness/AQR) | academic | high | Golden cross + ≥5% below 52w high |
+| 13 | Quality / profitability | academic | low | High gross margin + low beta |
+| 14 | Passive S&P 500 benchmark | passive | low | Buy-and-hold top market cap |
+| 15 | Noise chaser *(degenerate baseline)* | speculative | high | Pure abnormal return chasing |
+| 16 | Estimate revision momentum | growth | med | Upward EPS estimate revisions |
+| 17 | High-beta quality growth | growth | high | Beta 1.5–2.5 + strong fundamentals |
+| 18 | Capex beneficiary / semis | thematic | high | IT sector + high margin + golden cross |
+| 19 | News macro catalyst | macro | med | RSS headlines → Claude macro themes → sector scoring |
+| 20 | News sentiment momentum | alt-data | med | KPI quality gate + news sentiment overlay |
+
+Strategy 14 (passive) never calls Claude — it's a pure code-driven buy-and-hold benchmark. Strategy 15 (noise chaser) is an intentional degenerate baseline to demonstrate that chasing daily movers loses money.
 
 ---
 
-## KPIs tracked
+## Daily Schedule (GitHub Actions)
 
-| Tier | Factor | KPI |
-|------|--------|-----|
-| 1 (60%) | Financial performance | Net profit margin, EPS growth, current ratio |
-| 1 (60%) | Macro | GDP growth, CPI, Fed rate change |
-| 1 (60%) | Sentiment | VIX |
-| 2 (30%) | Technical | RSI-14, 50/200-day MA crossover, abnormal return |
-| 2 (30%) | Sector | Relative sector performance |
-| 3 (10%) | Alternative | Net insider transactions, analyst consensus |
+| Stage | UTC Cron | Local (ET Winter) | What Runs |
+|-------|----------|-------------------|-----------|
+| Pre-market | `30 11 * * 2-6` | 6:30 AM | Strategies 19 & 20 only (news cache built) |
+| Post-market | `30 21 * * 1-5` | 4:30 PM | KPI analyser + all 20 strategies |
 
-Additional KPIs used by newer strategies: dividend yield, 5-year average dividend yield, beta, market cap, % from 52-week high, EPS revision delta.
+The news cache from Stage 1 is reused in Stage 2 — Claude is called only once per day for macro analysis regardless of how many strategies consume it.
 
----
-
-## Files
-
-| File | Purpose |
-|------|---------|
-| `equity_kpi_analyzer.py` | Daily KPI scorer for S&P 500 universe |
-| `universe_manager.py` | Weekly refresh of S&P 500 constituent list |
-| `strategy_runner.py` | Multi-strategy trading engine (all 20 strategies) |
-| `news_strategy.py` | News infrastructure — RSS fetching, Claude macro analysis, caching |
-| `ai_trader.py` | Core Claude API interaction and trade execution helpers |
-| `leaderboard.html` | Dashboard — drag leaderboard.csv onto it |
-| `leaderboard.csv` | Daily rankings output (auto-updated) |
-| `account_XX.csv` | Per-strategy account snapshot |
-| `holdings_XX.csv` | Per-strategy current positions |
-| `transactions_XX.csv` | Per-strategy trade history |
-| `news_macro_cache.json` | Daily news analysis cache (reused across Stage 1 → Stage 2) |
-| `universe_cache.json` | Weekly S&P 500 constituent list cache |
-| `run_daily.bat` | Windows local runner with pre/post-market stage detection |
-| `.github/workflows/daily_trading.yml` | GitHub Actions two-stage schedule |
+> **Note:** GitHub Actions cron runs on UTC with no automatic DST adjustment. In EDT (summer) the post-market run lands at 5:30 PM ET.
 
 ---
 
 ## Setup
 
-### 1. Clone the repo
+### Requirements
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/daves_ai_trader.git
-cd daves_ai_trader
+pip install -r requirements.txt
 ```
 
-### 2. Install dependencies
+Key dependencies: `yfinance`, `pandas`, `numpy`, `requests`, `fredapi` (optional)
+
+### Secrets (GitHub Actions)
+
+| Secret | Required | Purpose |
+|--------|----------|---------|
+| `ANTHROPIC_API_KEY` | Yes | Claude trade decisions + news analysis |
+| `FRED_API_KEY` | Optional | GDP / CPI / Fed rate macro data (free at fred.stlouisfed.org) |
+
+### First Run
 
 ```bash
-pip install yfinance pandas fredapi ta requests python-dotenv
-```
-
-### 3. Add API keys
-
-In your repo on GitHub — go to **Settings > Secrets and variables > Actions** and add:
-- `ANTHROPIC_API_KEY` — from [console.anthropic.com](https://console.anthropic.com)
-- `FRED_API_KEY` *(optional)* — from [fred.stlouisfed.org](https://fred.stlouisfed.org)
-
-For local runs, create a `.env` file in the project root:
-
-```
-ANTHROPIC_API_KEY=your_key_here
-FRED_API_KEY=your_key_here
-```
-
-### 4. Initialise account files
-
-```bash
+# 1. Initialise all 20 strategy accounts
 python strategy_runner.py --init
-git add .
-git commit -m "Initialise strategy accounts"
-git push
+
+# 2. Fetch KPI data for the universe
+python equity_kpi_analyzer.py --universe
+
+# 3. Dry-run to preview decisions without executing trades
+python strategy_runner.py --dry-run
+
+# 4. Run all strategies for real
+python strategy_runner.py
 ```
 
-### 5. That's it
-
-GitHub Actions runs automatically — Stage 1 at 6:30 AM ET and Stage 2 at 4:30 PM ET on weekdays. Check the **Actions** tab in your repo to see each run. Results are committed back — pull them down any time to see the latest leaderboard.
-
----
-
-## Viewing results
-
-Open `leaderboard.html` in any browser and drag `leaderboard.csv` onto it. No server needed — it runs entirely locally.
-
----
-
-## Running locally
-
-**Linux / macOS:**
+### Single Strategy
 
 ```bash
-python equity_kpi_analyzer.py --universe   # update KPIs
-python strategy_runner.py                  # run all 20 strategies
-python strategy_runner.py --strategy 19    # single strategy
-python strategy_runner.py --dry-run        # preview only
-python strategy_runner.py --force-init     # reset everything
+python strategy_runner.py --strategy 18    # run only strategy 18
+python strategy_runner.py --strategy 19    # news macro only
 ```
 
-**Windows:**
+### Windows Local Runner
+
+`run_daily.bat` auto-detects the time and runs the appropriate stage:
 
 ```bat
-run_daily.bat           :: auto-detects pre/post-market from system time
-run_daily.bat --news    :: Stage 1 only (strategies 19 & 20)
-run_daily.bat --full    :: Stage 2 only (full pipeline)
-run_daily.bat --all     :: both stages back-to-back
+run_daily.bat           # auto: news before 9 AM, full after 4 PM
+run_daily.bat --news    # force pre-market news run
+run_daily.bat --full    # force full post-market run
+run_daily.bat --all     # run both stages sequentially
+```
+
+### Refresh Live Quotes (No Trading)
+
+```bash
+python update_quotes.py           # refresh all strategy portfolio values
+python update_quotes.py --show    # + print per-position detail
+```
+
+### Reset Everything
+
+```bash
+python reset_accounts.py          # prompts for confirmation
+python reset_accounts.py --yes    # skip prompt (CI use)
 ```
 
 ---
 
-## Trading rules
+## KPI Scoring System
 
-- Starting capital: **$1,000 per strategy**
-- Commission: **$4.95 flat + 0.05% spread** per trade
-- Max positions: **3 per strategy** (2 for strategy 18)
-- Max single position: **60% of portfolio** (70% for strategy 18)
-- Cash reserve: **5% minimum**
-- Stop-loss: **20% below average cost**
-- Sell rule: only sell if score drops significantly, stop-loss triggers, or a 10+ point better opportunity exists
+`equity_kpi_analyzer.py` scores each stock 0–100 across three tiers:
 
----
+| Tier | Weight | Signals |
+|------|--------|---------|
+| Tier 1 — Fundamentals | 60% | Net profit margin, EPS growth, current ratio, GDP, CPI, Fed rate, VIX |
+| Tier 2 — Technicals | 30% | RSI-14, 50/200-day MA (golden/death cross), abnormal return |
+| Tier 3 — Sentiment | 10% | Analyst consensus, net insider share transactions |
 
-## Tech stack
-
-- **Python 3.11** · **yfinance** · **pandas** · **ta** · **requests** · **python-dotenv**
-- **FRED API** — macroeconomic data
-- **Claude API** (Anthropic) — trading decisions and macro news analysis
-- **GitHub Actions** — two-stage daily scheduling
+The **composite score** (0–100) is the weighted average of available tiers. Strategy scoring functions each apply additional filters on top of this score.
 
 ---
 
-## Disclaimer
+## News Infrastructure (Strategies 19 & 20)
 
-This is a paper trading system for educational and research purposes only. No real money is involved. Nothing here constitutes financial advice.
+Free RSS feeds are polled from Reuters, AP, Yahoo Finance, CNBC, and MarketWatch. Claude analyzes up to 60 deduplicated headlines and returns structured JSON identifying:
+
+- **Market regime** (RISK-ON / RISK-OFF / NEUTRAL)
+- **Dominant macro themes** with beneficiary and loser sectors
+- **Company-specific catalysts** (earnings beats, upgrades, scandals)
+- **Trade ideas**
+
+The result is cached to `news_macro_cache.json` and reused across both strategies and both run stages — no duplicate API calls.
+
+---
+
+## Leaderboard
+
+`leaderboard.csv` is updated after every run and committed back to the repo:
+
+```
+Rank  ID   Strategy                             Total      P&L    Return
+1     18   Capex beneficiary / semis         $1,243.10  +$243.10   +24.31%
+2     04   Quality growth (GARP)             $1,187.40  +$187.40   +18.74%
+...
+20    15   Noise chaser                        $821.30  -$178.70   -17.87%
+```
+
+---
+
+## Research Tools
+
+**`down_day_analyzer.py`** — identifies which stocks held up (or gained) on a down market day and explains why (sector, beta, momentum, dividends, fundamentals, insider activity). Useful for finding defensive characteristics before the next downturn.
+
+```bash
+python down_day_analyzer.py
+```
+
+---
+
+## Architecture Notes
+
+- All strategies share a single `equity_kpi_results.csv` input — the KPI analyser runs once and all strategy scoring functions read the same file
+- Each strategy has independent CSV files: `account_XX.csv`, `holdings_XX.csv`, `transactions_XX.csv`
+- Strategy 14 (passive) never calls Claude — trade logic runs entirely in Python
+- Holdings values are always marked-to-market at current prices (not stale cost basis) before any trade decision
+- `eps_revision_pct` is computed by diffing today's `eps_growth_fwd` against yesterday's snapshot — powers Strategy 16
+- `universe_cache.json` is refreshed weekly; `news_macro_cache.json` is refreshed daily
+
+---
+
+## Author
+
+Dave Skura, 2026
