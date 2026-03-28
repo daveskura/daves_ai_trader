@@ -1,17 +1,28 @@
-#!/bin/bash -i
-# Dave Skura, Mar 28,2026
 
-set -e   # stop immediately if any command fails
+#!/bin/bash
+set -e
 
-git stash
+echo "=== Deploy started: $(date) ==="
+
+# Only stash if there are local changes
+git diff --quiet || git stash
+
 git pull
-git stash pop
+
+# Restore stashed changes if we stashed anything
+git stash list | grep -q stash && git stash pop || true
 
 echo ""
 git log --oneline -3
 
 echo ""
-python strategy_runner.py --dry-run
+pip3 install -r requirements.txt -q
 
+echo ""
+echo "=== Dry run ==="
+python3 strategy_runner.py --dry-run
+
+echo ""
+echo "=== Deploy complete: $(date) ==="
 
  
