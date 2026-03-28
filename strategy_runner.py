@@ -1,14 +1,16 @@
 """
 strategy_runner.py  —  Multi-strategy paper trading engine
-Runs 14 active strategies + 1 passive benchmark concurrently.
+Runs 13 active strategies + 1 passive benchmark concurrently.
 Each strategy has its own account, holdings, and transactions CSV.
 Produces a daily leaderboard CSV for the dashboard.
 
 Usage:
     python strategy_runner.py                  # run all strategies
     python strategy_runner.py --dry-run        # preview decisions only
-    python strategy_runner.py --strategy 01    # run one strategy only
+    python strategy_runner.py --strategy 02    # run one strategy only
     python strategy_runner.py --init           # initialise all account files fresh
+
+Active strategies: 02, 03, 06, 07, 08, 09, 10, 11, 12, 13, 14, 18, 19, 20, 21
 
 Changes vs original:
     FIX-1  Model string updated to claude-sonnet-4-6
@@ -26,7 +28,33 @@ Changes vs original:
                     stock must be >= 5% below 52-week high
     FIX-9  score_dividend_growth: uses actual dividend_yield from KPI data
                     when available, falls back to proxy otherwise
-    REMOVED Strategies 01, 04, 05, 15, 16, 17 — retired underperformers
+    FIX-10 score_earnings_surprise: PEAD threshold tightened — abnormal_return
+                    raised from 0.5% to 2% and min fwd EPS growth raised to 20%
+                    to filter genuine post-earnings drift from daily noise
+    RETIRED Strategy 01 (Momentum/trend) — overlaps with S12 (Asness academic
+                    momentum) which is strictly better: same signal + crash
+                    protection. Running both wastes tokens on identical picks.
+    RETIRED Strategy 04 (Quality growth / GARP) — overlaps with S13 (Novy-Marx
+                    quality/profitability). S13 has tighter academic grounding;
+                    S04 was a looser duplicate.
+    RETIRED Strategy 05 (Sector rotation) — picks the strongest sector by avg
+                    composite score but has no individual stock filter, producing
+                    a noisy, undifferentiated candidate list. Low signal/noise.
+    RETIRED Strategy 15 (Noise chaser) — intentional degenerate baseline that
+                    buys yesterday's biggest movers with no fundamental filter.
+                    Useful as a concept; wastes real API tokens to demonstrate
+                    the obvious. Removed entirely.
+    RETIRED Strategy 16 (Estimate revision momentum) — the eps_revision_pct
+                    delta column is rarely populated in practice (requires two
+                    consecutive KPI runs with differing analyst data). In the
+                    absence of real revision data the fallback collapses into a
+                    weaker clone of S13. Removed until the KPI analyser can
+                    reliably supply the delta field.
+    RETIRED Strategy 17 (High-beta quality growth) — high-beta (1.5-2.5)
+                    filter is extremely restrictive in the S&P 500 universe;
+                    most candidates that pass are also caught by S18 (capex
+                    beneficiary / semis) with a stronger sector thesis. Duplicate
+                    coverage with extra volatility and no incremental edge.
     NEW-19 Strategy 19 "News macro catalyst" — fetches RSS headlines daily, asks
                     Claude to identify dominant macro themes, scores universe stocks
                     by sector alignment with those themes. Cache in news_macro_cache.json
@@ -215,18 +243,6 @@ def load_kpi(kpi_path="equity_kpi_results.csv"):
 # ── Strategy scoring functions ────────────────────────────────────────────────
 # Each returns a sorted list of (ticker, score, reason) tuples.
 
-def score_momentum(rows, kmap):
-    """High composite score + bullish MA + strong abnormal return."""
-    out = []
-    for r in rows:
-        if r.get("ma_signal","") != "BULLISH (Golden Cross)": continue
-        rsi_contrib = min(r.get("rsi_14", 50), 70)   # cap so overbought doesn't score higher
-        score = (r.get("composite_score", 0) * 0.5 +
-                 rsi_contrib * 0.3 +
-                 r.get("abnormal_return", 0) * 200)
-        out.append((r["ticker"], round(score, 2), "Strong momentum + golden cross"))
-    return sorted(out, key=lambda x: -x[1])
-
 def score_mean_reversion(rows, kmap):
     """Buy oversold (RSI < 38). The lower the RSI the better."""
     out = []
@@ -248,40 +264,6 @@ def score_value(rows, kmap):
         out.append((r["ticker"], round(score, 2), f"P/E={pe:.1f} margin={npm*100:.1f}%"))
     return sorted(out, key=lambda x: -x[1])
 
-def score_quality_growth(rows, kmap):
-    """High EPS growth + high margin + P/E not insane.
-    FIX-7: skip loss-making companies (negative trailing EPS) to prevent
-    artificially inflated growth scores for firms recovering from a large loss.
-    """
-    out = []
-    for r in rows:
-        eps_ttm = r.get("eps_ttm", 0) or 0
-        if eps_ttm < 0:           # FIX-7: skip loss-makers
-            continue
-        eps_g = r.get("eps_growth_fwd", 0)
-        npm   = r.get("net_profit_margin", 0)
-        pe    = r.get("pe_ratio", 999)
-        if eps_g <= 0.05 or pe > 50: continue
-        score = eps_g * 60 + npm * 80 + r.get("composite_score", 0) * 0.3
-        out.append((r["ticker"], round(score, 2),
-                    f"EPS growth={eps_g*100:.1f}% margin={npm*100:.1f}%"))
-    return sorted(out, key=lambda x: -x[1])
-
-def score_sector_rotation(rows, kmap):
-    """Best composite score within the strongest sector (by avg composite score)."""
-    sector_scores = {}
-    for r in rows:
-        sec = r.get("sector", "Unknown")
-        sector_scores.setdefault(sec, []).append(r.get("composite_score", 0))
-    sector_avg  = {s: sum(v)/len(v) for s, v in sector_scores.items()}
-    best_sector = max(sector_avg, key=sector_avg.get)
-    out = []
-    for r in rows:
-        if r.get("sector","") != best_sector: continue
-        out.append((r["ticker"], round(r.get("composite_score", 0), 2),
-                    f"Top sector: {best_sector}"))
-    return sorted(out, key=lambda x: -x[1])
-
 def score_low_volatility(rows, kmap):
     """Lowest beta + decent composite score."""
     out = []
@@ -294,23 +276,25 @@ def score_low_volatility(rows, kmap):
 
 def score_earnings_surprise(rows, kmap):
     """
-    PEAD proxy: requires BOTH strong forward EPS growth AND a positive abnormal
-    return today (market reacting to an earnings beat). Original version used only
-    abnormal_return which is plain noise-chasing — this version requires the
-    underlying fundamental signal to be present too.
+    PEAD proxy: requires BOTH strong forward EPS growth AND a meaningful positive
+    abnormal return today (market reacting to an earnings beat).
+    FIX-10: tightened thresholds — abnormal_return raised from 0.5% to 2% and
+    min fwd EPS growth raised from 10% to 20%. A 0.5% daily move is routine noise;
+    2%+ on a stock with 20%+ forward growth is a genuine PEAD signal. Reduces
+    false positives and commission drag from churning on noise days.
     """
     out = []
     for r in rows:
         eps_ttm = r.get("eps_ttm", 0) or 0
         eps_g   = r.get("eps_growth_fwd", 0)
         ab      = r.get("abnormal_return", 0)
-        # profitable company + strong forward growth + positive market reaction
+        # profitable company + strong forward growth + meaningful market reaction
         if eps_ttm <= 0: continue
-        if eps_g < 0.10: continue
-        if ab <= 0.005:  continue
+        if eps_g < 0.20: continue   # FIX-10: raised from 0.10
+        if ab <= 0.02:   continue   # FIX-10: raised from 0.005 (0.5% → 2%)
         score = eps_g * 150 + ab * 200 + r.get("composite_score", 0) * 0.2
         out.append((r["ticker"], round(score, 2),
-                    f"PEAD proxy: fwd_growth={eps_g*100:.1f}% ab_ret={ab*100:.2f}%"))
+                    f"PEAD: fwd_growth={eps_g*100:.1f}% ab_ret={ab*100:.2f}%"))
     return sorted(out, key=lambda x: -x[1])
 
 def score_dividend_growth(rows, kmap):
@@ -441,103 +425,6 @@ def score_passive(rows, kmap):
         cap = r.get("market_cap", 0)
         out.append((r["ticker"], cap, "Passive hold: largest market cap"))
     return sorted(out, key=lambda x: -x[1])
-
-def score_noise_chaser(rows, kmap):
-    """
-    NEW-15: Explicit degenerate strategy — noise chaser.
-    Buys whichever stocks had the largest POSITIVE abnormal return today with
-    zero fundamental filter. This is what Strategy 07 was accidentally doing.
-    The market has already priced in the move; buying now captures only noise.
-    Expected to underperform most other strategies over time — a useful lower bound.
-    """
-    out = []
-    for r in rows:
-        ab = r.get("abnormal_return", 0)
-        if ab <= 0.005: continue   # only upside movers (we can only go long)
-        score = ab * 500           # pure noise signal, zero fundamental weighting
-        out.append((r["ticker"], round(score, 2),
-                    f"Noise chase: abnormal_return={ab*100:.2f}% (no fundamentals)"))
-    return sorted(out, key=lambda x: -x[1])
-
-def score_estimate_revision(rows, kmap):
-    """
-    NEW-16: Estimate Revision Momentum.
-    Looks for stocks where forward EPS has been revised upward vs the prior
-    day's KPI run. The delta is stored in 'eps_revision_pct' by the KPI
-    analyser when a prior-day snapshot is available.  Falls back to using
-    the absolute forward EPS growth rate as a proxy when no delta data exists
-    (first-run case).
-    """
-    out = []
-    for r in rows:
-        eps_ttm  = r.get("eps_ttm", 0) or 0
-        eps_fwd  = r.get("eps_growth_fwd", 0) or 0
-        rev_pct  = r.get("eps_revision_pct", None)   # populated by KPI analyser
-        # load_kpi casts empty/None CSV cells to 0.0 — treat 0.0 as "no data"
-        # unless eps_growth_fwd itself changed (genuine zero revision is fine to skip)
-        if rev_pct == 0.0:
-            rev_pct = None
-        cs       = r.get("composite_score", 0)
-        npm      = r.get("net_profit_margin", 0) or 0
-        pe       = r.get("pe_ratio", 999) or 999
-
-        if eps_ttm <= 0:   continue   # must be profitable
-        if eps_fwd  <= 0:  continue   # must have positive forward growth
-
-        if rev_pct is not None and rev_pct > 0:
-            # Primary path: real upward revision detected today
-            # Large revision (e.g. +20%) = strong signal
-            score = rev_pct * 300 + eps_fwd * 80 + npm * 60 + cs * 0.2
-            reason = (f"EPS revision +{rev_pct*100:.1f}% today  "
-                      f"fwd_growth={eps_fwd*100:.1f}%  margin={npm*100:.1f}%")
-        else:
-            # Fallback path: use high forward growth as a proxy for stocks
-            # that analysts are likely upgrading (no delta data yet)
-            if eps_fwd < 0.15:  continue   # minimum bar when using proxy
-            score = eps_fwd * 80 + npm * 60 + cs * 0.3
-            reason = (f"High fwd EPS growth proxy: {eps_fwd*100:.1f}%  "
-                      f"margin={npm*100:.1f}%  P/E={pe:.1f}")
-
-        out.append((r["ticker"], round(score, 2), reason))
-    return sorted(out, key=lambda x: -x[1])
-
-
-def score_high_beta_quality(rows, kmap):
-    """
-    NEW-17: High-Beta Quality Growth.
-    Explicitly rewards high-beta stocks (1.5-2.5) WHERE the beta is backed by
-    genuine accelerating fundamentals: expanding margins, strong EPS growth,
-    and a bullish technical setup.  This is the opposite of S06 (low-vol) and
-    deliberately overlaps with where NVDA lived in 2022-2023.
-    Beta < 1.5 → excluded (use S04 for that).
-    Beta > 2.5 → excluded (pure speculation, no edge).
-    """
-    out = []
-    for r in rows:
-        beta     = r.get("beta", 1.0) or 1.0
-        eps_ttm  = r.get("eps_ttm", 0) or 0
-        eps_fwd  = r.get("eps_growth_fwd", 0) or 0
-        npm      = r.get("net_profit_margin", 0) or 0
-        cs       = r.get("composite_score", 0)
-        rsi      = r.get("rsi_14", 50) or 50
-        ma_sig   = r.get("ma_signal", "")
-
-        if not (1.5 <= beta <= 2.5):          continue
-        if eps_ttm <= 0:                       continue   # must be profitable
-        if eps_fwd < 0.10:                     continue   # needs meaningful growth
-        if npm < 0.10:                         continue   # minimum margin quality gate
-        if "BULLISH" not in ma_sig:            continue   # must be in uptrend
-        if rsi > 80:                           continue   # skip parabolic moves
-
-        # Reward: high beta justified by growth + margin expansion
-        beta_bonus = (beta - 1.0) * 20        # higher beta = more upside if thesis holds
-        score = (eps_fwd * 100 + npm * 80 + beta_bonus + cs * 0.3)
-        reason = (f"High-beta quality: beta={beta:.2f}  "
-                  f"fwd_growth={eps_fwd*100:.1f}%  margin={npm*100:.1f}%  "
-                  f"RSI={rsi:.1f}")
-        out.append((r["ticker"], round(score, 2), reason))
-    return sorted(out, key=lambda x: -x[1])
-
 
 def score_capex_beneficiary(rows, kmap):
     """
@@ -1294,133 +1181,7 @@ def ask_claude(strategy_id, strategy_name, strategy_desc, candidates, holdings, 
         for t, s, r in candidates[:10]
     )
 
-    # Strategy 15 gets a purpose-built aggressive prompt — it should chase noise,
-    # not reason conservatively. Using the standard hold-biased prompt would cause
-    # Claude to rationally avoid buying and the degenerate behaviour wouldn't show.
-    if strategy_id == "15":
-        prompt = f"""You are managing a paper trading account for strategy "15 - Noise chaser".
-This is an EXPERIMENTAL DEGENERATE strategy designed to demonstrate that chasing
-yesterday's price movers loses money. Your job is to act as the worst possible trader:
-buy the #1 highest abnormal-return stock from the candidate list every single day,
-regardless of fundamentals, valuation, or risk. Never hold cash beyond the 5% reserve.
-Sell any existing position if a higher abnormal-return candidate exists today.
-
-Account:
-  Cash available: ${acct['cash']:.2f}
-  Holdings value: ${acct['holdings_value']:.2f}
-  Total: ${acct['cash']+acct['holdings_value']:.2f}
-  Trades so far: {acct['trades']}
-
-Current holdings:
-{hold_str}
-
-Top noise candidates today (ranked by abnormal return — pure price chasing):
-{cand_str}
-
-Rules:
-- Commission is $4.95 per trade + 0.05% spread
-- Max 3 positions, max 60% per stock, keep 5% cash
-- BUY the #1 candidate if you have a free position slot
-- SELL any holding if its ticker is not in the top 3 candidates today
-- Do NOT apply fundamental reasoning — this strategy intentionally ignores it
-
-Respond ONLY with a JSON object. No explanation outside the JSON.
-{{
-  "actions": [
-    {{"type": "BUY",  "ticker": "AAPL", "reason": "why"}},
-    {{"type": "SELL", "ticker": "XYZ",  "reason": "why"}},
-    {{"type": "HOLD", "ticker": "MU",   "reason": "why"}}
-  ],
-  "summary": "one sentence summary of today's decisions"
-}}
-"""
-    elif strategy_id == "16":
-        prompt = f"""You are managing a paper trading account for strategy "16 - Estimate revision momentum".
-
-Strategy description: {strategy_desc}
-
-KEY INSIGHT: You are hunting for stocks where analysts have recently RAISED their EPS estimates.
-A high eps_revision_pct score means Wall Street just upgraded their outlook — that is the
-primary signal. Stocks with accelerating estimate revisions historically outperform for 3-6 months.
-Sell when revision momentum stalls (low/negative revision score on future runs) or the stock
-has run >20% above its cost basis with no new revision catalyst.
-
-Account:
-  Cash available: ${acct['cash']:.2f}
-  Holdings value: ${acct['holdings_value']:.2f}
-  Total: ${acct['cash']+acct['holdings_value']:.2f}
-  Goal: ${STARTING_CASH*2:.2f} (double the money)
-  Trades so far: {acct['trades']}
-
-Current holdings:
-{hold_str}
-
-Top-ranked candidates today (by estimate revision score):
-{cand_str}
-
-Rules:
-- Commission is $4.95 per trade + 0.05% spread
-- Max 3 positions at once
-- Max 60% of portfolio in any one stock
-- Keep at least 5% cash reserve
-- Sell if: revision momentum has clearly stalled, stock dropped >20% from avg cost,
-  or a clearly better revision opportunity exists (10+ point score gap)
-
-Respond ONLY with a JSON object. No explanation outside the JSON.
-{{
-  "actions": [
-    {{"type": "BUY",  "ticker": "AAPL", "reason": "why"}},
-    {{"type": "SELL", "ticker": "XYZ",  "reason": "why"}},
-    {{"type": "HOLD", "ticker": "MU",   "reason": "why"}}
-  ],
-  "summary": "one sentence summary of today's decisions"
-}}
-"""
-    elif strategy_id == "17":
-        prompt = f"""You are managing a paper trading account for strategy "17 - High-beta quality growth".
-
-Strategy description: {strategy_desc}
-
-KEY INSIGHT: This strategy is the OPPOSITE of low-volatility. You are specifically hunting
-high-beta (1.5-2.5) stocks where the volatility is JUSTIFIED by genuine business momentum:
-high and expanding margins, strong forward EPS growth, golden cross uptrend.
-NVDA was the archetype: very high beta, but 55% net margins and explosive EPS growth.
-Do NOT avoid a stock just because it is volatile — that is the entire point.
-Sell only if fundamentals deteriorate (margin compression, EPS miss) or a death cross forms.
-Normal 15-20% drawdowns are acceptable and expected — do NOT panic-sell on volatility alone.
-
-Account:
-  Cash available: ${acct['cash']:.2f}
-  Holdings value: ${acct['holdings_value']:.2f}
-  Total: ${acct['cash']+acct['holdings_value']:.2f}
-  Goal: ${STARTING_CASH*2:.2f} (double the money)
-  Trades so far: {acct['trades']}
-
-Current holdings:
-{hold_str}
-
-Top-ranked candidates today (high-beta + strong fundamentals):
-{cand_str}
-
-Rules:
-- Commission is $4.95 per trade + 0.05% spread
-- Max 3 positions at once
-- Max 60% of portfolio in any one stock
-- Keep at least 5% cash reserve
-- High volatility is EXPECTED and acceptable — do not sell on normal drawdowns
-- Sell only if: MA turns bearish (death cross), EPS growth collapses, or margins deteriorate
-
-Respond ONLY with a JSON object. No explanation outside the JSON.
-{{
-  "actions": [
-    {{"type": "BUY",  "ticker": "AAPL", "reason": "why"}},
-    {{"type": "SELL", "ticker": "XYZ",  "reason": "why"}},
-    {{"type": "HOLD", "ticker": "MU",   "reason": "why"}}
-  ],
-  "summary": "one sentence summary of today's decisions"
-}}
-"""
-    elif strategy_id == "18":
+    if strategy_id == "18":
         prompt = f"""You are managing a paper trading account for strategy "18 - Capex beneficiary / semis".
 
 Strategy description: {strategy_desc}

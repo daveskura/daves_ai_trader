@@ -4,18 +4,13 @@ rank,date,strategy_id,strategy_name,style,risk,cash,holdings_value,total,pnl,pct
 3,2026-03-27,09,Insider buying signal,alt-data,med,1000.0,0.0,1000.0,0.0,0.0,0
 4,2026-03-27,19,News macro catalyst,macro,med,1000.0,0.0,1000.0,0.0,0.0,0
 5,2026-03-27,20,News sentiment momentum,alt-data,med,1000.0,0.0,1000.0,0.0,0.0,0
-6,2026-03-27,12,Momentum (academic / Asness),academic,high,40.0,957.39,997.39,-2.61,-0.26,2
-7,2026-03-27,08,Dividend growth,income,low,40.0,952.77,992.77,-7.23,-0.72,2
-8,2026-03-27,02,Mean reversion,contrarian,med,40.0,949.6,989.6,-10.4,-1.04,2
-9,2026-03-27,14,Passive S&P 500 benchmark,passive,low,568.0,400.56,968.56,-31.44,-3.14,1
-10,2026-03-27,07,Earnings surprise (PEAD),event,high,40.0,926.57,966.57,-33.43,-3.34,2
-11,2026-03-27,11,Large-cap value (Fama-French),academic,med,40.0,914.95,954.95,-45.05,-4.5,2
-12,2026-03-27,05,Sector rotation,macro,med,37.53,910.88,948.41,-51.59,-5.16,14
+6,2026-03-27,21,Defense & war economy,thematic,med,1000.0,0.0,1000.0,0.0,0.0,0
+7,2026-03-27,12,Momentum (academic / Asness),academic,high,40.0,957.39,997.39,-2.61,-0.26,2
+8,2026-03-27,08,Dividend growth,income,low,40.0,952.77,992.77,-7.23,-0.72,2
+9,2026-03-27,02,Mean reversion,contrarian,med,40.0,949.6,989.6,-10.4,-1.04,2
+10,2026-03-27,14,Passive S&P 500 benchmark,passive,low,568.0,400.56,968.56,-31.44,-3.14,1
+11,2026-03-27,07,Earnings surprise (PEAD),event,high,40.0,926.57,966.57,-33.43,-3.34,2
+12,2026-03-27,11,Large-cap value (Fama-French),academic,med,40.0,914.95,954.95,-45.05,-4.5,2
 13,2026-03-27,03,Value investing,value,low,40.0,907.68,947.68,-52.32,-5.23,2
 14,2026-03-27,13,Quality / profitability,academic,low,40.0,903.15,943.15,-56.85,-5.68,2
 15,2026-03-27,18,Capex beneficiary / semis,thematic,high,40.0,888.47,928.47,-71.53,-7.15,2
-16,2026-03-27,01,Momentum / trend following,momentum,high,40.0,886.18,926.18,-73.82,-7.38,2
-17,2026-03-27,15,Noise chaser,speculative,high,357.61,531.2,888.81,-111.19,-11.12,15
-18,2026-03-27,16,Estimate revision momentum,growth,med,40.0,825.92,865.92,-134.08,-13.41,2
-19,2026-03-27,17,High-beta quality growth,growth,high,40.0,811.15,851.15,-148.85,-14.89,2
-20,2026-03-27,04,Quality growth (GARP),growth,med,40.0,807.1,847.1,-152.9,-15.29,2
