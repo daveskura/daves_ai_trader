@@ -149,8 +149,8 @@ STRATEGIES = [
      "Follow C-suite open-market purchases. Strong predictor of 6-12 month outperformance."),
     ("10", "Macro-regime adaptive",        "macro",       "med",
      "Switch between aggressive and defensive posture based on VIX, GDP trend, Fed direction."),
-    ("11", "Large-cap value (Fama-French)","academic",    "med",
-     "Fama-French value factor within S&P 500: bottom third by market cap in universe + low P/E + high margin."),  # FIX-5
+    ("11", "Mid-to-large value (Fama-French)","academic",  "med",
+     "Fama-French value factor within S&P 500: bottom third by market cap in universe (relatively smaller large-caps) + low P/E + high margin."),  # FIX-5
     ("12", "Momentum (academic / Asness)", "academic",    "high",
      "Cliff Asness AQR-style momentum: golden cross + RSI not overbought + must be >=5% below 52w high (crash protection)."),  # FIX-8
     ("13", "Quality / profitability",      "academic",    "low",
@@ -183,6 +183,7 @@ def acct_file(sid):   return BASE_DIR / f"account_{sid}.csv"
 def hold_file(sid):   return BASE_DIR / f"holdings_{sid}.csv"
 def txn_file(sid):    return BASE_DIR / f"transactions_{sid}.csv"
 def leader_file():    return BASE_DIR / "leaderboard.csv"
+def leader_history_file(): return BASE_DIR / "leaderboard_history.csv"
 
 def read_csv(path):
     if not path.exists():
@@ -587,7 +588,9 @@ MACRO_THEME_MAP = {
     "dollar_weakness":          (["Technology","Industrials","Energy","Materials"],[]),
 }
 
-NEWS_CACHE_FILE = BASE_DIR / "news_macro_cache.json"
+NEWS_CACHE_FILE    = BASE_DIR / "news_macro_cache.json"
+HEADLINE_MIN_COUNT = 10   # warn if fewer than this many unique headlines are fetched
+_news_briefing_printed = False   # guard: print the briefing only once per process run
 
 
 def _fetch_rss(url: str, timeout: int = 8) -> list[dict]:
@@ -669,6 +672,9 @@ def get_news_macro_analysis(force_refresh: bool = False, verbose: bool = True) -
     if not headlines:
         print("  [NEWS] No headlines fetched — strategies 19/20 skipped today")
         return None
+    if len(headlines) < HEADLINE_MIN_COUNT:
+        print(f"  [NEWS] WARNING: only {len(headlines)} headlines fetched (threshold={HEADLINE_MIN_COUNT}).")
+        print("  [NEWS] RSS feeds may be rate-limited or blocked. Consider adding backup sources.")
 
     headline_text = "\n".join(
         f"[{h.get('source','')}] {h['title']} — {h.get('summary','')[:150]}"
@@ -982,7 +988,14 @@ Respond ONLY with a JSON object. No explanation outside the JSON.
 
 
 def print_news_briefing(macro: dict):
-    """Print a formatted daily news macro briefing."""
+    """Print a formatted daily news macro briefing.
+    Guard ensures the briefing is printed only once per process run even when
+    both S19 and S20 execute sequentially in the same invocation.
+    """
+    global _news_briefing_printed
+    if _news_briefing_printed:
+        return
+    _news_briefing_printed = True
     if not macro:
         return
     print("\n" + "─"*65)
@@ -1536,9 +1549,23 @@ def update_leaderboard(today, kmap=None):
     rows.sort(key=lambda x: -x["total"])
     for i, r in enumerate(rows):
         r["rank"] = i + 1
-    write_csv(leader_file(), rows,
-              ["rank","date","strategy_id","strategy_name","style","risk",
-               "cash","holdings_value","total","pnl","pct_return","trades"])
+
+    lb_fieldnames = ["rank","date","strategy_id","strategy_name","style","risk",
+                     "cash","holdings_value","total","pnl","pct_return","trades"]
+
+    # Overwrite today's snapshot (current leaderboard)
+    write_csv(leader_file(), rows, lb_fieldnames)
+
+    # Append to cumulative history — one row per strategy per day.
+    # This preserves the full equity curve for charting and analytics.
+    hist_path = leader_history_file()
+    write_header = not hist_path.exists()
+    with open(hist_path, "a", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=lb_fieldnames)
+        if write_header:
+            w.writeheader()
+        w.writerows(rows)
+
     return rows
 
 # ── Initialise account files ──────────────────────────────────────────────────
@@ -1747,7 +1774,7 @@ def main():
         print(f"  {r['rank']:<5} {r['strategy_id']:<4} {r['strategy_name'][:35]:<35} "
               f"${r['total']:>8.2f} {sign}${r['pnl']:>8.2f} {sign}{r['pct_return']:>7.2f}%")
     print("-"*65)
-    print(f"  Leaderboard saved to: {leader_file().name}")
+    print(f"  Leaderboard saved to: {leader_file().name}  (history: {leader_history_file().name})")
     print("="*65 + "\n")
 
 

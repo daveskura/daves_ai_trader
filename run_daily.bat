@@ -68,7 +68,6 @@ echo ============================================
 echo  STAGE 1 - PRE-MARKET NEWS RUN
 echo  Fetching headlines and running strategies
 echo  19 ^(News macro^) and 20 ^(News sentiment^)
-echo  [Strategy 21 runs post-market with KPI data]
 echo ============================================
 echo.
 
@@ -110,7 +109,7 @@ if "%RUN_MODE%"=="news" (
 goto :run_full
 
 :: ═══════════════════════════════════════════════════════════════════
-:: STAGE 2 — POST-MARKET FULL RUN  (all 20 strategies)
+:: STAGE 2 — POST-MARKET FULL RUN  (all active strategies)
 :: Best run 4:30–6:00 PM ET after market close when prices are settled.
 :: Strategies 19 & 20 reuse the morning news cache — no duplicate
 :: Claude API call.
@@ -132,7 +131,7 @@ if errorlevel 1 (
 echo [STEP 1] Done.
 echo.
 
-echo [STEP 2] Running all strategies ^(1-20^)...
+echo [STEP 2] Running all strategies...
 python strategy_runner.py
 if errorlevel 1 (
     echo ERROR: Strategy runner failed.

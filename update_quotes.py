@@ -33,21 +33,21 @@ ACCOUNT_NUM   = "123456789"
 BASE_DIR      = Path(__file__).parent
 
 STRATEGIES = [
-    ("02", "Mean reversion",                "contrarian",  "med"),
-    ("03", "Value investing",               "value",       "low"),
-    ("06", "Low volatility / defensive",    "defensive",   "low"),
-    ("07", "Earnings surprise (PEAD)",      "event",       "high"),
-    ("08", "Dividend growth",               "income",      "low"),
-    ("09", "Insider buying signal",         "alt-data",    "med"),
-    ("10", "Macro-regime adaptive",         "macro",       "med"),
-    ("11", "Large-cap value (Fama-French)", "academic",    "med"),
-    ("12", "Momentum (academic / Asness)",  "academic",    "high"),
-    ("13", "Quality / profitability",       "academic",    "low"),
-    ("14", "Passive S&P 500 benchmark",     "passive",     "low"),
-    ("18", "Capex beneficiary / semis",     "thematic",    "high"),
-    ("19", "News macro catalyst",           "macro",       "med"),
-    ("20", "News sentiment momentum",       "alt-data",    "med"),
-    ("21", "Defense & war economy",         "thematic",    "med"),
+    ("02", "Mean reversion",                   "contrarian",  "med"),
+    ("03", "Value investing",                  "value",       "low"),
+    ("06", "Low volatility / defensive",       "defensive",   "low"),
+    ("07", "Earnings surprise (PEAD)",         "event",       "high"),
+    ("08", "Dividend growth",                  "income",      "low"),
+    ("09", "Insider buying signal",            "alt-data",    "med"),
+    ("10", "Macro-regime adaptive",            "macro",       "med"),
+    ("11", "Mid-to-large value (Fama-French)", "academic",    "med"),
+    ("12", "Momentum (academic / Asness)",     "academic",    "high"),
+    ("13", "Quality / profitability",          "academic",    "low"),
+    ("14", "Passive S&P 500 benchmark",        "passive",     "low"),
+    ("18", "Capex beneficiary / semis",        "thematic",    "high"),
+    ("19", "News macro catalyst",              "macro",       "med"),
+    ("20", "News sentiment momentum",          "alt-data",    "med"),
+    ("21", "Defense & war economy",            "thematic",    "med"),
 ]
 
 # ── File helpers ──────────────────────────────────────────────────────────────
