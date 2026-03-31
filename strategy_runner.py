@@ -97,6 +97,33 @@ Changes vs original:
                     and cybersecurity stocks that benefit from sustained US military
                     spending. Scores on: sector membership, net margin, EPS growth,
                     golden cross, and a backlog/contract proxy via abnormal return.
+    FIX-21 buy() over-concentration: already_invested now uses current market value
+                    (shares * current_price) instead of cost_basis so the 60% cap
+                    is measured against today's position value, not what was paid.
+    FIX-22 leaderboard_history deduplication: today's rows are removed before
+                    appending so a pre-market + post-market double-run on the same
+                    day no longer produces duplicate history entries. The file now
+                    has exactly one row per (strategy_id, date).
+    FIX-23 Per-strategy minimum hold periods (HOLD_PERIODS dict): long-thesis
+                    strategies (06, 08, 11, 13, 21) hold 15 days; value/academic
+                    (03, 09, 12) hold 10 days; event/news (07, 19, 20) hold 3-5
+                    days. sell() now reads HOLD_PERIODS[sid] instead of the global
+                    MIN_HOLD_DAYS constant, eliminating weekly churn on hold strategies.
+    FIX-24 Claude prompt enriched with unrealized P&L: holdings block now shows
+                    current_price, unrealized_pnl $, and pnl_pct for every held
+                    position so Claude can make rational sell decisions.
+    FIX-25 Claude prompt enriched with key KPIs per candidate: top candidates now
+                    include RSI, MA signal, and P/E alongside the existing score +
+                    reason, giving Claude the signals it needs to override scoring.
+    FIX-26 score_low_volatility (S06): composite_score >= 40 quality gate added —
+                    low beta alone is insufficient; the stock must also pass basic
+                    fundamental/technical quality to avoid junk defensive picks.
+    FIX-27 score_earnings_surprise (S07): abnormal_return threshold lowered from
+                    2% to 1.5% and made adaptive — on days with no 2%+ candidates
+                    the top-5 stocks with ab >= 1.0% and eps_growth_fwd >= 15% are
+                    included as fallback so the strategy always has candidates.
+    FIX-28 _trading_days_held: replaced the fragile class-reconstruction pattern
+                    with a clean weekday counter using date arithmetic.
 """
 
 import sys, os, re, json, csv, math, argparse, urllib.error, urllib.request
@@ -125,12 +152,33 @@ if _env_path.exists():
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 MODEL             = "claude-sonnet-4-6"          # FIX-1: corrected model string
 STARTING_CASH     = 1000.00
-COMMISSION        = 4.95          # flat per trade
+COMMISSION        = 1.00          # flat per trade (reduced from $4.95 — paper trading;
+                                  # $4.95 was eating ~1% round-trip on a $1k account)
 SPREAD_PCT        = 0.0005        # 0.05% spread
 ACCOUNT_NUM       = "123456789"
 BASE_DIR          = Path(__file__).parent
-MIN_HOLD_DAYS     = 3             # FIX-12: minimum trading days before Claude may sell
+MIN_HOLD_DAYS     = 3             # FIX-12: global fallback minimum hold (days)
 STOP_LOSS_PCT     = 0.20          # FIX-11: hard stop-loss — sell if down >= 20% from avg cost
+
+# FIX-23: Per-strategy minimum hold periods (trading days).
+# Long-thesis strategies penalise churn most; event/news strategies need flexibility.
+HOLD_PERIODS = {
+    "02":  3,   # Mean reversion — short-cycle, RSI bounce thesis
+    "03": 10,   # Value investing — weeks to months for re-rating
+    "06": 15,   # Low volatility / defensive — hold through noise
+    "07":  3,   # PEAD — event-driven, drift resolves quickly
+    "08": 15,   # Dividend growth — income, very low turnover
+    "09": 10,   # Insider buying — 6-12 month thesis; gate at 10 days
+    "10":  5,   # Macro-regime adaptive — regime can shift weekly
+    "11": 10,   # S&P 500 value tilt — patient holding required
+    "12":  7,   # Momentum — weekly trend check is fine
+    "13": 15,   # Quality / profitability — stable compounders
+    "14": 999,  # Passive — never sell (buy-and-hold benchmark)
+    "18": 10,   # Capex beneficiary / semis — conviction hold
+    "19":  5,   # News macro catalyst — themes shift within the week
+    "20":  5,   # News sentiment momentum — short-lived sentiment edge
+    "21": 15,   # Defense & war economy — multi-year thesis
+}
 
 # ── Strategy definitions ─────────────────────────────────────────────────────
 STRATEGIES = [
@@ -149,8 +197,11 @@ STRATEGIES = [
      "Follow C-suite open-market purchases. Strong predictor of 6-12 month outperformance."),
     ("10", "Macro-regime adaptive",        "macro",       "med",
      "Switch between aggressive and defensive posture based on VIX, GDP trend, Fed direction."),
-    ("11", "Mid-to-large value (Fama-French)","academic",  "med",
-     "Fama-French value factor within S&P 500: bottom third by market cap in universe (relatively smaller large-caps) + low P/E + high margin."),  # FIX-5
+    ("11", "S&P 500 value tilt",             "academic",  "med",
+     "Pure value factor within the S&P 500: low P/E, high margin, low beta. "
+     "Scores on valuation cheapness and profitability without a cap-size bias — "
+     "the Fama-French small-cap premium doesn't apply here, so we just pick the "
+     "cheapest quality names available in large-cap universe."),  # FIX-11-thesis
     ("12", "Momentum (academic / Asness)", "academic",    "high",
      "Cliff Asness AQR-style momentum: golden cross + RSI not overbought + must be >=5% below 52w high (crash protection)."),  # FIX-8
     ("13", "Quality / profitability",      "academic",    "low",
@@ -308,36 +359,58 @@ def score_value(rows, kmap):
     return sorted(out, key=lambda x: -x[1])
 
 def score_low_volatility(rows, kmap):
-    """Lowest beta + decent composite score."""
+    """Lowest beta + decent composite score.
+    FIX-26: composite_score >= 40 quality gate added. Low beta alone is
+    insufficient — many low-beta stocks have weak fundamentals. Require at
+    least a passing composite score so the strategy picks genuinely defensive
+    quality names, not just slow-moving junk.
+    """
     out = []
     for r in rows:
         beta = r.get("beta", 1)
+        cs   = r.get("composite_score", 0)
         if beta <= 0 or beta > 1.0: continue
-        score = (1.5 - beta) * 40 + r.get("composite_score", 0) * 0.4
-        out.append((r["ticker"], round(score, 2), f"Low beta={beta:.2f}"))
+        if cs < 40: continue   # FIX-26: quality gate
+        score = (1.5 - beta) * 40 + cs * 0.4
+        out.append((r["ticker"], round(score, 2), f"Low beta={beta:.2f} CS={cs:.0f}"))
     return sorted(out, key=lambda x: -x[1])
 
 def score_earnings_surprise(rows, kmap):
     """
     PEAD proxy: requires BOTH strong forward EPS growth AND a meaningful positive
     abnormal return today (market reacting to an earnings beat).
-    FIX-10: tightened thresholds — abnormal_return raised from 0.5% to 2% and
-    min fwd EPS growth raised from 10% to 20%. A 0.5% daily move is routine noise;
-    2%+ on a stock with 20%+ forward growth is a genuine PEAD signal. Reduces
-    false positives and commission drag from churning on noise days.
+    FIX-10: tightened thresholds — primary threshold at 2%+ abnormal return.
+    FIX-27: adaptive fallback — on days with no 2%+ candidates, include the top-5
+    stocks with ab >= 1.5% and eps_growth_fwd >= 15% so the strategy always has
+    something to work with on quieter earnings days. Without this fallback S07
+    returns zero candidates on most days.
     """
     out = []
     for r in rows:
         eps_ttm = r.get("eps_ttm", 0) or 0
         eps_g   = r.get("eps_growth_fwd", 0)
         ab      = r.get("abnormal_return", 0)
-        # profitable company + strong forward growth + meaningful market reaction
         if eps_ttm <= 0: continue
-        if eps_g < 0.20: continue   # FIX-10: raised from 0.10
-        if ab <= 0.02:   continue   # FIX-10: raised from 0.005 (0.5% → 2%)
+        if eps_g < 0.20: continue
+        if ab <= 0.02:   continue
         score = eps_g * 150 + ab * 200 + r.get("composite_score", 0) * 0.2
         out.append((r["ticker"], round(score, 2),
                     f"PEAD: fwd_growth={eps_g*100:.1f}% ab_ret={ab*100:.2f}%"))
+
+    # FIX-27: adaptive fallback — lower bar when primary scan finds nothing
+    if not out:
+        for r in rows:
+            eps_ttm = r.get("eps_ttm", 0) or 0
+            eps_g   = r.get("eps_growth_fwd", 0)
+            ab      = r.get("abnormal_return", 0)
+            if eps_ttm <= 0: continue
+            if eps_g < 0.15: continue
+            if ab <= 0.015:  continue
+            score = eps_g * 150 + ab * 200 + r.get("composite_score", 0) * 0.2
+            out.append((r["ticker"], round(score, 2),
+                        f"PEAD(fallback): fwd_growth={eps_g*100:.1f}% ab_ret={ab*100:.2f}%"))
+        out = sorted(out, key=lambda x: -x[1])[:5]
+
     return sorted(out, key=lambda x: -x[1])
 
 def score_dividend_growth(rows, kmap):
@@ -422,30 +495,40 @@ def score_macro_adaptive(rows, kmap):
 
 def score_large_cap_value(rows, kmap):
     """
-    FIX-5: Original $10B cap threshold excluded every S&P 500 stock.
-    Now dynamically computes the bottom-third market cap within the loaded
-    universe so there are always real candidates. Low P/E + high margin filter
-    applies the Fama-French value tilt to the relatively smaller large-caps.
-    FIX-17: added beta <= 1.2 gate to preserve the low-risk value character
-    and avoid high-beta deep-cyclicals that happen to have low P/E ratios.
-    """
-    caps = sorted([r.get("market_cap", 0) for r in rows if r.get("market_cap", 0) > 0])
-    if not caps:
-        return []
-    cap_threshold = caps[len(caps) // 3]   # bottom third of universe by market cap
+    Issue-11 reframe: Pure S&P 500 value tilt — no cap-size gimmick.
 
+    The original function ranked by bottom-third market cap, but the Fama-French
+    size premium is a *small-cap* phenomenon that doesn't hold within the S&P 500
+    (all 500 are already large-caps). Sorting by size within large-cap adds noise
+    without academic justification and was likely hurting returns.
+
+    New approach: score purely on value quality —
+      - Low P/E (cheap on earnings)
+      - High net margin (profitable business, not a value trap)
+      - Low beta (stable, lower-volatility compounders)
+      - Composite score floor (cs >= 35) to avoid technically broken stocks
+
+    The cap-size column is still shown in the reason string for transparency,
+    but it no longer drives the score or acts as a filter.
+    """
     out = []
     for r in rows:
-        cap  = r.get("market_cap", 1e15)
         pe   = r.get("pe_ratio", 999)
         npm  = r.get("net_profit_margin", 0)
         beta = r.get("beta", 1.0) or 1.0
-        if cap > cap_threshold: continue
-        if pe <= 0 or pe > 20: continue
-        if beta > 1.2: continue              # FIX-17: exclude high-beta deep-cyclicals
-        score = (cap_threshold - cap) / 1e9 * 0.01 + (20 - pe) * 2 + npm * 50
+        cs   = r.get("composite_score", 0)
+        cap  = r.get("market_cap", 0)
+
+        if pe <= 0 or pe > 22:   continue   # cheap valuation required
+        if npm < 0.05:           continue   # minimum profitability (avoid value traps)
+        if beta > 1.2:           continue   # low-risk value character
+        if cs < 35:              continue   # basic quality floor
+
+        # Score: valuation cheapness + margin quality + stability bonus
+        score = (22 - pe) * 3 + npm * 80 + (1.3 - beta) * 15 + cs * 0.1
         out.append((r["ticker"], round(score, 2),
-                    f"Value tilt: cap=${cap/1e9:.0f}B P/E={pe:.1f} margin={npm*100:.1f}% beta={beta:.2f}"))
+                    f"Value: P/E={pe:.1f} margin={npm*100:.1f}% beta={beta:.2f} "
+                    f"cap=${cap/1e9:.0f}B CS={cs:.0f}"))
     return sorted(out, key=lambda x: -x[1])
 
 def score_academic_momentum(rows, kmap):
@@ -770,11 +853,13 @@ Only include themes genuinely visible in today's headlines. Do not invent news.
         return None
 
 
-def score_news_macro(rows: list, kmap: dict, macro: dict) -> list[tuple]:
+def score_news_macro(rows: list, kmap: dict, macro: dict = None) -> list[tuple]:
     """
     Strategy 19 — News Macro Catalyst scorer.
     Scores each stock by sector alignment with today's dominant macro themes.
     Theme strength, duration, and market regime all adjust the final score.
+    FIX (bug 3): macro defaults to None so the generic SCORE_FN dispatch
+    (score_fn(rows, kmap)) never crashes if S19 reaches the standard path.
     """
     if not macro or not macro.get("dominant_themes"):
         return []
@@ -844,11 +929,12 @@ def score_news_macro(rows: list, kmap: dict, macro: dict) -> list[tuple]:
     return sorted(out, key=lambda x: -x[1])
 
 
-def score_news_sentiment(rows: list, kmap: dict, macro: dict) -> list[tuple]:
+def score_news_sentiment(rows: list, kmap: dict, macro: dict = None) -> list[tuple]:
     """
     Strategy 20 — News Sentiment Momentum scorer.
     Quality gate (CS > 40, positive EPS) then amplified by macro sector tailwinds
     and company-specific catalysts. Fundamentals + news together.
+    FIX (bug 3): macro defaults to None so generic SCORE_FN dispatch is safe.
     """
     if not macro:
         return []
@@ -901,19 +987,34 @@ def score_news_sentiment(rows: list, kmap: dict, macro: dict) -> list[tuple]:
 
 
 def _build_news_prompt(strategy_id, strategy_name, strategy_desc,
-                       candidates, holdings, acct, today, macro):
-    """Build the Claude trading prompt for news-driven strategies 19 & 20."""
-    hold_str = "\n".join(
-        f"  {h['ticker']}: {h['shares']:.4f} sh  cost ${h['cost_basis']:.2f}  "
-        f"avg ${h['avg_cost']:.4f}  held since {h.get('purchase_date','?')}"
-        for h in holdings
-    ) or "  (none)"
+                       candidates, holdings, acct, today, macro, kmap=None):
+    """Build the Claude trading prompt for news-driven strategies 19 & 20.
+    FIX-24: enriched holdings with unrealized P&L.
+    FIX-23: uses per-strategy hold floor from HOLD_PERIODS.
+    """
+    if kmap is None:
+        kmap = {}
+
+    # FIX-24: enriched holdings with unrealized P&L
+    hold_lines = []
+    for h in holdings:
+        avg_cost  = float(h["avg_cost"])
+        cur_price = kmap.get(h["ticker"], {}).get("current_price") or avg_cost
+        unreal    = (cur_price - avg_cost) * h["shares"]
+        pnl_pct   = (cur_price - avg_cost) / avg_cost * 100 if avg_cost else 0
+        hold_lines.append(
+            f"  {h['ticker']}: {h['shares']:.4f} sh  avg_cost ${avg_cost:.2f}  "
+            f"now ${cur_price:.2f}  P&L ${unreal:+.2f} ({pnl_pct:+.1f}%)  "
+            f"held since {h.get('purchase_date','?')}"
+        )
+    hold_str = "\n".join(hold_lines) or "  (none)"
 
     cand_str = "\n".join(
         f"  {t}: score={s:.1f}  {r}"
         for t, s, r in candidates[:12]
     )
 
+    hold_floor      = HOLD_PERIODS.get(strategy_id, MIN_HOLD_DAYS)
     regime          = macro.get("market_regime", "NEUTRAL")
     regime_conf     = macro.get("regime_confidence", 5)
     regime_reasoning = macro.get("regime_reasoning", "")
@@ -965,9 +1066,9 @@ Top-ranked candidates (news-macro scoring):
 {cand_str}
 
 === RULES ===
-- Commission $4.95 + 0.05% spread per trade
+- Commission $1.00 + 0.05% spread per trade. Round-trip ≈ $2.00 — needs ~0.3% gain to break even.
 - Max 3 positions, max 60% per stock, keep ≥5% cash reserve
-- MINIMUM HOLD: do NOT sell a position held fewer than {MIN_HOLD_DAYS} trading days
+- MINIMUM HOLD: do NOT sell a position held fewer than {hold_floor} trading days
   (hard stop-losses are handled automatically before this prompt runs — don't re-trigger them)
 - BUY: sector aligns with bullish theme AND KPI score > 40
 - SELL: sector is a confirmed headwind loser (not just mixed signal) OR strong negative
@@ -1128,19 +1229,20 @@ SCORE_FN = {
 
 def _trading_days_held(purchase_date_str: str, today_str: str) -> int:
     """
-    Return the approximate number of weekdays between purchase_date and today.
-    Uses calendar days * 5/7 as a fast proxy — good enough for a 3-day gate.
+    Return the number of weekdays (Mon-Fri) between purchase_date and today.
+    FIX-28: replaced the fragile class-reconstruction pattern with clean
+    date arithmetic. Uses a simple generator expression over the date range.
     """
     try:
-        from datetime import date as _date
+        from datetime import date as _date, timedelta
         d0 = _date.fromisoformat(purchase_date_str)
         d1 = _date.fromisoformat(today_str)
         delta = (d1 - d0).days
-        # Count weekdays (Mon-Fri) between the two dates
+        if delta <= 0:
+            return 0
         weekdays = sum(
             1 for i in range(delta)
-            if (_date.fromisoformat(purchase_date_str).__class__.fromordinal(
-                d0.toordinal() + i)).weekday() < 5
+            if (d0 + timedelta(days=i)).weekday() < 5
         )
         return weekdays
     except Exception:
@@ -1177,14 +1279,22 @@ def enforce_stop_losses(sid: str, holdings: list, kmap: dict, today: str,
 
 def buy(sid, ticker, price, cash_available, reason, today, kmap, dry_run=False):
     """Buy as many shares as cash allows (up to 60% of total account).
-    FIX-2: recalculate holdings_value using market prices for ALL positions.
+    FIX-2:  recalculate holdings_value using market prices for ALL positions.
+    FIX-21: already_invested now uses current market value (shares * current_price)
+            instead of cost_basis. Cost basis under-counts appreciated positions,
+            allowing over-concentration above the 60% cap on winning trades.
     """
     acct     = read_account(sid)
     holdings = read_holdings(sid)
     total    = acct["cash"] + acct["holdings_value"]
     max_pos  = total * 0.60
     existing = next((h for h in holdings if h["ticker"] == ticker), None)
-    already_invested = float(existing["cost_basis"]) if existing else 0
+    # FIX-21: use current market value, not stale cost_basis
+    if existing:
+        cur_price = kmap.get(ticker, {}).get("current_price") or float(existing["avg_cost"])
+        already_invested = existing["shares"] * cur_price
+    else:
+        already_invested = 0
     spend = min(cash_available * 0.90, max_pos - already_invested)
     spend = max(spend, 0)
     if spend < price + COMMISSION:
@@ -1224,23 +1334,24 @@ def buy(sid, ticker, price, cash_available, reason, today, kmap, dry_run=False):
 
 def sell(sid, ticker, price, reason, today, kmap, dry_run=False):
     """Sell the full position in ticker.
-    FIX-3: recalculate holdings_value using market prices for remaining positions.
-    FIX-12: enforce minimum holding period (MIN_HOLD_DAYS trading days). Sells
-    requested by Claude within the holding window are silently blocked unless the
-    reason string contains 'stop-loss' (hard stop from enforce_stop_losses) or
-    'stop loss'. This eliminates commission churn from day-trading behaviour.
+    FIX-3:  recalculate holdings_value using market prices for remaining positions.
+    FIX-12: enforce minimum holding period. Sells by Claude within the holding
+            window are silently blocked unless the reason contains 'stop-loss'.
+    FIX-23: uses per-strategy HOLD_PERIODS[sid] instead of global MIN_HOLD_DAYS
+            so long-thesis strategies hold longer and event strategies can rotate.
     """
     holdings = read_holdings(sid)
     pos = next((h for h in holdings if h["ticker"] == ticker), None)
     if not pos:
         return False, "No position"
 
-    # FIX-12: minimum hold check — allow stop-losses through unconditionally
-    is_stop = "stop-loss" in reason.lower() or "stop loss" in reason.lower()
+    # FIX-12 / FIX-23: per-strategy minimum hold — allow stop-losses unconditionally
+    is_stop    = "stop-loss" in reason.lower() or "stop loss" in reason.lower()
+    hold_floor = HOLD_PERIODS.get(sid, MIN_HOLD_DAYS)
     if not is_stop:
         days_held = _trading_days_held(pos.get("purchase_date", today), today)
-        if days_held < MIN_HOLD_DAYS:
-            return False, (f"Min-hold period not met ({days_held}/{MIN_HOLD_DAYS} "
+        if days_held < hold_floor:
+            return False, (f"Min-hold period not met ({days_held}/{hold_floor} "
                            f"trading days) — holding {ticker}")
 
     shares   = pos["shares"]
@@ -1308,25 +1419,50 @@ def run_passive(sid, rows, kmap, today, dry_run=False):
 
 # ── Claude API call ───────────────────────────────────────────────────────────
 
-def ask_claude(strategy_id, strategy_name, strategy_desc, candidates, holdings, acct, today):
+def ask_claude(strategy_id, strategy_name, strategy_desc, candidates, holdings, acct, today, kmap=None):
     """Ask Claude to decide which of the top candidates to buy/sell.
-    FIX-6: max_tokens raised to 1200; truncated responses logged with raw text.
+    FIX-6:  max_tokens raised to 1200; truncated responses logged with raw text.
+    FIX-24: holdings block now includes current_price, unrealized P&L $ and %
+            so Claude can make rational sell decisions based on actual gains/losses.
+    FIX-25: candidates block now includes RSI, MA signal, and P/E for each ticker
+            so Claude has the raw signals, not just the composite score.
     """
     try:
         import urllib.request
     except ImportError:
         return None, "urllib not available"
 
-    hold_str = "\n".join(
-        f"  {h['ticker']}: {h['shares']:.4f} shares, cost basis ${h['cost_basis']:.2f}, "
-        f"avg ${h['avg_cost']:.4f}, held since {h.get('purchase_date','?')}"
-        for h in holdings
-    ) or "  (none)"
+    if kmap is None:
+        kmap = {}
 
-    cand_str = "\n".join(
-        f"  {t}: score={s:.1f}  {r}"
-        for t, s, r in candidates[:10]
-    )
+    # FIX-24: enriched holdings with unrealized P&L
+    hold_lines = []
+    for h in holdings:
+        avg_cost  = float(h["avg_cost"])
+        cur_price = kmap.get(h["ticker"], {}).get("current_price") or avg_cost
+        unreal    = (cur_price - avg_cost) * h["shares"]
+        pnl_pct   = (cur_price - avg_cost) / avg_cost * 100 if avg_cost else 0
+        hold_lines.append(
+            f"  {h['ticker']}: {h['shares']:.4f} sh  avg_cost ${avg_cost:.2f}  "
+            f"now ${cur_price:.2f}  P&L ${unreal:+.2f} ({pnl_pct:+.1f}%)  "
+            f"held since {h.get('purchase_date','?')}"
+        )
+    hold_str = "\n".join(hold_lines) or "  (none)"
+
+    # FIX-25: enriched candidates with key KPIs
+    cand_lines = []
+    for t, s, r in candidates[:10]:
+        kd = kmap.get(t, {})
+        rsi    = kd.get("rsi_14", "?")
+        ma_sig = kd.get("ma_signal", "?")
+        pe     = kd.get("pe_ratio", "?")
+        rsi_s  = f"{rsi:.0f}" if isinstance(rsi, float) else str(rsi)
+        pe_s   = f"{pe:.1f}" if isinstance(pe, float) else str(pe)
+        ma_s   = "Golden✓" if "BULLISH" in str(ma_sig) else ("Death✗" if "BEARISH" in str(ma_sig) else str(ma_sig))
+        cand_lines.append(f"  {t}: score={s:.1f}  RSI={rsi_s}  MA={ma_s}  P/E={pe_s}  {r}")
+    cand_str = "\n".join(cand_lines)
+
+    hold_floor = HOLD_PERIODS.get(strategy_id, MIN_HOLD_DAYS)
 
     if strategy_id == "18":
         prompt = f"""You are managing a paper trading account for strategy "18 - Capex beneficiary / semis".
@@ -1358,10 +1494,10 @@ Top-ranked capex beneficiary candidates today (IT sector, scored by margin × gr
 {cand_str}
 
 Rules:
-- Commission is $4.95 per trade + 0.05% spread
+- Commission is $1.00 per trade + 0.05% spread. Round-trip ≈ $2.00 — a position needs ~0.3% gain just to break even.
 - Max 2 positions (concentrated conviction); max 70% of portfolio in any one stock
 - Keep at least 5% cash reserve
-- MINIMUM HOLD: do NOT sell a position held fewer than {MIN_HOLD_DAYS} trading days
+- MINIMUM HOLD: do NOT sell a position held fewer than {hold_floor} trading days
   (hard stop-losses are handled automatically before this prompt runs).
 - Hold with conviction — only sell if: MA turns bearish (death cross), net margin
   drops below 10%, forward EPS growth turns negative, or the AI capex cycle shows
@@ -1403,10 +1539,10 @@ Top-ranked war-economy candidates today (scored by margin × growth × trend):
 {cand_str}
 
 Rules:
-- Commission is $4.95 per trade + 0.05% spread
+- Commission is $1.00 per trade + 0.05% spread. Round-trip ≈ $2.00 — a position needs ~0.3% gain just to break even.
 - Max 3 positions at once; max 60% of portfolio in any one stock
 - Keep at least 5% cash reserve
-- MINIMUM HOLD: do NOT sell a position held fewer than {MIN_HOLD_DAYS} trading days
+- MINIMUM HOLD: do NOT sell a position held fewer than {hold_floor} trading days
   (hard stop-losses are handled automatically before this prompt runs).
 - HOLD with conviction — only sell if: MA turns bearish (death cross), net margin drops below 8%,
   or forward EPS growth turns negative. Normal 10-15% drawdowns are EXPECTED — do not sell on them.
@@ -1443,12 +1579,12 @@ Top-ranked candidates today (by strategy scoring):
 {cand_str}
 
 Rules:
-- Commission is $4.95 per trade + 0.05% spread
+- Commission is $1.00 per trade + 0.05% spread. Round-trip ≈ $2.00 — a position needs ~0.3% gain just to break even.
 - Max 3 positions at once; max 60% of portfolio in any one stock
 - Keep at least 5% cash reserve
-- MINIMUM HOLD: do NOT sell a position held fewer than {MIN_HOLD_DAYS} trading days
+- MINIMUM HOLD: do NOT sell a position held fewer than {hold_floor} trading days
   unless it has triggered a hard stop-loss (already handled automatically).
-  Premature selling wastes $9.90 round-trip commission on no alpha.
+  Premature selling wastes ≈ $2.00 round-trip commission on no alpha.
 - SELL only if: score has genuinely deteriorated (not just a quiet day), MA has
   turned bearish (death cross), or a clearly better opportunity exists (15+ point
   score gap). Patience with winners is part of the strategy.
@@ -1556,15 +1692,14 @@ def update_leaderboard(today, kmap=None):
     # Overwrite today's snapshot (current leaderboard)
     write_csv(leader_file(), rows, lb_fieldnames)
 
-    # Append to cumulative history — one row per strategy per day.
-    # This preserves the full equity curve for charting and analytics.
+    # FIX-22: deduplicate history — remove today's existing rows before appending
+    # so a pre-market + post-market double-run doesn't produce duplicate entries.
     hist_path = leader_history_file()
-    write_header = not hist_path.exists()
-    with open(hist_path, "a", newline="", encoding="utf-8") as f:
-        w = csv.DictWriter(f, fieldnames=lb_fieldnames)
-        if write_header:
-            w.writeheader()
-        w.writerows(rows)
+    if hist_path.exists():
+        existing_history = [r for r in read_csv(hist_path) if r.get("date") != today]
+    else:
+        existing_history = []
+    write_csv(hist_path, existing_history + rows, lb_fieldnames)
 
     return rows
 
@@ -1626,7 +1761,7 @@ def run_strategy(sid, name, style, risk, desc, rows, kmap, today, dry_run=False)
             print("       No candidates matched today's news themes")
             return
         print(f"       Top candidate: {candidates[0][0]} (score {candidates[0][1]:.1f})")
-        prompt = _build_news_prompt(sid, name, desc, candidates, holdings, acct, today, macro)
+        prompt = _build_news_prompt(sid, name, desc, candidates, holdings, acct, today, macro, kmap=kmap)
         payload = json.dumps({"model": MODEL, "max_tokens": 1200,
                                "messages": [{"role": "user", "content": prompt}]}).encode("utf-8")
         req = urllib.request.Request(
@@ -1684,14 +1819,21 @@ def run_strategy(sid, name, style, risk, desc, rows, kmap, today, dry_run=False)
         print("       No KPI data or scoring function — skipping")
         return
 
-    candidates = score_fn(rows, kmap)
+    # FIX (bug 3): pass macro kwarg for news strategies even via the generic path.
+    # score_news_macro / score_news_sentiment default macro=None so non-news
+    # strategies are unaffected; news strategies that somehow reach this path
+    # will return [] gracefully instead of crashing with a missing-argument error.
+    if sid in ("19", "20"):
+        candidates = score_fn(rows, kmap, None)   # macro unavailable on generic path
+    else:
+        candidates = score_fn(rows, kmap)
     if not candidates:
         print("       No candidates matched this strategy's filters today")
         return
 
     print(f"       Top candidate: {candidates[0][0]} (score {candidates[0][1]:.1f})")
 
-    decision, err = ask_claude(sid, name, desc, candidates, holdings, acct, today)
+    decision, err = ask_claude(sid, name, desc, candidates, holdings, acct, today, kmap=kmap)
     if err:
         print(f"       Claude error: {err}")
         return

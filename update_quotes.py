@@ -3,11 +3,18 @@ update_quotes.py — Fetch live quotes for all held positions and refresh
                    every strategy's holdings_value, account total, and
                    the leaderboard WITHOUT triggering any buy/sell logic.
 
+Also recomputes abnormal_return for ALL tickers in equity_kpi_results.csv
+using today's live prices vs yesterday's close and SPY as the market proxy.
+This fixes the data-freshness gap where strategy_runner.py (running at 4:30 PM)
+was using an abnormal_return computed from the morning KPI run — 8+ hours stale
+for PEAD (S07) which depends entirely on that signal.
+
 Usage:
     python update_quotes.py              # update all strategies
     python update_quotes.py --strategy 03   # one strategy only
     python update_quotes.py --show          # print holdings table after update
     python update_quotes.py --show --strategy 03
+    python update_quotes.py --no-kpi-refresh   # skip abnormal_return refresh
 
 The script requires only the standard library + yfinance (already in
 requirements.txt alongside the rest of the trading engine).
@@ -40,7 +47,7 @@ STRATEGIES = [
     ("08", "Dividend growth",                  "income",      "low"),
     ("09", "Insider buying signal",            "alt-data",    "med"),
     ("10", "Macro-regime adaptive",            "macro",       "med"),
-    ("11", "Mid-to-large value (Fama-French)", "academic",    "med"),
+    ("11", "S&P 500 value tilt",             "academic",    "med"),
     ("12", "Momentum (academic / Asness)",     "academic",    "high"),
     ("13", "Quality / profitability",          "academic",    "low"),
     ("14", "Passive S&P 500 benchmark",        "passive",     "low"),
@@ -55,6 +62,7 @@ STRATEGIES = [
 def acct_file(sid):  return BASE_DIR / f"account_{sid}.csv"
 def hold_file(sid):  return BASE_DIR / f"holdings_{sid}.csv"
 def leader_file():   return BASE_DIR / "leaderboard.csv"
+KPI_FILE = BASE_DIR / "equity_kpi_results.csv"   # Issue-12: for abnormal_return refresh
 
 def read_csv(path):
     if not path.exists():
@@ -95,7 +103,116 @@ def save_holdings(sid, holdings):
     write_csv(hold_file(sid), holdings,
               ["ticker","shares","avg_cost","cost_basis","purchase_date","strategy_id"])
 
-# ── Collect all tickers held across selected strategies ───────────────────────
+# ── Issue-12: Live abnormal_return refresh ────────────────────────────────────
+
+def refresh_abnormal_returns(verbose: bool = True) -> int:
+    """
+    Recompute abnormal_return for every ticker in equity_kpi_results.csv
+    using today's live intraday move vs yesterday's close, with SPY as the
+    market proxy.
+
+    abnormal_return = stock_return_today - (beta * spy_return_today)
+
+    This fixes the staleness gap: the KPI file is built in the morning, but
+    strategy_runner.py runs at 4:30 PM. By then the morning abnormal_return
+    is 8+ hours old — meaningless for PEAD (S07) which depends entirely on it.
+
+    Returns the number of tickers successfully updated.
+    """
+    if not KPI_FILE.exists():
+        if verbose:
+            print("  [KPI] equity_kpi_results.csv not found — skipping abnormal_return refresh")
+        return 0
+
+    kpi_rows = read_csv(KPI_FILE)
+    if not kpi_rows:
+        return 0
+
+    tickers = [r["ticker"] for r in kpi_rows if r.get("ticker")]
+    if not tickers:
+        return 0
+
+    if verbose:
+        print(f"\n  [KPI] Refreshing abnormal_return for {len(tickers)} tickers …", flush=True)
+
+    # Fetch 5-day history for SPY (market benchmark) + all universe tickers
+    # 5 days ensures we always have at least 2 trading days even over weekends.
+    all_syms = ["SPY"] + tickers
+    try:
+        raw = yf.download(
+            all_syms,
+            period="5d",
+            auto_adjust=True,
+            progress=False,
+            threads=True,
+        )
+        # raw["Close"] is a DataFrame with tickers as columns when multi-ticker
+        closes = raw["Close"] if "Close" in raw.columns.get_level_values(0) else raw
+    except Exception as e:
+        if verbose:
+            print(f"  [KPI] yfinance download failed: {e}")
+        return 0
+
+    # Get SPY's return for the most recent complete trading day
+    try:
+        spy_closes = closes["SPY"].dropna()
+        if len(spy_closes) < 2:
+            if verbose:
+                print("  [KPI] Insufficient SPY history — skipping abnormal_return refresh")
+            return 0
+        spy_ret = (spy_closes.iloc[-1] - spy_closes.iloc[-2]) / spy_closes.iloc[-2]
+    except Exception as e:
+        if verbose:
+            print(f"  [KPI] SPY return computation failed: {e}")
+        return 0
+
+    # Build a map of {ticker: today_abnormal_return}
+    ab_map: dict[str, float] = {}
+    for sym in tickers:
+        try:
+            sym_closes = closes[sym].dropna()
+            if len(sym_closes) < 2:
+                continue
+            stock_ret = (sym_closes.iloc[-1] - sym_closes.iloc[-2]) / sym_closes.iloc[-2]
+            beta_val  = 1.0   # default if not in KPI rows
+            ab_map[sym] = round(float(stock_ret - beta_val * spy_ret), 4)
+        except Exception:
+            continue
+
+    # Apply beta from KPI file for a more accurate abnormal return
+    beta_lookup = {r["ticker"]: float(r.get("beta") or 1.0) for r in kpi_rows}
+    for sym in list(ab_map.keys()):
+        try:
+            sym_closes = closes[sym].dropna()
+            stock_ret  = (sym_closes.iloc[-1] - sym_closes.iloc[-2]) / sym_closes.iloc[-2]
+            beta_val   = beta_lookup.get(sym, 1.0) or 1.0
+            ab_map[sym] = round(float(stock_ret - beta_val * spy_ret), 4)
+        except Exception:
+            pass
+
+    if not ab_map:
+        if verbose:
+            print("  [KPI] No abnormal returns computed")
+        return 0
+
+    # Patch the KPI rows with fresh abnormal_return values
+    updated = 0
+    fieldnames = list(kpi_rows[0].keys()) if kpi_rows else []
+    if "abnormal_return" not in fieldnames:
+        fieldnames.append("abnormal_return")
+
+    for r in kpi_rows:
+        sym = r.get("ticker", "")
+        if sym in ab_map:
+            r["abnormal_return"] = ab_map[sym]
+            updated += 1
+
+    write_csv(KPI_FILE, kpi_rows, fieldnames)
+
+    if verbose:
+        print(f"  [KPI] abnormal_return refreshed for {updated}/{len(tickers)} tickers  "
+              f"(SPY today: {spy_ret*100:+.2f}%)")
+    return updated
 
 def collect_tickers(run_ids):
     tickers = set()
@@ -253,6 +370,8 @@ def main():
                         help="Update only this strategy ID, e.g. 03")
     parser.add_argument("--show", action="store_true",
                         help="Print per-position detail after updating")
+    parser.add_argument("--no-kpi-refresh", action="store_true",
+                        help="Skip the abnormal_return refresh in equity_kpi_results.csv")
     args = parser.parse_args()
 
     today = date.today().isoformat()
@@ -266,14 +385,18 @@ def main():
     all_ids  = [(s[0], s[1], s[2], s[3]) for s in STRATEGIES]
     run_ids  = [args.strategy] if args.strategy else [s[0] for s in STRATEGIES]
 
-    # ── 1. Collect all tickers we need prices for ─────────────────────────────
+    # ── 1. Refresh abnormal_return in KPI file (Issue-12) ────────────────────
+    if not args.no_kpi_refresh:
+        refresh_abnormal_returns(verbose=True)
+
+    # ── 2. Collect all tickers we need prices for ─────────────────────────────
     tickers = collect_tickers(run_ids)
     if not tickers:
         print("\n  No open positions found — nothing to update.")
         print("  (Run strategy_runner.py to open positions first.)\n")
         return
 
-    # ── 2. Fetch quotes ───────────────────────────────────────────────────────
+    # ── 3. Fetch quotes ───────────────────────────────────────────────────────
     prices = fetch_quotes(tickers)
     if not prices:
         print("\n  ERROR: Could not fetch any quotes. Check internet connection.\n")
@@ -282,7 +405,7 @@ def main():
     fetched_at = datetime.now().strftime("%H:%M:%S")
     print(f"  Got prices for {len(prices)}/{len(tickers)} tickers  (as of {fetched_at})")
 
-    # ── 3. Update each strategy ────────────────────────────────────────────────
+    # ── 4. Update each strategy ────────────────────────────────────────────────
     print()
     updated = 0
     for sid in run_ids:
@@ -298,7 +421,7 @@ def main():
                   f"P&L {sign}${pnl:.2f}")
             updated += 1
 
-    # ── 4. Rebuild leaderboard ─────────────────────────────────────────────────
+    # ── 5. Rebuild leaderboard ─────────────────────────────────────────────────
     lb = update_leaderboard(today, run_ids, all_ids)
 
     print("\n" + "-"*65)
