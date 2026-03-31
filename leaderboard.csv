@@ -1,16 +1,16 @@
 rank,date,strategy_id,strategy_name,style,risk,cash,holdings_value,total,pnl,pct_return,trades
-1,2026-03-31,21,Defense & war economy,thematic,med,40.0,1006.25,1046.25,46.25,4.62,2
-2,2026-03-31,10,Macro-regime adaptive,macro,med,40.0,988.26,1028.26,28.26,2.83,2
-3,2026-03-31,02,Mean reversion,contrarian,med,40.0,964.03,1004.03,4.03,0.4,2
-4,2026-03-31,12,Momentum (academic / Asness),academic,high,40.0,963.65,1003.65,3.65,0.37,2
-5,2026-03-31,06,Low volatility / defensive,defensive,low,40.0,963.07,1003.07,3.07,0.31,2
+1,2026-03-31,21,Defense & war economy,thematic,med,40.0,1013.39,1053.39,53.39,5.34,2
+2,2026-03-31,10,Macro-regime adaptive,macro,med,40.0,992.5,1032.5,32.5,3.25,2
+3,2026-03-31,02,Mean reversion,contrarian,med,40.0,973.51,1013.51,13.51,1.35,2
+4,2026-03-31,12,Momentum (academic / Asness),academic,high,40.0,970.21,1010.21,10.21,1.02,2
+5,2026-03-31,06,Low volatility / defensive,defensive,low,40.0,966.15,1006.15,6.15,0.61,2
 6,2026-03-31,09,Insider buying signal,alt-data,med,1000.0,0.0,1000.0,0.0,0.0,0
 7,2026-03-31,19,News macro catalyst,macro,med,1000.0,0.0,1000.0,0.0,0.0,0
 8,2026-03-31,20,News sentiment momentum,alt-data,med,1000.0,0.0,1000.0,0.0,0.0,0
-9,2026-03-31,08,Dividend growth,income,low,40.0,945.75,985.75,-14.25,-1.42,2
-10,2026-03-31,14,Passive S&P 500 benchmark,passive,low,568.0,415.1,983.1,-16.9,-1.69,1
-11,2026-03-31,11,S&P 500 value tilt,academic,med,40.0,942.27,982.27,-17.73,-1.77,2
-12,2026-03-31,07,Earnings surprise (PEAD),event,high,40.0,939.99,979.99,-20.01,-2.0,2
-13,2026-03-31,03,Value investing,value,low,40.0,932.16,972.16,-27.84,-2.78,2
-14,2026-03-31,13,Quality / profitability,academic,low,40.0,917.17,957.17,-42.83,-4.28,2
-15,2026-03-31,18,Capex beneficiary / semis,thematic,high,40.0,911.2,951.2,-48.8,-4.88,2
+9,2026-03-31,08,Dividend growth,income,low,40.0,948.32,988.32,-11.68,-1.17,2
+10,2026-03-31,14,Passive S&P 500 benchmark,passive,low,568.0,417.01,985.01,-14.99,-1.5,1
+11,2026-03-31,07,Earnings surprise (PEAD),event,high,40.0,943.21,983.21,-16.79,-1.68,2
+12,2026-03-31,11,S&P 500 value tilt,academic,med,4.0,977.75,981.75,-18.25,-1.82,3
+13,2026-03-31,03,Value investing,value,low,40.0,932.07,972.07,-27.93,-2.79,2
+14,2026-03-31,13,Quality / profitability,academic,low,40.0,921.58,961.58,-38.42,-3.84,2
+15,2026-03-31,18,Capex beneficiary / semis,thematic,high,40.0,913.29,953.29,-46.71,-4.67,2
