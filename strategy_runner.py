@@ -403,19 +403,69 @@ def run_passive(sid: str, rows: List[Dict], kmap: Dict, today: str, dry_run: boo
 
 # -- Leaderboard ---------------------------------------------------------------
 def update_leaderboard(today: str, kmap: Optional[Dict] = None) -> List[Dict]:
-	"""Build and write the daily leaderboard to MySQL."""
-	if kmap:
-		for sid, *_ in STRATEGIES:
-			acct = read_account(sid)
-			holdings = read_holdings(sid)
-			if holdings:
-				acct["holdings_value"] = calc_holdings_value(holdings, kmap)
-				acct["total"] = round(acct["cash"] + acct["holdings_value"], 2)
-				save_account(sid, acct)
+	"""
+	Build and write the daily leaderboard to MySQL.
+	Uses a single shared connection to read all accounts + holdings at once,
+	rather than one connection per strategy, to minimise DB round-trips.
+	"""
+	from db import get_connection as _get_conn
+	conn = _get_conn()
+	try:
+		cur = conn.cursor(dictionary=True)
+
+		# Fetch all accounts in one query
+		cur.execute("SELECT * FROM accounts")
+		acct_map = {r["strategy_id"]: {
+			"account":        r["account"],
+			"strategy_id":    r["strategy_id"],
+			"cash":           float(r["cash"]),
+			"holdings_value": float(r["holdings_value"]),
+			"total":          float(r["total"]),
+			"start_date":     str(r["start_date"]),
+			"trades":         int(r["trades"]),
+		} for r in cur.fetchall()}
+
+		# Fetch all holdings in one query
+		cur.execute("SELECT * FROM holdings")
+		holdings_map: Dict[str, List[Dict]] = {}
+		for r in cur.fetchall():
+			sid = r["strategy_id"]
+			holdings_map.setdefault(sid, []).append({
+				"ticker":        r["ticker"],
+				"shares":        float(r["shares"]),
+				"avg_cost":      float(r["avg_cost"]),
+				"cost_basis":    float(r["cost_basis"]),
+				"purchase_date": str(r["purchase_date"]),
+				"strategy_id":   sid,
+			})
+
+		# If kmap supplied, refresh holdings_value and persist in batch
+		if kmap:
+			update_params = []
+			for sid in acct_map:
+				acct = acct_map[sid]
+				h = holdings_map.get(sid, [])
+				if h:
+					hv = calc_holdings_value(h, kmap)
+					total = round(acct["cash"] + hv, 2)
+					acct["holdings_value"] = hv
+					acct["total"] = total
+					update_params.append((hv, total, sid))
+			if update_params:
+				cur.executemany(
+					"UPDATE accounts SET holdings_value=%s, total=%s WHERE strategy_id=%s",
+					update_params,
+				)
+				conn.commit()
+
+	finally:
+		conn.close()
 
 	rows = []
 	for sid, name, style, risk, desc in STRATEGIES:
-		acct = read_account(sid)
+		acct = acct_map.get(sid)
+		if not acct:
+			continue
 		total = acct["cash"] + acct["holdings_value"]
 		pnl = total - STARTING_CASH
 		pct = (total / STARTING_CASH - 1) * 100
@@ -436,7 +486,6 @@ def update_leaderboard(today: str, kmap: Optional[Dict] = None) -> List[Dict]:
 	for i, r in enumerate(rows):
 		r["rank"] = i + 1
 
-	# Upsert today's snapshot (history lives in the same leaderboard table)
 	_db_write_leaderboard(rows)
 	return rows
 

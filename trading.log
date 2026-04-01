@@ -804,3 +804,239 @@
 2026-04-01 08:47:09,816 - __main__ - INFO -   Leaderboard saved to MySQL (leaderboard table)
 2026-04-01 08:47:09,816 - __main__ - INFO - =================================================================
 
+2026-04-01 09:23:39,284 - mysql.connector - INFO - package: mysql.connector.plugins
+2026-04-01 09:23:39,284 - mysql.connector - INFO - plugin_name: caching_sha2_password
+2026-04-01 09:23:39,285 - mysql.connector - INFO - AUTHENTICATION_PLUGIN_CLASS: MySQLCachingSHA2PasswordAuthPlugin
+2026-04-01 09:23:39,359 - __main__ - INFO - 
+=================================================================
+2026-04-01 09:23:39,359 - __main__ - INFO -   MULTI-STRATEGY PAPER TRADING ENGINE
+2026-04-01 09:23:39,360 - __main__ - INFO -   Date: 2026-04-01  |  Strategies: 15  |  Goal: $2,000 each
+2026-04-01 09:23:39,361 - __main__ - INFO -   Model: claude-sonnet-4-6
+2026-04-01 09:23:39,361 - __main__ - INFO - =================================================================
+2026-04-01 09:23:39,441 - __main__ - INFO - 
+  Loaded 200 tickers from KPI file.
+2026-04-01 09:23:39,442 - __main__ - INFO - 
+  [19] News macro catalyst
+2026-04-01 09:23:39,443 - __main__ - INFO - 	   Style: macro  |  Risk: med
+2026-04-01 09:23:39,649 - __main__ - INFO - 	   Cash: $  1000.00  |  Holdings: $     0.00  |  Total: $  1000.00
+2026-04-01 09:23:39,711 - __main__ - INFO - 	   No news_macro_cache.json -- run news strategies (Stage 1) first
+2026-04-01 09:23:39,711 - __main__ - INFO - No candidates matched this strategy's filters today
+2026-04-01 09:23:39,712 - __main__ - INFO - 
+-----------------------------------------------------------------
+2026-04-01 09:23:39,713 - __main__ - INFO -   LEADERBOARD
+2026-04-01 09:23:39,713 - __main__ - INFO - -----------------------------------------------------------------
+2026-04-01 09:23:39,839 - __main__ - INFO -   Rank  ID   Strategy                                Total       P&L   Return
+2026-04-01 09:23:39,839 - __main__ - INFO -   ---- ---- ----------------------------------- --------- --------- --------
+2026-04-01 09:23:39,840 - __main__ - INFO -   1     09   Insider buying signal               $ 1000.00 +$    0.00 +   0.00%
+2026-04-01 09:23:39,840 - __main__ - INFO -   2     18   Capex beneficiary / semis           $ 1000.00 +$    0.00 +   0.00%
+2026-04-01 09:23:39,841 - __main__ - INFO -   3     19   News macro catalyst                 $ 1000.00 +$    0.00 +   0.00%
+2026-04-01 09:23:39,841 - __main__ - INFO -   4     20   News sentiment momentum             $ 1000.00 +$    0.00 +   0.00%
+2026-04-01 09:23:39,842 - __main__ - INFO -   5     14   Passive S&P 500 benchmark           $  998.75 $   -1.25   -0.12%
+2026-04-01 09:23:39,842 - __main__ - INFO -   6     06   Low volatility / defensive          $  998.10 $   -1.90   -0.19%
+2026-04-01 09:23:39,842 - __main__ - INFO -   7     10   Macro-regime adaptive               $  998.10 $   -1.90   -0.19%
+2026-04-01 09:23:39,843 - __main__ - INFO -   8     02   Mean reversion                      $  996.57 $   -3.43   -0.34%
+2026-04-01 09:23:39,843 - __main__ - INFO -   9     03   Value investing                     $  996.57 $   -3.43   -0.34%
+2026-04-01 09:23:39,843 - __main__ - INFO -   10    07   Earnings surprise (PEAD)            $  996.57 $   -3.43   -0.34%
+2026-04-01 09:23:39,844 - __main__ - INFO -   11    11   S&P 500 value tilt                  $  996.57 $   -3.43   -0.34%
+2026-04-01 09:23:39,844 - __main__ - INFO -   12    12   Momentum (academic / Asness)        $  996.57 $   -3.43   -0.34%
+2026-04-01 09:23:39,844 - __main__ - INFO -   13    13   Quality / profitability             $  996.57 $   -3.43   -0.34%
+2026-04-01 09:23:39,845 - __main__ - INFO -   14    21   Defense & war economy               $  996.57 $   -3.43   -0.34%
+2026-04-01 09:23:39,845 - __main__ - INFO -   15    08   Dividend growth                     $  995.51 $   -4.49   -0.45%
+2026-04-01 09:23:39,845 - __main__ - INFO - -----------------------------------------------------------------
+2026-04-01 09:23:39,846 - __main__ - INFO -   Leaderboard saved to MySQL (leaderboard table)
+2026-04-01 09:23:39,846 - __main__ - INFO - =================================================================
+
+2026-04-01 09:23:40,150 - mysql.connector - INFO - package: mysql.connector.plugins
+2026-04-01 09:23:40,151 - mysql.connector - INFO - plugin_name: caching_sha2_password
+2026-04-01 09:23:40,152 - mysql.connector - INFO - AUTHENTICATION_PLUGIN_CLASS: MySQLCachingSHA2PasswordAuthPlugin
+2026-04-01 09:23:40,219 - __main__ - INFO - 
+=================================================================
+2026-04-01 09:23:40,219 - __main__ - INFO -   MULTI-STRATEGY PAPER TRADING ENGINE
+2026-04-01 09:23:40,220 - __main__ - INFO -   Date: 2026-04-01  |  Strategies: 15  |  Goal: $2,000 each
+2026-04-01 09:23:40,220 - __main__ - INFO -   Model: claude-sonnet-4-6
+2026-04-01 09:23:40,221 - __main__ - INFO - =================================================================
+2026-04-01 09:23:40,301 - __main__ - INFO - 
+  Loaded 200 tickers from KPI file.
+2026-04-01 09:23:40,301 - __main__ - INFO - 
+  [20] News sentiment momentum
+2026-04-01 09:23:40,302 - __main__ - INFO - 	   Style: alt-data  |  Risk: med
+2026-04-01 09:23:40,492 - __main__ - INFO - 	   Cash: $  1000.00  |  Holdings: $     0.00  |  Total: $  1000.00
+2026-04-01 09:23:40,574 - __main__ - INFO - 	   No news_macro_cache.json -- run news strategies (Stage 1) first
+2026-04-01 09:23:40,574 - __main__ - INFO - No candidates matched this strategy's filters today
+2026-04-01 09:23:40,575 - __main__ - INFO - 
+-----------------------------------------------------------------
+2026-04-01 09:23:40,576 - __main__ - INFO -   LEADERBOARD
+2026-04-01 09:23:40,576 - __main__ - INFO - -----------------------------------------------------------------
+2026-04-01 09:23:40,699 - __main__ - INFO -   Rank  ID   Strategy                                Total       P&L   Return
+2026-04-01 09:23:40,700 - __main__ - INFO -   ---- ---- ----------------------------------- --------- --------- --------
+2026-04-01 09:23:40,701 - __main__ - INFO -   1     09   Insider buying signal               $ 1000.00 +$    0.00 +   0.00%
+2026-04-01 09:23:40,701 - __main__ - INFO -   2     18   Capex beneficiary / semis           $ 1000.00 +$    0.00 +   0.00%
+2026-04-01 09:23:40,701 - __main__ - INFO -   3     19   News macro catalyst                 $ 1000.00 +$    0.00 +   0.00%
+2026-04-01 09:23:40,702 - __main__ - INFO -   4     20   News sentiment momentum             $ 1000.00 +$    0.00 +   0.00%
+2026-04-01 09:23:40,702 - __main__ - INFO -   5     14   Passive S&P 500 benchmark           $  998.75 $   -1.25   -0.12%
+2026-04-01 09:23:40,702 - __main__ - INFO -   6     06   Low volatility / defensive          $  998.10 $   -1.90   -0.19%
+2026-04-01 09:23:40,703 - __main__ - INFO -   7     10   Macro-regime adaptive               $  998.10 $   -1.90   -0.19%
+2026-04-01 09:23:40,703 - __main__ - INFO -   8     02   Mean reversion                      $  996.57 $   -3.43   -0.34%
+2026-04-01 09:23:40,703 - __main__ - INFO -   9     03   Value investing                     $  996.57 $   -3.43   -0.34%
+2026-04-01 09:23:40,704 - __main__ - INFO -   10    07   Earnings surprise (PEAD)            $  996.57 $   -3.43   -0.34%
+2026-04-01 09:23:40,704 - __main__ - INFO -   11    11   S&P 500 value tilt                  $  996.57 $   -3.43   -0.34%
+2026-04-01 09:23:40,704 - __main__ - INFO -   12    12   Momentum (academic / Asness)        $  996.57 $   -3.43   -0.34%
+2026-04-01 09:23:40,705 - __main__ - INFO -   13    13   Quality / profitability             $  996.57 $   -3.43   -0.34%
+2026-04-01 09:23:40,705 - __main__ - INFO -   14    21   Defense & war economy               $  996.57 $   -3.43   -0.34%
+2026-04-01 09:23:40,705 - __main__ - INFO -   15    08   Dividend growth                     $  995.51 $   -4.49   -0.45%
+2026-04-01 09:23:40,706 - __main__ - INFO - -----------------------------------------------------------------
+2026-04-01 09:23:40,706 - __main__ - INFO -   Leaderboard saved to MySQL (leaderboard table)
+2026-04-01 09:23:40,706 - __main__ - INFO - =================================================================
+
+2026-04-01 09:23:41,023 - mysql.connector - INFO - package: mysql.connector.plugins
+2026-04-01 09:23:41,024 - mysql.connector - INFO - plugin_name: caching_sha2_password
+2026-04-01 09:23:41,025 - mysql.connector - INFO - AUTHENTICATION_PLUGIN_CLASS: MySQLCachingSHA2PasswordAuthPlugin
+2026-04-01 09:23:41,130 - __main__ - INFO - 
+=================================================================
+2026-04-01 09:23:41,130 - __main__ - INFO -   MULTI-STRATEGY PAPER TRADING ENGINE
+2026-04-01 09:23:41,131 - __main__ - INFO -   Date: 2026-04-01  |  Strategies: 15  |  Goal: $2,000 each
+2026-04-01 09:23:41,132 - __main__ - INFO -   Model: claude-sonnet-4-6
+2026-04-01 09:23:41,132 - __main__ - INFO - =================================================================
+2026-04-01 09:23:41,207 - __main__ - INFO - 
+  Loaded 200 tickers from KPI file.
+2026-04-01 09:23:41,208 - __main__ - INFO - 
+  [02] Mean reversion
+2026-04-01 09:23:41,209 - __main__ - INFO - 	   Style: contrarian  |  Risk: med
+2026-04-01 09:23:41,390 - __main__ - INFO - 	   Cash: $    40.00  |  Holdings: $   956.57  |  Total: $   996.57
+2026-04-01 09:23:41,469 - __main__ - INFO - 	   Top candidate: HCA (score 82.6)
+2026-04-01 09:23:50,144 - __main__ - INFO - 	   Summary: Hold both existing positions (HCA and AMGN) as they remain deeply oversold with intact bullish MAs and are too young to sell; initiate a small third position in MCK given its strong oversold RSI=20 and golden cross signal, using nearly all remaining available cash.
+2026-04-01 09:23:50,146 - __main__ - INFO - 	   HOLD AMGN: Held since 2026-04-01, RSI=23 still deeply oversold, Golden 
+2026-04-01 09:23:50,150 - __main__ - INFO - 	   HOLD HCA: Held since 2026-04-01, RSI=9 is extremely oversold with scor
+2026-04-01 09:23:50,296 - __main__ - INFO - 	   BUY  MCK: Insufficient funds
+2026-04-01 09:23:50,371 - __main__ - INFO - 
+  [03] Value investing
+2026-04-01 09:23:50,371 - __main__ - INFO - 	   Style: value  |  Risk: low
+2026-04-01 09:23:50,562 - __main__ - INFO - 	   Cash: $    40.00  |  Holdings: $   956.57  |  Total: $   996.57
+2026-04-01 09:23:50,618 - __main__ - INFO - 	   Top candidate: SPG (score 96.3)
+2026-04-01 09:23:58,807 - __main__ - INFO - 	   Summary: Hold both existing positions (SPG and CMCSA) as they are young, signals remain intact, and SPG leads all candidates with a score of 96.3; insufficient cash to add MU without breaching the 5% cash reserve requirement.
+2026-04-01 09:23:58,807 - __main__ - INFO - 	   HOLD CMCSA: Held since 2026-04-01, still within minimum hold period. Sco
+2026-04-01 09:23:58,808 - __main__ - INFO - 	   HOLD SPG: Top-ranked candidate with score=96.3, Golden Cross MA, low P
+2026-04-01 09:23:58,938 - __main__ - INFO - 	   BUY  MU: Insufficient funds
+2026-04-01 09:23:59,002 - __main__ - INFO - 
+  [06] Low volatility / defensive
+2026-04-01 09:23:59,002 - __main__ - INFO - 	   Style: defensive  |  Risk: low
+2026-04-01 09:23:59,203 - __main__ - INFO - 	   Cash: $   400.00  |  Holdings: $   598.10  |  Total: $   998.10
+2026-04-01 09:23:59,271 - __main__ - INFO - 	   Top candidate: NOC (score 85.3)
+2026-04-01 09:24:05,601 - __main__ - INFO - 	   Summary: Holding VRTX within minimum hold period and adding NOC as the top-scoring low-beta defensive play with an oversold RSI of 27, while maintaining adequate cash reserves.
+2026-04-01 09:24:05,603 - __main__ - INFO - 	   HOLD VRTX: Held only since 2026-04-01 (well under 15 trading days), P&L
+2026-04-01 09:24:05,726 - __main__ - INFO - 	   BUY  NOC: Insufficient funds
+2026-04-01 09:24:05,796 - __main__ - INFO - 
+  [07] Earnings surprise (PEAD)
+2026-04-01 09:24:05,796 - __main__ - INFO - 	   Style: event  |  Risk: high
+2026-04-01 09:24:05,998 - __main__ - INFO - 	   Cash: $    40.00  |  Holdings: $   956.57  |  Total: $   996.57
+2026-04-01 09:24:06,150 - __main__ - INFO - 	   Top candidate: FCX (score 243.3)
+2026-04-01 09:24:17,182 - __main__ - INFO - 	   Summary: Hold FCX and NEM within their minimum hold periods while adding a small position in STX to capture the second-strongest PEAD signal today, keeping the portfolio at maximum 3 positions and maintaining cash reserve.
+2026-04-01 09:24:17,184 - __main__ - INFO - 	   HOLD FCX: Top-ranked candidate with score 243.3, strong fwd_growth 148
+2026-04-01 09:24:17,188 - __main__ - INFO - 	   HOLD NEM: Score 130.4, Golden MA, ab_ret 3.84%, still ranked in top ca
+2026-04-01 09:24:17,302 - __main__ - INFO - 	   BUY  STX: Insufficient funds
+2026-04-01 09:24:17,366 - __main__ - INFO - 
+  [08] Dividend growth
+2026-04-01 09:24:17,366 - __main__ - INFO - 	   Style: income  |  Risk: low
+2026-04-01 09:24:17,581 - __main__ - INFO - 	   Cash: $     4.00  |  Holdings: $   991.51  |  Total: $   995.51
+2026-04-01 09:24:17,645 - __main__ - INFO - 	   Top candidate: PGR (score 4207.5)
+2026-04-01 09:24:24,132 - __main__ - INFO - 	   Summary: All three positions are within the minimum 15-day hold period with intact fundamentals and Golden MA signals, so holding everything while maintaining cash reserve.
+2026-04-01 09:24:24,132 - __main__ - INFO - 	   HOLD CMCSA: Held since 2026-04-01, under 15 trading days minimum hold. R
+2026-04-01 09:24:24,133 - __main__ - INFO - 	   HOLD MO: Top-ranked at score=3856, Golden MA, strong dividend yield a
+2026-04-01 09:24:24,134 - __main__ - INFO - 	   HOLD VZ: Score=3376, Golden MA, low beta, strong yield. Minimal loss.
+2026-04-01 09:24:24,134 - __main__ - INFO - 
+  [09] Insider buying signal
+2026-04-01 09:24:24,135 - __main__ - INFO - 	   Style: alt-data  |  Risk: med
+2026-04-01 09:24:24,343 - __main__ - INFO - 	   Cash: $  1000.00  |  Holdings: $     0.00  |  Total: $  1000.00
+2026-04-01 09:24:24,407 - __main__ - INFO - No candidates matched this strategy's filters today
+2026-04-01 09:24:24,407 - __main__ - INFO - 
+  [10] Macro-regime adaptive
+2026-04-01 09:24:24,408 - __main__ - INFO - 	   Style: macro  |  Risk: med
+2026-04-01 09:24:24,595 - __main__ - INFO - 	   Cash: $   400.00  |  Holdings: $   598.10  |  Total: $   998.10
+2026-04-01 09:24:24,664 - __main__ - INFO - 	   Top candidate: NOC (score 76.8)
+2026-04-01 09:24:33,628 - __main__ - INFO - 	   Summary: Holding VRTX through minimum hold period while adding two deeply oversold defensive names (NOC, LMT) that align with the high-VIX defensive regime, deploying available cash while maintaining the required 5% reserve.
+2026-04-01 09:24:33,629 - __main__ - INFO - 	   HOLD VRTX: Held since 2026-04-01, still in minimum hold period. Score r
+2026-04-01 09:24:33,779 - __main__ - INFO - 	   BUY  NOC: Insufficient funds
+2026-04-01 09:24:33,975 - __main__ - INFO - 	   BUY  LMT: Insufficient funds
+2026-04-01 09:24:34,038 - __main__ - INFO - 
+  [11] S&P 500 value tilt
+2026-04-01 09:24:34,039 - __main__ - INFO - 	   Style: academic  |  Risk: med
+2026-04-01 09:24:34,242 - __main__ - INFO - 	   Cash: $    40.00  |  Holdings: $   956.57  |  Total: $   996.57
+2026-04-01 09:24:34,323 - __main__ - INFO - 	   Top candidate: CMCSA (score 76.3)
+2026-04-01 09:24:43,250 - __main__ - INFO - 	   Summary: Holding both existing positions (CMCSA and MO) as minimum hold rules apply and signals remain intact; no new buy initiated due to insufficient cash above the 5% reserve threshold.
+2026-04-01 09:24:43,252 - __main__ - INFO - 	   HOLD CMCSA: Top-ranked stock with score 76.3, RSI=30 (oversold, potentia
+2026-04-01 09:24:43,256 - __main__ - INFO - 	   HOLD MO: Score 65.2, Golden cross MA, solid margin of 34.4%, low beta
+2026-04-01 09:24:43,385 - __main__ - INFO - 	   BUY  TFC: Insufficient funds
+2026-04-01 09:24:43,476 - __main__ - INFO - 
+  [12] Momentum (academic / Asness)
+2026-04-01 09:24:43,477 - __main__ - INFO - 	   Style: academic  |  Risk: high
+2026-04-01 09:24:43,719 - __main__ - INFO - 	   Cash: $    40.00  |  Holdings: $   956.57  |  Total: $   996.57
+2026-04-01 09:24:43,785 - __main__ - INFO - 	   Top candidate: NEM (score 60.5)
+2026-04-01 09:24:53,442 - __main__ - INFO - 	   Summary: Hold existing AMGN and NEM positions which remain top-ranked with intact momentum signals, and add a small fractional position in LLY as the third slot given its strong score, oversold RSI, and low-beta crash protection profile consistent with the Asness momentum strategy.
+2026-04-01 09:24:53,443 - __main__ - INFO - 	   HOLD AMGN: Score 59.0 remains solid, MA golden cross intact, position h
+2026-04-01 09:24:53,444 - __main__ - INFO - 	   HOLD NEM: Top-ranked candidate today with score 60.5, low beta 0.39 pr
+2026-04-01 09:24:53,575 - __main__ - INFO - 	   BUY  LLY: Insufficient funds
+2026-04-01 09:24:53,638 - __main__ - INFO - 
+  [13] Quality / profitability
+2026-04-01 09:24:53,638 - __main__ - INFO - 	   Style: academic  |  Risk: low
+2026-04-01 09:24:53,854 - __main__ - INFO - 	   Cash: $    40.00  |  Holdings: $   956.57  |  Total: $   996.57
+2026-04-01 09:24:53,917 - __main__ - INFO - 	   Top candidate: AVGO (score 115.5)
+2026-04-01 09:25:01,958 - __main__ - INFO - 	   Summary: Hold both existing positions (under minimum hold period and scores remain strong) and add LLY as a third position using available cash, taking advantage of its oversold RSI and Golden cross signal.
+2026-04-01 09:25:01,959 - __main__ - INFO - 	   HOLD AVGO: Top-ranked score of 115.5, RSI=35 oversold, held only since 
+2026-04-01 09:25:01,963 - __main__ - INFO - 	   HOLD CME: Score 90.8, Golden cross, low beta 0.26, excellent margin 61
+2026-04-01 09:25:02,095 - __main__ - INFO - 	   BUY  LLY: Insufficient funds
+2026-04-01 09:25:02,161 - __main__ - INFO - 
+  [14] Passive S&P 500 benchmark
+2026-04-01 09:25:02,161 - __main__ - INFO - 	   Style: passive  |  Risk: low
+2026-04-01 09:25:02,743 - __main__ - INFO -   [14] BUY NVDA: Bought 1.0088 shares @ $174.40
+2026-04-01 09:25:02,866 - __main__ - INFO -   [14] Cash: $   651.80 | Holdings: $   345.68 | Total: $   997.48 | Positions: ['NVDA', 'WMT']
+2026-04-01 09:25:02,866 - __main__ - INFO - 
+  [18] Capex beneficiary / semis
+2026-04-01 09:25:02,867 - __main__ - INFO - 	   Style: thematic  |  Risk: high
+2026-04-01 09:25:03,053 - __main__ - INFO - 	   Cash: $  1000.00  |  Holdings: $     0.00  |  Total: $  1000.00
+2026-04-01 09:25:03,116 - __main__ - INFO - No candidates matched this strategy's filters today
+2026-04-01 09:25:03,116 - __main__ - INFO - 
+  [19] News macro catalyst
+2026-04-01 09:25:03,117 - __main__ - INFO - 	   Style: macro  |  Risk: med
+2026-04-01 09:25:03,305 - __main__ - INFO - 	   Cash: $  1000.00  |  Holdings: $     0.00  |  Total: $  1000.00
+2026-04-01 09:25:03,367 - __main__ - INFO - 	   No news_macro_cache.json -- run news strategies (Stage 1) first
+2026-04-01 09:25:03,368 - __main__ - INFO - No candidates matched this strategy's filters today
+2026-04-01 09:25:03,368 - __main__ - INFO - 
+  [20] News sentiment momentum
+2026-04-01 09:25:03,369 - __main__ - INFO - 	   Style: alt-data  |  Risk: med
+2026-04-01 09:25:03,554 - __main__ - INFO - 	   Cash: $  1000.00  |  Holdings: $     0.00  |  Total: $  1000.00
+2026-04-01 09:25:03,621 - __main__ - INFO - 	   No news_macro_cache.json -- run news strategies (Stage 1) first
+2026-04-01 09:25:03,621 - __main__ - INFO - No candidates matched this strategy's filters today
+2026-04-01 09:25:03,622 - __main__ - INFO - 
+  [21] Defense & war economy
+2026-04-01 09:25:03,622 - __main__ - INFO - 	   Style: thematic  |  Risk: med
+2026-04-01 09:25:03,838 - __main__ - INFO - 	   Cash: $    40.00  |  Holdings: $   956.57  |  Total: $   996.57
+2026-04-01 09:25:03,904 - __main__ - INFO - 	   Top candidate: VRT (score 139.9)
+2026-04-01 09:25:16,090 - __main__ - INFO - 	   Summary: Holding both VRT and HON within mandatory 15-day minimum hold period as both retain strong scores and golden cross MAs; no buy executed as available cash ($40) is below the required 5% portfolio cash reserve (~$50), so capital is preserved.
+2026-04-01 09:25:16,092 - __main__ - INFO - 	   HOLD HON: Held since 2026-04-01, under 15 trading days minimum hold. R
+2026-04-01 09:25:16,096 - __main__ - INFO - 	   HOLD VRT: Top-ranked candidate with score=139.9, highest in the list. 
+2026-04-01 09:25:16,219 - __main__ - INFO - 	   BUY  EMR: Insufficient funds
+2026-04-01 09:25:16,278 - __main__ - INFO - 
+-----------------------------------------------------------------
+2026-04-01 09:25:16,279 - __main__ - INFO -   LEADERBOARD
+2026-04-01 09:25:16,280 - __main__ - INFO - -----------------------------------------------------------------
+2026-04-01 09:25:16,408 - __main__ - INFO -   Rank  ID   Strategy                                Total       P&L   Return
+2026-04-01 09:25:16,409 - __main__ - INFO -   ---- ---- ----------------------------------- --------- --------- --------
+2026-04-01 09:25:16,410 - __main__ - INFO -   1     09   Insider buying signal               $ 1000.00 +$    0.00 +   0.00%
+2026-04-01 09:25:16,410 - __main__ - INFO -   2     18   Capex beneficiary / semis           $ 1000.00 +$    0.00 +   0.00%
+2026-04-01 09:25:16,410 - __main__ - INFO -   3     19   News macro catalyst                 $ 1000.00 +$    0.00 +   0.00%
+2026-04-01 09:25:16,411 - __main__ - INFO -   4     20   News sentiment momentum             $ 1000.00 +$    0.00 +   0.00%
+2026-04-01 09:25:16,411 - __main__ - INFO -   5     06   Low volatility / defensive          $  998.10 $   -1.90   -0.19%
+2026-04-01 09:25:16,412 - __main__ - INFO -   6     10   Macro-regime adaptive               $  998.10 $   -1.90   -0.19%
+2026-04-01 09:25:16,412 - __main__ - INFO -   7     14   Passive S&P 500 benchmark           $  997.48 $   -2.52   -0.25%
+2026-04-01 09:25:16,412 - __main__ - INFO -   8     02   Mean reversion                      $  996.57 $   -3.43   -0.34%
+2026-04-01 09:25:16,412 - __main__ - INFO -   9     03   Value investing                     $  996.57 $   -3.43   -0.34%
+2026-04-01 09:25:16,413 - __main__ - INFO -   10    07   Earnings surprise (PEAD)            $  996.57 $   -3.43   -0.34%
+2026-04-01 09:25:16,413 - __main__ - INFO -   11    11   S&P 500 value tilt                  $  996.57 $   -3.43   -0.34%
+2026-04-01 09:25:16,413 - __main__ - INFO -   12    12   Momentum (academic / Asness)        $  996.57 $   -3.43   -0.34%
+2026-04-01 09:25:16,414 - __main__ - INFO -   13    13   Quality / profitability             $  996.57 $   -3.43   -0.34%
+2026-04-01 09:25:16,414 - __main__ - INFO -   14    21   Defense & war economy               $  996.57 $   -3.43   -0.34%
+2026-04-01 09:25:16,414 - __main__ - INFO -   15    08   Dividend growth                     $  995.51 $   -4.49   -0.45%
+2026-04-01 09:25:16,415 - __main__ - INFO - -----------------------------------------------------------------
+2026-04-01 09:25:16,415 - __main__ - INFO -   Leaderboard saved to MySQL (leaderboard table)
+2026-04-01 09:25:16,416 - __main__ - INFO - =================================================================
+

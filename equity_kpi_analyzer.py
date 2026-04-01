@@ -539,30 +539,46 @@ def main():
     # -- EPS revision delta (Strategy 16 signal) -------------------------
     # Compare today's eps_growth_fwd to yesterday's snapshot (if it exists).
     # Snapshot is the previous output CSV -- we read it before overwriting.
-    prev_path = Path(args.output)
-    if prev_path.exists() and "eps_growth_fwd" in df.columns:
+    # Build previous eps_growth_fwd map: try MySQL first, fall back to CSV backup.
+    prev_map = {}
+    if "eps_growth_fwd" in df.columns:
         try:
-            prev_df = pd.read_csv(prev_path, dtype=str)
-            if "ticker" in prev_df.columns and "eps_growth_fwd" in prev_df.columns:
-                prev_df["eps_growth_fwd"] = pd.to_numeric(
-                    prev_df["eps_growth_fwd"], errors="coerce")
-                prev_map = prev_df.set_index("ticker")["eps_growth_fwd"].to_dict()
-                df["eps_revision_pct"] = df.apply(
-                    lambda row: _compute_eps_revision_pct(row, prev_map), axis=1
-                )
-                n_revised = (df["eps_revision_pct"].fillna(0) > 0).sum()
-                print(f"  [S16] EPS revision delta computed -- "
-                      f"{n_revised} tickers with upward revisions today")
-            else:
-                df["eps_revision_pct"] = None
+            from db import read_kpi_rows as _read_kpi_rows
+            prev_rows = _read_kpi_rows()
+            if prev_rows:
+                prev_map = {r["ticker"]: float(r["eps_growth_fwd"])
+                            for r in prev_rows
+                            if r.get("eps_growth_fwd") not in (None, 0.0)}
+                print(f"  [S16] Loaded prior eps_growth_fwd from MySQL "
+                      f"({len(prev_map)} tickers)")
         except Exception as e:
-            print(f"  [S16] Could not compute EPS revision delta: {e}")
+            print(f"  [S16] MySQL read failed ({e}), trying CSV backup...")
+
+        if not prev_map:
+            prev_path = Path(args.output)
+            if prev_path.exists():
+                try:
+                    prev_df = pd.read_csv(prev_path, dtype=str)
+                    if "ticker" in prev_df.columns and "eps_growth_fwd" in prev_df.columns:
+                        prev_df["eps_growth_fwd"] = pd.to_numeric(
+                            prev_df["eps_growth_fwd"], errors="coerce")
+                        prev_map = prev_df.set_index("ticker")["eps_growth_fwd"].to_dict()
+                        print(f"  [S16] Loaded prior eps_growth_fwd from CSV backup "
+                              f"({len(prev_map)} tickers)")
+                except Exception as e:
+                    print(f"  [S16] CSV backup read failed: {e}")
+
+        if prev_map:
+            df["eps_revision_pct"] = df.apply(
+                lambda row: _compute_eps_revision_pct(row, prev_map), axis=1
+            )
+            n_revised = (df["eps_revision_pct"].fillna(0) > 0).sum()
+            print(f"  [S16] EPS revision delta computed -- "
+                  f"{n_revised} tickers with upward revisions today")
+        else:
             df["eps_revision_pct"] = None
-    else:
-        df["eps_revision_pct"] = None
-        if not prev_path.exists():
-            print(f"  [S16] No prior snapshot found at {args.output} -- "
-                  f"eps_revision_pct will populate from tomorrow's run")
+            print("  [S16] No prior snapshot found -- "
+                  "eps_revision_pct will populate from tomorrow's run")
 
     # -- Console output --------------------------------------------------
     DISPLAY_COLS = [
