@@ -27,7 +27,6 @@ from __future__ import annotations
 import argparse
 import os
 import sys
-import traceback
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -152,7 +151,7 @@ class Logger:
                 prefix += f" [S{self.strategy_id}]"
             print(f"{prefix} {message}", flush=True)
 
-        self._buffer.append((now, level, message, extra or {}))
+        self._buffer.append((now, level, message, extra or {}, self.run_stage, self.strategy_id))
         if len(self._buffer) >= self.FLUSH_EVERY:
             self.flush()
 
@@ -161,13 +160,13 @@ class Logger:
         params = [
             (
                 ts.strftime("%Y-%m-%d %H:%M:%S.%f")[:-3],
-                self.run_stage,
-                self.strategy_id,
+                run_stage,
+                strategy_id,
                 level,
                 message[:4000],
                 _json.dumps(extra) if extra else None,
             )
-            for ts, level, message, extra in rows
+            for ts, level, message, extra, run_stage, strategy_id in rows
         ]
         try:
             from db import get_connection
@@ -220,11 +219,9 @@ def tail_logs(
     conn = get_connection()
     try:
         cur = conn.cursor(dictionary=True)
-        wheres = ["level >= %s"]
-        params: list = [min_level]
 
-        # MySQL ENUM comparison works, but it's cleaner to use a subquery for
-        # ordering by severity — instead just filter by name with IN().
+        # Filter by level using IN() with explicit ordering — more portable
+        # than relying on ENUM comparison order across MySQL configs.
         level_order = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
         min_idx = level_order.index(min_level.upper()) if min_level.upper() in level_order else 0
         levels_to_include = level_order[min_idx:]
@@ -306,6 +303,7 @@ def _cli():
         echo=not args.no_echo,
     )
     log._log(args.level, args.message)
+    log.flush()
 
 
 # ---------------------------------------------------------------------------
