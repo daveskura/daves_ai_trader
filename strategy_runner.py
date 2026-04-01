@@ -1,5 +1,6 @@
+# -*- coding: utf-8 -*-
 """
-strategy_runner.py  —  Multi-strategy paper trading engine
+strategy_runner.py  --  Multi-strategy paper trading engine
 Runs 20 active strategies + 1 passive benchmark concurrently.
 Each strategy has its own account, holdings, and transactions CSV.
 Produces a daily leaderboard CSV for the dashboard.
@@ -17,7 +18,6 @@ import sys
 import os
 import re
 import json
-import csv
 import math
 import argparse
 import urllib.error
@@ -30,7 +30,7 @@ from collections import defaultdict
 from functools import wraps
 from typing import Dict, List, Tuple, Optional, Any, Union
 
-# ── Configure logging ──────────────────────────────────────────────────────────
+# -- Configure logging ----------------------------------------------------------
 logging.basicConfig(
 	level=logging.INFO,
 	format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -41,13 +41,13 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# ── UTF-8 output (Windows fix) ──────────────────────────────────────────────
+# -- UTF-8 output (Windows fix) ----------------------------------------------
 if hasattr(sys.stdout, "reconfigure"):
 	sys.stdout.reconfigure(encoding="utf-8")
 if hasattr(sys.stderr, "reconfigure"):
 	sys.stderr.reconfigure(encoding="utf-8")
 
-# ── Load .env if present ────────────────────────────────────────────────────
+# -- Load .env if present ----------------------------------------------------
 _env_path = Path(__file__).parent / ".env"
 if _env_path.exists():
 	for line in _env_path.read_text(encoding="utf-8").splitlines():
@@ -58,10 +58,10 @@ if _env_path.exists():
 			os.environ.setdefault(k.strip(), v)
 
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
-BASE_DIR = Path(__file__).parent   # must stay local — relative to this file
+BASE_DIR = Path(__file__).parent   # must stay local -- relative to this file
 
-# ── Shared constants (single source of truth) ────────────────────────────────
-# All scripts should import from constants.py — do not define these inline.
+# -- Shared constants (single source of truth) --------------------------------
+# All scripts should import from constants.py -- do not define these inline.
 from constants import (
 	# engine parameters
 	STARTING_CASH, COMMISSION, SPREAD_PCT, ACCOUNT_NUM,
@@ -71,8 +71,20 @@ from constants import (
 	# strategy registry & maps
 	HOLD_PERIODS, STRATEGIES, MACRO_THEME_MAP,
 )
+from db import (
+	init_schema,
+	read_account   as _db_read_account,
+	save_account   as _db_save_account,
+	read_holdings  as _db_read_holdings,
+	save_holdings  as _db_save_holdings,
+	append_txn     as _db_append_txn,
+	write_leaderboard          as _db_write_leaderboard,
+	read_leaderboard_history   as _db_read_lb_history,
+	append_leaderboard_history as _db_append_lb_history,
+	read_kpi_rows  as _db_read_kpi_rows,
+)
 
-# ── Retry decorator for API calls ────────────────────────────────────────────
+# -- Retry decorator for API calls --------------------------------------------
 def retry(max_attempts: int = 3, backoff: float = 2.0, exceptions: tuple = (Exception,)):
 	"""
 	Retry decorator with exponential backoff for network operations.
@@ -109,84 +121,56 @@ NEWS_FEEDS = [
 	"https://search.cnbc.com/rs/search/view.xml?partnerId=2000&keywords=stock%20market",
 ]
 
-# ── File helpers ─────────────────────────────────────────────────────────────
-
-def acct_file(sid: str) -> Path:   return BASE_DIR / f"account_{sid}.csv"
-def hold_file(sid: str) -> Path:   return BASE_DIR / f"holdings_{sid}.csv"
-def txn_file(sid: str) -> Path:	return BASE_DIR / f"transactions_{sid}.csv"
-def leader_file() -> Path:		 return BASE_DIR / "leaderboard.csv"
-def leader_history_file() -> Path: return BASE_DIR / "leaderboard_history.csv"
-
+# -- Data-layer helpers (MySQL via db.py) -------------------------------------
 
 def check_data_freshness(kpi_file: str = "equity_kpi_results.csv"):
-	"""Warn if the KPI file is stale. Uses a stricter threshold for PEAD (S07)."""
-	kpi_path = BASE_DIR / kpi_file
-	if not kpi_path.exists():
-		return
-	mtime = datetime.fromtimestamp(kpi_path.stat().st_mtime)
-	age_hours = (datetime.now() - mtime).total_seconds() / 3600
-	if age_hours > KPI_WARN_HOURS_PEAD:
-		logger.warning(
-			f"KPI data is {age_hours:.1f}h old (threshold: {KPI_WARN_HOURS_PEAD}h). "
-			f"S07 (PEAD) requires fresh abnormal-return data — consider re-running "
-			f"equity_kpi_analyzer.py before trading."
-		)
-	elif age_hours > KPI_WARN_HOURS:
-		logger.warning(f"KPI data is {age_hours:.1f}h old — may be slightly stale.")
-
-def read_csv(path: Path) -> List[Dict]:
-	if not path.exists():
-		return []
-	with open(path, newline="", encoding="utf-8") as f:
-		return list(csv.DictReader(f))
-
-def write_csv(path: Path, rows: List[Dict], fieldnames: List[str]):
-	with open(path, "w", newline="", encoding="utf-8") as f:
-		w = csv.DictWriter(f, fieldnames=fieldnames)
-		w.writeheader()
-		w.writerows(rows)
+	"""
+	Warn if KPI data is stale. Checks MAX(updated_at) in the equity_kpi table.
+	kpi_file is accepted for CLI compatibility but ignored in MySQL mode.
+	"""
+	try:
+		from db import get_connection
+		conn = get_connection()
+		try:
+			cur = conn.cursor()
+			cur.execute("SELECT MAX(updated_at) FROM equity_kpi")
+			row = cur.fetchone()
+			if row and row[0]:
+				age_hours = (datetime.now() - row[0]).total_seconds() / 3600
+				if age_hours > KPI_WARN_HOURS_PEAD:
+					logger.warning(
+						f"KPI data is {age_hours:.1f}h old (threshold: {KPI_WARN_HOURS_PEAD}h). "
+						f"S07 (PEAD) requires fresh abnormal-return data -- consider re-running "
+						f"equity_kpi_analyzer.py before trading."
+					)
+				elif age_hours > KPI_WARN_HOURS:
+					logger.warning(f"KPI data is {age_hours:.1f}h old -- may be slightly stale.")
+		finally:
+			conn.close()
+	except Exception as e:
+		logger.debug(f"check_data_freshness: {e}")
 
 def read_account(sid: str) -> Dict:
-	rows = read_csv(acct_file(sid))
-	if not rows:
+	acct = _db_read_account(sid)
+	if not acct:
 		return {"account": ACCOUNT_NUM, "strategy_id": sid,
 				"cash": STARTING_CASH, "holdings_value": 0.0, "total": STARTING_CASH,
 				"start_date": date.today().isoformat(), "trades": 0}
-	r = rows[0]
-	r["cash"]		   = float(r["cash"])
-	r["holdings_value"] = float(r["holdings_value"])
-	r["total"]		  = float(r["total"])
-	r["trades"]		 = int(r.get("trades", 0))
-	return r
+	return acct
 
 def save_account(sid: str, acct: Dict):
-	write_csv(acct_file(sid), [acct],
-			  ["account","strategy_id","cash","holdings_value","total","start_date","trades"])
+	_db_save_account(sid, acct)
 
 def read_holdings(sid: str) -> List[Dict]:
-	rows = read_csv(hold_file(sid))
-	for r in rows:
-		r["shares"]	= float(r["shares"])
-		r["avg_cost"]  = float(r["avg_cost"])
-		r["cost_basis"]= float(r["cost_basis"])
-	return rows
+	return _db_read_holdings(sid)
 
 def save_holdings(sid: str, holdings: List[Dict]):
-	write_csv(hold_file(sid), holdings,
-			  ["ticker","shares","avg_cost","cost_basis","purchase_date","strategy_id"])
+	_db_save_holdings(sid, holdings)
 
 def append_txn(sid: str, txn: Dict):
-	path = txn_file(sid)
-	fieldnames = ["date","strategy_id","action","ticker","shares","price",
-				  "commission","net_amount","cash_after","reason"]
-	write_header = not path.exists()
-	with open(path, "a", newline="", encoding="utf-8") as f:
-		w = csv.DictWriter(f, fieldnames=fieldnames)
-		if write_header:
-			w.writeheader()
-		w.writerow(txn)
+	_db_append_txn(sid, txn)
 
-# ── Holdings value helper (FIXED: handle 0.0 price correctly) ─────────────────
+# -- Holdings value helper (FIXED: handle 0.0 price correctly) -----------------
 def calc_holdings_value(holdings: List[Dict], kmap: Dict) -> float:
 	"""Compute total holdings market value using current prices."""
 	total = 0.0
@@ -200,31 +184,22 @@ def calc_holdings_value(holdings: List[Dict], kmap: Dict) -> float:
 		total += h["shares"] * price
 	return round(total, 2)
 
-# ── KPI data loader ───────────────────────────────────────────────────────────
+# -- KPI data loader -----------------------------------------------------------
 
 def load_kpi(kpi_path: str = "equity_kpi_results.csv") -> Tuple[List[Dict], Dict]:
-	path = BASE_DIR / kpi_path
-	if not path.exists():
-		logger.warning(f"KPI file not found: {path}")
+	"""Load KPI data from MySQL (kpi_path argument kept for CLI compatibility)."""
+	try:
+		rows = _db_read_kpi_rows()
+	except Exception as e:
+		logger.warning(f"Could not load KPI from database: {e}")
 		return [], {}
-	rows = read_csv(path)
-	kmap = {}
-	for r in rows:
-		for col in ["composite_score","tier1_score","tier2_score","tier3_score",
-					"net_profit_margin","eps_growth_fwd","eps_ttm","eps_forward",
-					"pe_ratio","current_price","rsi_14","ma_50","ma_200","beta",
-					"market_cap","pct_from_52w_high","abnormal_return",
-					"net_insider_shares","vix","dividend_yield",
-					"five_year_avg_dividend_yield","eps_revision_pct"]:
-			if col in r:
-				try:
-					r[col] = float(r[col])
-				except (ValueError, TypeError):
-					r[col] = 0.0
-		kmap[r["ticker"]] = r
+	if not rows:
+		logger.warning("equity_kpi table is empty -- run equity_kpi_analyzer.py first.")
+		return [], {}
+	kmap = {r["ticker"]: r for r in rows}
 	return rows, kmap
 
-# ── FIX-11: Fixed stop-loss with batch execution (no race condition) ─────────
+# -- FIX-11: Fixed stop-loss with batch execution (no race condition) ---------
 def enforce_stop_losses(sid: str, holdings: List[Dict], kmap: Dict, today: str,
 						dry_run: bool = False) -> List[Dict]:
 	"""
@@ -255,7 +230,7 @@ def enforce_stop_losses(sid: str, holdings: List[Dict], kmap: Dict, today: str,
 		holdings = read_holdings(sid)   # reload once after all stops
 	return holdings
 
-# ── FIX-2, FIX-3, FIX-21, FIX-6: Improved buy/sell with proper price handling ─
+# -- FIX-2, FIX-3, FIX-21, FIX-6: Improved buy/sell with proper price handling -
 def buy(sid: str, ticker: str, price: float, cash_available: float, reason: str,
 		today: str, kmap: Dict, dry_run: bool = False) -> Tuple[bool, str]:
 	"""Buy as many shares as cash allows (up to 60% of total account)."""
@@ -332,7 +307,7 @@ def sell(sid: str, ticker: str, price: float, reason: str, today: str,
 		days_held = _trading_days_held(pos.get("purchase_date", today), today)
 		if days_held < hold_floor:
 			return False, (f"Min-hold period not met ({days_held}/{hold_floor} "
-						   f"trading days) — holding {ticker}")
+						   f"trading days) -- holding {ticker}")
 
 	shares = pos["shares"]
 	proceeds = round(shares * price * (1 - SPREAD_PCT) - COMMISSION, 4)
@@ -375,7 +350,7 @@ def _trading_days_held(purchase_date_str: str, today_str: str) -> int:
 	except Exception:
 		return 999
 
-# ── FIX-4: Passive strategy (no Claude call) ─────────────────────────────────
+# -- FIX-4: Passive strategy (no Claude call) ---------------------------------
 # Holds up to PASSIVE_MAX_POSITIONS largest-cap stocks, equally weighted.
 # 5 positions is a reasonable S&P 500 proxy without being as variable as 2.
 PASSIVE_MAX_POSITIONS = 5
@@ -396,7 +371,7 @@ def run_passive(sid: str, rows: List[Dict], kmap: Dict, today: str, dry_run: boo
 	slots_open = target_n - len(holdings)
 
 	if slots_open <= 0:
-		logger.info(f"  [14] Passive: {target_n} positions full — holding.")
+		logger.info(f"  [14] Passive: {target_n} positions full -- holding.")
 		logger.info(f"       Cash: ${acct['cash']:>9.2f} | Holdings: ${acct['holdings_value']:>9.2f} | "
 					f"Total: ${acct['total']:>9.2f} | Positions: {sorted(held)}")
 		return
@@ -426,9 +401,9 @@ def run_passive(sid: str, rows: List[Dict], kmap: Dict, today: str, dry_run: boo
 	logger.info(f"  [14] Cash: ${acct['cash']:>9.2f} | Holdings: ${acct['holdings_value']:>9.2f} | "
 				f"Total: ${acct['total']:>9.2f} | Positions: {[h['ticker'] for h in holdings]}")
 
-# ── Leaderboard ───────────────────────────────────────────────────────────────
+# -- Leaderboard ---------------------------------------------------------------
 def update_leaderboard(today: str, kmap: Optional[Dict] = None) -> List[Dict]:
-	"""Build and write the daily leaderboard CSV."""
+	"""Build and write the daily leaderboard to MySQL."""
 	if kmap:
 		for sid, *_ in STRATEGIES:
 			acct = read_account(sid)
@@ -461,41 +436,10 @@ def update_leaderboard(today: str, kmap: Optional[Dict] = None) -> List[Dict]:
 	for i, r in enumerate(rows):
 		r["rank"] = i + 1
 
-	lb_fieldnames = ["rank","date","strategy_id","strategy_name","style","risk",
-					 "cash","holdings_value","total","pnl","pct_return","trades"]
-
-	write_csv(leader_file(), rows, lb_fieldnames)
-
-	# Append today's rows to history, deduplicate on date, then cap size.
-	# Rows older than LEADERBOARD_HISTORY_DAYS are archived to a separate file
-	# so the main history stays fast to read.
-	LEADERBOARD_HISTORY_DAYS = 365
-	hist_path    = leader_history_file()
-	archive_path = BASE_DIR / "leaderboard_history_archive.csv"
-
-	existing_history = [r for r in read_csv(hist_path) if r.get("date") != today] if hist_path.exists() else []
-	all_history      = existing_history + rows
-
-	# Partition into recent (keep) and old (archive)
-	cutoff = (datetime.now().date() - __import__("datetime").timedelta(days=LEADERBOARD_HISTORY_DAYS)).isoformat()
-	recent  = [r for r in all_history if r.get("date", "") >= cutoff]
-	old     = [r for r in all_history if r.get("date", "") <  cutoff]
-
-	write_csv(hist_path, recent, lb_fieldnames)
-
-	if old:
-		existing_archive = read_csv(archive_path) if archive_path.exists() else []
-		# Only append dates not already in the archive
-		archived_dates   = {r.get("date") for r in existing_archive}
-		new_archive_rows = [r for r in old if r.get("date") not in archived_dates]
-		if new_archive_rows:
-			write_csv(archive_path, existing_archive + new_archive_rows, lb_fieldnames)
-			logger.info(f"  Archived {len(new_archive_rows)} old leaderboard rows to {archive_path.name}")
-
+	# Upsert today's snapshot (history lives in the same leaderboard table)
+	_db_write_leaderboard(rows)
 	return rows
 
-# ── FIX-6: Retry decorator for Claude API call ────────────────────────────────
-@retry(max_attempts=3, backoff=2.0, exceptions=(urllib.error.URLError, urllib.error.HTTPError, json.JSONDecodeError))
 def ask_claude(strategy_id: str, strategy_name: str, strategy_desc: str,
 			   candidates: List[Tuple], holdings: List[Dict], acct: Dict,
 			   today: str, kmap: Optional[Dict] = None) -> Tuple[Optional[Dict], Optional[str]]:
@@ -519,7 +463,7 @@ def ask_claude(strategy_id: str, strategy_name: str, strategy_desc: str,
 	hold_str = "\n".join(hold_lines) or "  (none)"
 
 	# Build candidates string with enriched KPIs.
-	# Reason strings are truncated to keep the prompt compact — the scorer
+	# Reason strings are truncated to keep the prompt compact -- the scorer
 	# already ranked these; Claude only needs the signal, not the full detail.
 	REASON_MAX = 80
 	cand_lines = []
@@ -530,8 +474,8 @@ def ask_claude(strategy_id: str, strategy_name: str, strategy_desc: str,
 		pe    = kd.get("pe_ratio", "?")
 		rsi_s = f"{rsi:.0f}" if isinstance(rsi, float) else str(rsi)
 		pe_s  = f"{pe:.1f}"  if isinstance(pe,  float) else str(pe)
-		ma_s  = "Golden✓" if "BULLISH" in str(ma_sig) else ("Death✗" if "BEARISH" in str(ma_sig) else str(ma_sig))
-		reason_short = (r[:REASON_MAX] + "…") if len(r) > REASON_MAX else r
+		ma_s  = "Golden(ok)" if "BULLISH" in str(ma_sig) else ("Death(x)" if "BEARISH" in str(ma_sig) else str(ma_sig))
+		reason_short = (r[:REASON_MAX] + "...") if len(r) > REASON_MAX else r
 		cand_lines.append(f"  {t}: score={s:.1f}  RSI={rsi_s}  MA={ma_s}  P/E={pe_s}  {reason_short}")
 	cand_str = "\n".join(cand_lines)
 
@@ -555,7 +499,7 @@ Top-ranked candidates today (by strategy scoring):
 {cand_str}
 
 Rules:
-- Commission is $1.00 per trade + 0.15% spread (larger for less-liquid names). Round-trip ≈ $2–4 — a position needs ~0.4–0.8% gain just to break even.
+- Commission is $1.00 per trade + 0.15% spread (larger for less-liquid names). Round-trip ? $2-4 -- a position needs ~0.4-0.8% gain just to break even.
 - Max 3 positions at once; max 60% of portfolio in any one stock
 - Keep at least 5% cash reserve
 - MINIMUM HOLD: do NOT sell a position held fewer than {hold_floor} trading days
@@ -609,7 +553,7 @@ Respond ONLY with a JSON object. No explanation outside the JSON.
 		logger.error(f"  Raw text (first 300 chars): {text[:300]}")
 		return None, f"JSON parse error: {e}"
 
-# ── Strategy-specific sector/ticker constants (hoisted for performance) ───────
+# -- Strategy-specific sector/ticker constants (hoisted for performance) -------
 CAPEX_SECTORS   = {"Information Technology"}
 DEFENSE_SECTORS = {"Industrials", "Energy", "Information Technology"}
 DEFENSE_TICKERS = {
@@ -619,7 +563,7 @@ DEFENSE_TICKERS = {
 	"XOM", "CVX", "COP", "OXY", "SLB", "BKR", "EOG",         # energy
 }
 
-# ── Score functions ───────────────────────────────────────────────────────────
+# -- Score functions -----------------------------------------------------------
 
 def score_passive(rows: List[Dict], kmap: Dict) -> List[Tuple]:
 	"""Passive benchmark: rank by market cap for buy-and-hold selection."""
@@ -698,9 +642,9 @@ def score_dividend_growth(rows, kmap):
 	"""High dividend yield + growing payout.
 	Hard gates: must pay a dividend (dy > 0), yield must clear a minimum
 	threshold, and the company must be profitable (npm > 0).
-	Non-dividend payers are excluded entirely — no fallback scoring.
+	Non-dividend payers are excluded entirely -- no fallback scoring.
 	"""
-	MIN_YIELD = 0.005   # 0.5% — filters out token/special dividends
+	MIN_YIELD = 0.005   # 0.5% -- filters out token/special dividends
 	out = []
 	for r in rows:
 		dy = r.get("dividend_yield", 0) or 0
@@ -840,7 +784,7 @@ def score_capex_beneficiary(rows, kmap):
 	return sorted(out, key=lambda x: -x[1])
 
 def score_defense_war_economy(rows, kmap):
-	"""Strategy 21 — Defense & War Economy."""
+	"""Strategy 21 -- Defense & War Economy."""
 	out = []
 	for r in rows:
 		ticker = r["ticker"]
@@ -872,7 +816,7 @@ def score_defense_war_economy(rows, kmap):
 		out.append((ticker, round(score, 2), reason))
 	return sorted(out, key=lambda x: -x[1])
 
-# ── News-related functions ────────────────────────────────────────────────────
+# -- News-related functions ----------------------------------------------------
 
 def _fetch_rss(url: str, verbose: bool = False) -> list:
 	"""Fetch and parse a single RSS feed URL. Returns list of headline dicts."""
@@ -1050,22 +994,22 @@ def print_news_briefing(macro_data: dict = None):
 	print("="*70)
 	
 	regime = macro_data.get("market_regime", "UNKNOWN")
-	regime_emoji = "📈" if regime == "RISK-ON" else "📉" if regime == "RISK-OFF" else "⚖️"
+	regime_emoji = "(up)" if regime == "RISK-ON" else "(dn)" if regime == "RISK-OFF" else "(=)?"
 	print(f"\nMarket Regime: {regime_emoji} {regime}")
 	
 	print("\nDominant Themes:")
 	for theme in macro_data.get("dominant_themes", []):
-		print(f"  • {theme.get('theme_name', theme.get('theme_id', 'Unknown'))} "
+		print(f"  * {theme.get('theme_name', theme.get('theme_id', 'Unknown'))} "
 			  f"(strength: {theme.get('strength', '?')}/10, "
 			  f"duration: {theme.get('duration_outlook', '?')})")
 		if theme.get("beneficiary_sectors"):
-			print(f"    → Beneficiaries: {', '.join(theme['beneficiary_sectors'])}")
+			print(f"    -> Beneficiaries: {', '.join(theme['beneficiary_sectors'])}")
 		if theme.get("loser_sectors"):
-			print(f"    → Losers: {', '.join(theme['loser_sectors'])}")
+			print(f"    -> Losers: {', '.join(theme['loser_sectors'])}")
 	
 	print("\nCompany Catalysts:")
 	for cat in macro_data.get("company_catalysts", []):
-		sentiment = "🔵" if cat.get("sentiment") == "positive" else "🔴" if cat.get("sentiment") == "negative" else "⚪"
+		sentiment = "?" if cat.get("sentiment") == "positive" else "?" if cat.get("sentiment") == "negative" else "?"
 		print(f"  {sentiment} {cat.get('ticker', 'Unknown')}: {cat.get('description', '')} "
 			  f"(magnitude: {cat.get('magnitude', '?')}/10)")
 	
@@ -1074,7 +1018,7 @@ def print_news_briefing(macro_data: dict = None):
 
 def score_news_macro(rows: list, kmap: dict, macro: dict = None) -> list:
 	"""
-	Strategy 19 — News Macro Catalyst scorer.
+	Strategy 19 -- News Macro Catalyst scorer.
 	Scores each stock by sector alignment with today's dominant macro themes.
 	Theme strength, duration, and market regime all adjust the final score.
 	"""
@@ -1148,7 +1092,7 @@ def score_news_macro(rows: list, kmap: dict, macro: dict = None) -> list:
 
 def score_news_sentiment(rows: list, kmap: dict, macro: dict = None) -> list:
 	"""
-	Strategy 20 — News Sentiment Momentum scorer.
+	Strategy 20 -- News Sentiment Momentum scorer.
 	Quality gate (CS > 40, positive EPS) then amplified by macro sector tailwinds
 	and company-specific catalysts. Fundamentals + news together.
 	"""
@@ -1202,7 +1146,7 @@ def score_news_sentiment(rows: list, kmap: dict, macro: dict = None) -> list:
 	return sorted(out, key=lambda x: -x[1])
 
 
-# ── Scoring function dispatch ────────────────────────────────────────────────
+# -- Scoring function dispatch ------------------------------------------------
 SCORE_FN = {
 	"02": score_mean_reversion,
 	"03": score_value,
@@ -1222,7 +1166,7 @@ SCORE_FN = {
 }
 
 
-# ── Run one strategy ──────────────────────────────────────────────────────────
+# -- Run one strategy ----------------------------------------------------------
 def run_strategy(sid: str, name: str, style: str, risk: str, desc: str,
 				 rows: List[Dict], kmap: Dict, today: str, dry_run: bool = False):
 	"""Run a single strategy with all safety checks."""
@@ -1250,30 +1194,40 @@ def run_strategy(sid: str, name: str, style: str, risk: str, desc: str,
 
 	score_fn = SCORE_FN.get(sid)
 	if not score_fn or not rows:
-		logger.warning("No KPI data or scoring function — skipping")
+		logger.warning("No KPI data or scoring function -- skipping")
 		return
 
-	# ── S07 (PEAD) staleness enforcement ─────────────────────────────────────
+	# -- S07 (PEAD) staleness enforcement -------------------------------------
 	# abnormal_return is the core signal for PEAD and goes stale within hours.
 	# Warn loudly if the KPI file is older than the PEAD threshold and skip
 	# when the data is so old it's unreliable (>= 2x the threshold).
 	if sid == "07":
-		kpi_path = BASE_DIR / "equity_kpi_results.csv"
-		if kpi_path.exists():
-			age_h = (datetime.now() - datetime.fromtimestamp(kpi_path.stat().st_mtime)).total_seconds() / 3600
-			if age_h >= KPI_WARN_HOURS_PEAD * 2:
-				logger.warning(
-					f"  [07] PEAD SKIPPED: KPI data is {age_h:.1f}h old "
-					f"(limit: {KPI_WARN_HOURS_PEAD * 2}h). "
-					f"Run update_quotes.py + equity_kpi_analyzer.py first."
-				)
-				return
-			elif age_h >= KPI_WARN_HOURS_PEAD:
-				logger.warning(
-					f"  [07] PEAD WARNING: KPI data is {age_h:.1f}h old — "
-					f"abnormal_return signal may be stale. "
-					f"Results will be used but treated with lower confidence."
-				)
+		try:
+			from db import get_connection
+			_conn = get_connection()
+			try:
+				_cur = _conn.cursor()
+				_cur.execute("SELECT MAX(updated_at) FROM equity_kpi")
+				_ts_row = _cur.fetchone()
+				if _ts_row and _ts_row[0]:
+					age_h = (datetime.now() - _ts_row[0]).total_seconds() / 3600
+					if age_h >= KPI_WARN_HOURS_PEAD * 2:
+						logger.warning(
+							f"  [07] PEAD SKIPPED: KPI data is {age_h:.1f}h old "
+							f"(limit: {KPI_WARN_HOURS_PEAD * 2}h). "
+							f"Run update_quotes.py + equity_kpi_analyzer.py first."
+						)
+						return
+					elif age_h >= KPI_WARN_HOURS_PEAD:
+						logger.warning(
+							f"  [07] PEAD WARNING: KPI data is {age_h:.1f}h old -- "
+							f"abnormal_return signal may be stale. "
+							f"Results will be used but treated with lower confidence."
+						)
+			finally:
+				_conn.close()
+		except Exception as _e:
+			logger.debug(f"PEAD age check failed: {_e}")
 
 	# FIX: Strategies 19 & 20 require macro data from news_macro_cache.json
 	if sid in ("19", "20"):
@@ -1287,7 +1241,7 @@ def run_strategy(sid: str, name: str, style: str, risk: str, desc: str,
 			except (json.JSONDecodeError, OSError) as e:
 				logger.warning(f"	   Could not read news cache: {e}")
 		else:
-			logger.info("	   No news_macro_cache.json — run news strategies (Stage 1) first")
+			logger.info("	   No news_macro_cache.json -- run news strategies (Stage 1) first")
 		candidates = score_fn(rows, kmap, macro)
 	else:
 		candidates = score_fn(rows, kmap)
@@ -1326,7 +1280,7 @@ def run_strategy(sid: str, name: str, style: str, risk: str, desc: str,
 			logger.info(f"	   HOLD {ticker}: {reason[:60]}")
 
 
-# ── Initialise account files ──────────────────────────────────────────────────
+# -- Initialise account files --------------------------------------------------
 def init_accounts(force: bool = False):
 	"""Initialize all strategy accounts to starting cash."""
 	logger.info("\n" + "-"*55)
@@ -1334,26 +1288,26 @@ def init_accounts(force: bool = False):
 	logger.info("-"*55)
 	today = date.today().isoformat()
 	for sid, name, style, risk, desc in STRATEGIES:
-		path = acct_file(sid)
-		if path.exists() and not force:
-			logger.info(f"  [{sid}] {name[:40]} — already exists, skipping")
+		existing = _db_read_account(sid)
+		if existing and not force:
+			logger.info(f"  [{sid}] {name[:40]} -- already exists, skipping")
 			continue
 		acct = {"account": ACCOUNT_NUM, "strategy_id": sid,
 				"cash": STARTING_CASH, "holdings_value": 0.0, "total": STARTING_CASH,
 				"start_date": today, "trades": 0}
 		save_account(sid, acct)
 		save_holdings(sid, [])
-		logger.info(f"  [{sid}] {name[:40]} — created  ${STARTING_CASH:.2f}")
+		logger.info(f"  [{sid}] {name[:40]} -- created  ${STARTING_CASH:.2f}")
 	logger.info("-"*55)
 	logger.info("  Done. Run without --init to start trading.")
 	logger.info("-"*55 + "\n")
 
 
 
-# ── Validation suite (--validate) ────────────────────────────────────────────
+# -- Validation suite (--validate) --------------------------------------------
 def run_validation() -> bool:
 	"""
-	Inline self-test suite — equivalent to test_news_strategy.py steps.
+	Inline self-test suite -- equivalent to test_news_strategy.py steps.
 	Run with:  python strategy_runner.py --validate
 
 	Returns True if all checks pass, False otherwise.
@@ -1361,9 +1315,9 @@ def run_validation() -> bool:
 	"""
 	import traceback
 
-	PASS  = "  ✓"
-	FAIL  = "  ✗"
-	SKIP  = "  –"
+	PASS  = "  (ok)"
+	FAIL  = "  (x)"
+	SKIP  = "  -"
 	results = []
 
 	def check(name, fn):
@@ -1374,7 +1328,7 @@ def run_validation() -> bool:
 			print(f"{tag}  {name}" + (f": {detail}" if detail else ""))
 		except Exception as e:
 			results.append((False, name, str(e)))
-			print(f"{FAIL}  {name}: EXCEPTION — {e}")
+			print(f"{FAIL}  {name}: EXCEPTION -- {e}")
 			if "--verbose" in sys.argv:
 				traceback.print_exc()
 
@@ -1382,7 +1336,7 @@ def run_validation() -> bool:
 	print("  VALIDATION SUITE")
 	print("="*65)
 
-	# ── 1. constants.py is importable and has required keys ──────────────────
+	# -- 1. constants.py is importable and has required keys ------------------
 	def t_constants():
 		from constants import STRATEGIES, HOLD_PERIODS, MACRO_THEME_MAP
 		missing_holds = [s[0] for s in STRATEGIES if s[0] not in HOLD_PERIODS]
@@ -1391,7 +1345,7 @@ def run_validation() -> bool:
 		return True, f"{len(STRATEGIES)} strategies, {len(HOLD_PERIODS)} hold periods, {len(MACRO_THEME_MAP)} macro themes"
 	check("constants.py importable and complete", t_constants)
 
-	# ── 2. MACRO_THEME_MAP structure ─────────────────────────────────────────
+	# -- 2. MACRO_THEME_MAP structure -----------------------------------------
 	def t_macro_theme_map():
 		bad = []
 		for k, v in MACRO_THEME_MAP.items():
@@ -1403,25 +1357,25 @@ def run_validation() -> bool:
 		return True, f"{len(MACRO_THEME_MAP)} themes, all well-formed"
 	check("MACRO_THEME_MAP structure", t_macro_theme_map)
 
-	# ── 3. _fetch_rss is defined and callable ────────────────────────────────
+	# -- 3. _fetch_rss is defined and callable --------------------------------
 	def t_fetch_rss():
 		if not callable(_fetch_rss):
 			return False, "_fetch_rss not callable"
-		# Dry call with a dummy URL — should return [] without crashing
+		# Dry call with a dummy URL -- should return [] without crashing
 		result = _fetch_rss("https://example.invalid/rss", verbose=False)
 		if not isinstance(result, list):
 			return False, f"Expected list, got {type(result)}"
 		return True, "callable, returns list on failure"
 	check("_fetch_rss defined and callable", t_fetch_rss)
 
-	# ── 4. _gather_headlines is defined and callable ──────────────────────────
+	# -- 4. _gather_headlines is defined and callable --------------------------
 	def t_gather_headlines():
 		if not callable(_gather_headlines):
 			return False, "_gather_headlines not callable"
 		return True, "callable"
 	check("_gather_headlines defined and callable", t_gather_headlines)
 
-	# ── 5. _build_news_prompt generates valid prompt ──────────────────────────
+	# -- 5. _build_news_prompt generates valid prompt --------------------------
 	def t_build_news_prompt():
 		headlines = [
 			{"title": "Fed raises rates", "source": "reuters.com"},
@@ -1435,7 +1389,7 @@ def run_validation() -> bool:
 		return True, f"prompt is {len(prompt)} chars"
 	check("_build_news_prompt output", t_build_news_prompt)
 
-	# ── 6. _load_news_cache handles missing file gracefully ───────────────────
+	# -- 6. _load_news_cache handles missing file gracefully -------------------
 	def t_load_news_cache():
 		result = _load_news_cache(Path("/nonexistent/path/cache.json"))
 		if result is not None:
@@ -1443,7 +1397,7 @@ def run_validation() -> bool:
 		return True, "returns None for missing file"
 	check("_load_news_cache missing file", t_load_news_cache)
 
-	# ── 7. score_news_macro returns [] with no macro data ────────────────────
+	# -- 7. score_news_macro returns [] with no macro data --------------------
 	def t_score_news_macro_empty():
 		rows = [{"ticker": "AAPL", "sector": "Information Technology",
 				 "composite_score": 75, "beta": 1.1}]
@@ -1457,7 +1411,7 @@ def run_validation() -> bool:
 		return True, "returns [] with no/empty macro"
 	check("score_news_macro empty macro guard", t_score_news_macro_empty)
 
-	# ── 8. score_news_macro scores correctly with real macro data ─────────────
+	# -- 8. score_news_macro scores correctly with real macro data -------------
 	def t_score_news_macro_scoring():
 		rows = [
 			{"ticker": "NVDA", "sector": "Information Technology",
@@ -1492,7 +1446,7 @@ def run_validation() -> bool:
 		return True, f"NVDA scored {nvda_score:.1f}, results={[r[0] for r in result]}"
 	check("score_news_macro scoring logic", t_score_news_macro_scoring)
 
-	# ── 9. score_news_sentiment quality gate ─────────────────────────────────
+	# -- 9. score_news_sentiment quality gate ---------------------------------
 	def t_score_news_sentiment_gate():
 		rows = [
 			{"ticker": "AAPL", "sector": "Information Technology",
@@ -1519,14 +1473,14 @@ def run_validation() -> bool:
 		return True, f"quality gate working; passed: {tickers}"
 	check("score_news_sentiment quality gate", t_score_news_sentiment_gate)
 
-	# ── 10. print_news_briefing is callable ───────────────────────────────────
+	# -- 10. print_news_briefing is callable -----------------------------------
 	def t_print_news_briefing():
 		if not callable(print_news_briefing):
 			return False, "not callable"
 		return True, "callable"
 	check("print_news_briefing defined and callable", t_print_news_briefing)
 
-	# ── 11. SCORE_FN dispatch covers all strategies except passive ────────────
+	# -- 11. SCORE_FN dispatch covers all strategies except passive ------------
 	def t_score_fn_dispatch():
 		missing = [s[0] for s in STRATEGIES
 				   if s[0] != "14" and s[0] not in SCORE_FN]
@@ -1535,7 +1489,7 @@ def run_validation() -> bool:
 		return True, f"{len(SCORE_FN)} entries cover all non-passive strategies"
 	check("SCORE_FN dispatch complete", t_score_fn_dispatch)
 
-	# ── 12. calc_holdings_value uses is-None not falsy or ────────────────────
+	# -- 12. calc_holdings_value uses is-None not falsy or --------------------
 	def t_holdings_zero_price():
 		holdings = [{"ticker": "TEST", "shares": 10, "avg_cost": "50.00"}]
 		kmap_zero = {"TEST": {"current_price": 0.0}}
@@ -1549,14 +1503,14 @@ def run_validation() -> bool:
 		return True, "0.0 price handled correctly; None falls back to avg_cost"
 	check("calc_holdings_value zero-price handling", t_holdings_zero_price)
 
-	# ── 13. Passive strategy targets PASSIVE_MAX_POSITIONS (not 2) ────────────
+	# -- 13. Passive strategy targets PASSIVE_MAX_POSITIONS (not 2) ------------
 	def t_passive_position_count():
 		if PASSIVE_MAX_POSITIONS < 3:
 			return False, f"PASSIVE_MAX_POSITIONS={PASSIVE_MAX_POSITIONS} is too low for a valid benchmark"
 		return True, f"PASSIVE_MAX_POSITIONS={PASSIVE_MAX_POSITIONS}"
 	check("passive strategy position count", t_passive_position_count)
 
-	# ── 14. score_dividend_growth excludes non-dividend payers ───────────────
+	# -- 14. score_dividend_growth excludes non-dividend payers ---------------
 	def t_dividend_gate():
 		rows = [
 			{"ticker": "DIV",  "dividend_yield": 0.04, "beta": 0.9, "pe_ratio": 18,
@@ -1578,22 +1532,22 @@ def run_validation() -> bool:
 			return False, "Unprofitable company should be excluded"
 		if "DIV" not in tickers:
 			return False, "Valid dividend payer should be included"
-		return True, f"gates working — included: {tickers}"
+		return True, f"gates working -- included: {tickers}"
 	check("score_dividend_growth exclusion gates", t_dividend_gate)
 
-	# ── 15. Candidate reason strings are truncated in ask_claude ─────────────
+	# -- 15. Candidate reason strings are truncated in ask_claude -------------
 	def t_reason_truncation():
 		# Verify the constant is set and is a reasonable value
 		import inspect
 		src = inspect.getsource(ask_claude)
 		if "REASON_MAX" not in src:
 			return False, "REASON_MAX not found in ask_claude source"
-		if "…" not in src and "..." not in src:
+		if "..." not in src and "..." not in src:
 			return False, "No truncation ellipsis found in ask_claude"
 		return True, "REASON_MAX truncation present"
 	check("ask_claude reason string truncation", t_reason_truncation)
 
-	# ── 16. PEAD staleness guard is in run_strategy for S07 ──────────────────
+	# -- 16. PEAD staleness guard is in run_strategy for S07 ------------------
 	def t_pead_staleness_guard():
 		import inspect
 		src = inspect.getsource(run_strategy)
@@ -1605,17 +1559,17 @@ def run_validation() -> bool:
 		return True, "PEAD staleness guard present in run_strategy"
 	check("PEAD staleness enforcement in run_strategy", t_pead_staleness_guard)
 
-	# ── Summary ───────────────────────────────────────────────────────────────
+	# -- Summary ---------------------------------------------------------------
 	passed = sum(1 for ok, _, _ in results if ok)
 	total  = len(results)
 	failed = total - passed
 	print("-"*65)
-	print(f"  {passed}/{total} checks passed" + (f"  ({failed} FAILED)" if failed else "  — all good"))
+	print(f"  {passed}/{total} checks passed" + (f"  ({failed} FAILED)" if failed else "  -- all good"))
 	print("="*65 + "\n")
 	return failed == 0
 
 
-# ── Main ──────────────────────────────────────────────────────────────────────
+# -- Main ----------------------------------------------------------------------
 def main():
 	parser = argparse.ArgumentParser(description="Multi-strategy paper trading runner")
 	parser.add_argument("--dry-run",	action="store_true", help="Preview trades, don't execute")
@@ -1628,6 +1582,7 @@ def main():
 	args = parser.parse_args()
 
 	today = date.today().isoformat()
+	init_schema()  # ensure MySQL tables exist
 
 	if args.validate:
 		ok = run_validation()
@@ -1651,7 +1606,7 @@ def main():
 	logger.info(f"  Date: {today}  |  Strategies: {len(STRATEGIES)}  |  Goal: $2,000 each")
 	logger.info(f"  Model: {MODEL}")
 	if args.dry_run:
-		logger.info("  *** DRY RUN — no trades will be executed ***")
+		logger.info("  *** DRY RUN -- no trades will be executed ***")
 	logger.info("="*65)
 
 	rows, kmap = load_kpi(args.kpi_file)
@@ -1679,7 +1634,7 @@ def main():
 		logger.info(f"  {r['rank']:<5} {r['strategy_id']:<4} {r['strategy_name'][:35]:<35} "
 					f"${r['total']:>8.2f} {sign}${r['pnl']:>8.2f} {sign}{r['pct_return']:>7.2f}%")
 	logger.info("-"*65)
-	logger.info(f"  Leaderboard saved to: {leader_file().name}  (history: {leader_history_file().name})")
+	logger.info("  Leaderboard saved to MySQL (leaderboard table)")
 	logger.info("="*65 + "\n")
 
 

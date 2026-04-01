@@ -1,3 +1,0 @@
-date,strategy_id,action,ticker,shares,price,commission,net_amount,cash_after,reason
-2026-03-19,02,BUY,ECL,2.289183,259.81,4.95,-600.0,400.0,"Exceptional score of 99.8 with RSI of 0.4 — extremely oversold, highest conviction buy signal available. Allocating ~33% of portfolio (~$316 after costs)."
-2026-03-19,02,BUY,UPS,3.705467,95.77,4.95,-360.0,40.0,"Score of 85.4 with RSI 6.6 — strongly oversold, second-best candidate with meaningful gap from the rest. Allocating ~33% of portfolio (~$316 after costs)."

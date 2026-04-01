@@ -1,3 +1,0 @@
-date,strategy_id,action,ticker,shares,price,commission,net_amount,cash_after,reason
-2026-03-19,01,BUY,STX,1.415,420.32,4.95,-600.0002,399.9998,Highest score (62.5) with strong momentum and golden cross. Allocating ~$313 (~31% of portfolio) to stay within 60% max position limit and leave room for 2 more positions plus 5% cash reserve.
-2026-03-19,01,BUY,WMB,4.734788,74.95,4.95,-359.9998,40.0,Second highest score (60.8) with strong momentum and golden cross. Allocating ~$313 (~31% of portfolio) for balanced diversification across top 3 candidates.

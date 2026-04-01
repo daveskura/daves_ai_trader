@@ -1,4 +1,0 @@
-date,strategy_id,action,ticker,shares,price,commission,net_amount,cash_after,reason
-2026-03-19,11,BUY,SPG,3.114051,190.99,4.95,-600.0,400.0,"Highest score by a wide margin (49.6), excellent margin (72.7%), low P/E (13.5), fits Fama-French value criteria. Allocating ~40% of portfolio (~$380 after costs)."
-2026-03-19,11,BUY,USB,6.958286,51.0,4.95,-360.0,40.0,"Second highest score (31.6), very low P/E (11.0), solid margin (27.3%). Strong value candidate to diversify alongside SPG. Allocating ~35% of portfolio (~$330 after costs)."
-2026-03-31,11,BUY,CMCSA,1.218478,28.71,1.0,-36.0,4.0,"Top-ranked candidate with score 76.3, extremely low P/E of 5.3, RSI=30 (oversold, attractive entry), Golden cross MA, beta 0.78, and $105B cap. Strong value signal. With ~$40 cash, buying a small fractional position within cash constraints while maintaining 5% reserve. Available cash ~$40 minus ~$1 commission leaves ~$39 to deploy, keeping portfolio cash near minimum threshold."

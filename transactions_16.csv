@@ -1,3 +1,0 @@
-date,strategy_id,action,ticker,shares,price,commission,net_amount,cash_after,reason
-2026-03-19,16,BUY,MU,1.338719,444.27,4.95,-600.0001,399.9999,"Highest revision score (683.2) by a wide margin, massive forward EPS growth proxy of 807.2%, solid 28.1% margin and reasonable P/E of 42.2. Allocating ~$580 (~58% of portfolio, within 60% cap) to top signal."
-2026-03-19,16,BUY,COF,1.974475,179.73,4.95,-359.9998,40.0001,"Second-highest revision score (525.5) with strong forward EPS growth proxy of 629.7%. Allocating ~$350 (~35% of portfolio) as second position, keeping ~$70 as cash reserve above 5% threshold."

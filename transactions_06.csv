@@ -1,3 +1,0 @@
-date,strategy_id,action,ticker,shares,price,commission,net_amount,cash_after,reason
-2026-03-19,06,BUY,MRK,5.214841,114.05,4.95,-600.0,400.0,"Top-ranked candidate with score 79.9 and very low beta 0.26, fits defensive strategy perfectly. Allocating ~33% of portfolio (~$316 after costs)."
-2026-03-19,06,BUY,CME,1.147304,309.31,4.95,-360.0,40.0,"Third-ranked with score 79.0 and low beta 0.26, strong defensive profile. Allocating ~28% of portfolio (~$280 after costs), keeping ~5% cash reserve."

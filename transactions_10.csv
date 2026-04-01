@@ -1,3 +1,0 @@
-date,strategy_id,action,ticker,shares,price,commission,net_amount,cash_after,reason
-2026-03-19,10,BUY,MRK,5.214841,114.05,4.95,-600.0,400.0,"Top-ranked defensive stock with score 75.1; VIX=25.6 signals elevated risk, favoring defensive posture. Allocating ~33% of portfolio (~$316 after costs)."
-2026-03-19,10,BUY,JNJ,1.494074,237.52,4.95,-359.9999,40.0001,"Score 73.5, strong defensive healthcare name suitable for high-VIX macro regime. Allocating ~33% of portfolio (~$316 after costs)."
