@@ -34,7 +34,7 @@ db_log() {
 }
 
 # ── Detect current hour (local time) to choose run stage ──────────────────
-HOUR_NUM=$(date +%-H)   # %-H strips leading zero (GNU date)
+HOUR_NUM=$(printf '%d' "$(date +%H)")   # strip leading zero portably (GNU + BSD/macOS + midnight)
 
 echo
 echo "============================================"

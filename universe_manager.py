@@ -474,6 +474,8 @@ if __name__ == "__main__":
 
     if args.info:
         show_cache_info()
+        logger.flush()
     else:
         tickers = get_universe(n=args.n, mode=args.mode, force_refresh=args.refresh)
         logger.info(f"\nFirst 20 tickers: {tickers[:20]}")
+        logger.flush()

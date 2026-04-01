@@ -59,7 +59,7 @@ if _env_path.exists():
 if sys.stdout.encoding != 'utf-8':
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 
-from db import init_schema, write_kpi_rows as _db_write_kpi_rows
+from db import init_schema, write_kpi_rows as _db_write_kpi_rows, read_kpi_rows as _db_read_kpi_rows
 from db_logger import Logger as _DbLogger
 logger = _DbLogger(run_stage="kpi", echo=True)
 
@@ -450,6 +450,10 @@ def _compute_eps_revision_pct(row: dict, prev_map: dict) -> float | None:
 def main():
     parser = argparse.ArgumentParser(description="Daily equity KPI scorer")
 
+    # Ensure DB tables exist before any work — catches connection failures
+    # early rather than after several minutes of data fetching.
+    init_schema()
+
     # Universe selection (new)
     uni = parser.add_argument_group("Universe selection")
     uni.add_argument("--universe",         action="store_true",
@@ -485,6 +489,7 @@ def main():
             show_cache_info()
         else:
             logger.info("universe_manager.py not found in the same directory.")
+        logger.flush()
         return
 
     # -- Resolve ticker list ---------------------------------------------
@@ -494,6 +499,7 @@ def main():
     elif args.universe:
         if not UNIVERSE_AVAILABLE:
             logger.error("ERROR: universe_manager.py not found. Place it in the same directory.")
+            logger.flush()
             sys.exit(1)
         tickers = get_universe(
             n               = args.universe_n,
@@ -549,8 +555,7 @@ def main():
     prev_map = {}
     if "eps_growth_fwd" in df.columns:
         try:
-            from db import read_kpi_rows as _read_kpi_rows
-            prev_rows = _read_kpi_rows()
+            prev_rows = _db_read_kpi_rows()
             if prev_rows:
                 prev_map = {r["ticker"]: float(r["eps_growth_fwd"])
                             for r in prev_rows
@@ -618,12 +623,12 @@ def main():
             logger.info(f"  {str(sec):<40}  avg={row['mean']:>5.1f}  n={int(row['count'])}")
 
     # -- Save to MySQL ----------------------------------------------------
-    init_schema()
     rows = df.to_dict(orient="records")
     _db_write_kpi_rows(rows)
     logger.info(f"\n(ok) Full results saved to MySQL equity_kpi table ({len(rows)} tickers)")
 
     logger.info("="*65 + "\n")
+    logger.flush()
 
     return df
 

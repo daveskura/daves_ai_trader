@@ -31,6 +31,13 @@ Public API (mirrors the original CSV helpers exactly):
     write_kpi_rows(rows, fieldnames)
     update_kpi_abnormal_returns(ab_map)
     reset_all(starting_cash, strategies, account_num)
+    write_down_day_results(analysis_date, market_return_pct, vix, rows)
+    read_down_day_results(analysis_date=None, days=30)
+    write_universe_cache(tickers, mode, sector_breakdown=None)
+    read_universe_cache(mode, max_age_days)
+    write_news_macro_cache(data)
+    read_news_macro_cache(analysis_date=None)
+    read_news_macro_cache_latest()
 """
 
 import os
@@ -232,6 +239,7 @@ CREATE TABLE IF NOT EXISTS universe_cache (
     tickers_json    JSON             NOT NULL,
     sector_breakdown_json JSON,
     created_at      TIMESTAMP        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_refreshed_mode (refreshed, mode),
     INDEX idx_refreshed (refreshed)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -905,6 +913,10 @@ def write_universe_cache(tickers: List[str], mode: str,
             INSERT INTO universe_cache
                 (refreshed, mode, n, tickers_json, sector_breakdown_json)
             VALUES (%s, %s, %s, %s, %s)
+            ON DUPLICATE KEY UPDATE
+                n                     = VALUES(n),
+                tickers_json          = VALUES(tickers_json),
+                sector_breakdown_json = VALUES(sector_breakdown_json)
             """,
             (
                 _date.today().isoformat(),

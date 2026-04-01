@@ -22,7 +22,7 @@ import argparse
 import urllib.error
 import urllib.request
 import time
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 from pathlib import Path
 from collections import defaultdict
 from functools import wraps
@@ -121,6 +121,11 @@ NEWS_FEEDS = [
 
 # -- Data-layer helpers (MySQL via db.py) -------------------------------------
 
+# Module-level cache for KPI data age — computed once at startup by
+# check_data_freshness() and reused by the S07 PEAD guard per strategy run.
+_kpi_age_hours: float | None = None
+
+
 def check_data_freshness():
 	"""Warn if KPI data is stale. Checks MAX(updated_at) in the equity_kpi table."""
 	try:
@@ -130,7 +135,9 @@ def check_data_freshness():
 			cur.execute("SELECT MAX(updated_at) FROM equity_kpi")
 			row = cur.fetchone()
 			if row and row[0]:
+				global _kpi_age_hours
 				age_hours = (datetime.now() - row[0]).total_seconds() / 3600
+				_kpi_age_hours = age_hours
 				if age_hours > KPI_WARN_HOURS_PEAD:
 					logger.warning(
 						f"KPI data is {age_hours:.1f}h old (threshold: {KPI_WARN_HOURS_PEAD}h). "
@@ -180,8 +187,8 @@ def calc_holdings_value(holdings: List[Dict], kmap: Dict) -> float:
 
 # -- KPI data loader -----------------------------------------------------------
 
-def load_kpi(kpi_path: str = "equity_kpi_results.csv") -> Tuple[List[Dict], Dict]:
-	"""Load KPI data from MySQL (kpi_path argument kept for CLI compatibility)."""
+def load_kpi() -> Tuple[List[Dict], Dict]:
+	"""Load KPI data from MySQL."""
 	try:
 		rows = _db_read_kpi_rows()
 	except Exception as e:
@@ -794,7 +801,8 @@ def score_academic_momentum(rows, kmap):
 		if beta > 2.2: continue
 		if pct_from_high > -0.05: continue
 		
-		score = cs * 0.6 + (100 - rsi) * 0.2 + r.get("abnormal_return", 0) * 100
+		# RSI rewards stronger trend — use rsi directly (not 100-rsi which penalises momentum)
+		score = cs * 0.6 + rsi * 0.2 + r.get("abnormal_return", 0) * 100
 		out.append((r["ticker"], round(score, 2),
 					f"Asness: RSI={rsi:.1f} beta={beta:.2f} from52wh={pct_from_high*100:.1f}%"))
 	return sorted(out, key=lambda x: -x[1])
@@ -973,7 +981,7 @@ def get_news_macro_analysis(force_refresh=False, verbose=False):
 		# Try MySQL first, fall back to JSON file
 		cached = None
 		try:
-			cached = _db_read_news_macro()  # today's date
+			cached = _db_read_news_macro(date.today().isoformat())
 		except Exception:
 			pass
 		if not cached:
@@ -1287,35 +1295,33 @@ def _run_strategy_inner(sid: str, name: str, style: str, risk: str, desc: str,
 		return
 
 	# -- S07 (PEAD) staleness enforcement -------------------------------------
-	# abnormal_return is the core signal for PEAD and goes stale within hours.
-	# Warn loudly if the KPI file is older than the PEAD threshold and skip
-	# when the data is so old it's unreliable (>= 2x the threshold).
+	# Uses the KPI age cached at startup by check_data_freshness() to avoid
+	# opening a second DB connection per strategy run.
 	if sid == "07":
-		try:
-			_conn = _db_get_connection()
-			try:
-				_cur = _conn.cursor()
-				_cur.execute("SELECT MAX(updated_at) FROM equity_kpi")
-				_ts_row = _cur.fetchone()
-				if _ts_row and _ts_row[0]:
-					age_h = (datetime.now() - _ts_row[0]).total_seconds() / 3600
-					if age_h >= KPI_WARN_HOURS_PEAD * 2:
-						logger.warning(
-							f"  [07] PEAD SKIPPED: KPI data is {age_h:.1f}h old "
-							f"(limit: {KPI_WARN_HOURS_PEAD * 2}h). "
-							f"Run update_quotes.py + equity_kpi_analyzer.py first."
-						)
-						return
-					elif age_h >= KPI_WARN_HOURS_PEAD:
-						logger.warning(
-							f"  [07] PEAD WARNING: KPI data is {age_h:.1f}h old -- "
-							f"abnormal_return signal may be stale. "
-							f"Results will be used but treated with lower confidence."
-						)
-			finally:
-				_conn.close()
-		except Exception as _e:
-			logger.debug(f"PEAD age check failed: {_e}")
+		age_h = _kpi_age_hours
+		if age_h is None:
+			# KPI age unknown (DB was unreachable at startup or table empty).
+			# Safer to skip PEAD than trade on data of unknown freshness.
+			logger.warning(
+				"  [07] PEAD SKIPPED: KPI data freshness unknown "
+				"(check_data_freshness failed at startup). "
+				"Run equity_kpi_analyzer.py first."
+			)
+			return
+		# age_h is guaranteed non-None here (None case returned above)
+		if age_h >= KPI_WARN_HOURS_PEAD * 2:
+			logger.warning(
+				f"  [07] PEAD SKIPPED: KPI data is {age_h:.1f}h old "
+				f"(limit: {KPI_WARN_HOURS_PEAD * 2}h). "
+				f"Run update_quotes.py + equity_kpi_analyzer.py first."
+			)
+			return
+		elif age_h >= KPI_WARN_HOURS_PEAD:
+			logger.warning(
+				f"  [07] PEAD WARNING: KPI data is {age_h:.1f}h old -- "
+				f"abnormal_return signal may be stale. "
+				f"Results will be used but treated with lower confidence."
+			)
 
 	# Strategies 19 & 20: load news macro analysis from MySQL (JSON file as fallback)
 	if sid in ("19", "20"):
@@ -1360,7 +1366,18 @@ def _run_strategy_inner(sid: str, name: str, style: str, risk: str, desc: str,
 
 	logger.info(f"	   Top candidate: {candidates[0][0]} (score {candidates[0][1]:.1f})")
 
-	decision, err = ask_claude(sid, name, desc, candidates, holdings, acct, today, kmap=kmap)
+	# Hard-enforce the 3-position cap in code, not just in the Claude prompt.
+	# Re-read fresh holdings in case stop-losses fired above.
+	current_holdings = read_holdings(sid)
+	at_capacity = len(current_holdings) >= 3
+	if at_capacity:
+		logger.info(f"	   At capacity ({len(current_holdings)}/3 positions) — filtering to SELL/HOLD only")
+		candidates = [(t, s, r) for t, s, r in candidates if t in {h['ticker'] for h in current_holdings}]
+		if not candidates:
+			logger.info("	   No held positions in today's candidate list — nothing to do")
+			return
+
+	decision, err = ask_claude(sid, name, desc, candidates, current_holdings, acct, today, kmap=kmap)
 	if err:
 		logger.error(f"Claude error: {err}")
 		return
@@ -1378,6 +1395,13 @@ def _run_strategy_inner(sid: str, name: str, style: str, risk: str, desc: str,
 			continue
 
 		if atype == "BUY":
+			# Re-check capacity before each BUY — a prior BUY in this loop
+			# may have filled the last slot.
+			if len(read_holdings(sid)) >= 3:
+				logger.info(f"	   BUY {ticker} skipped — already at 3-position capacity")
+				continue
+			# Re-read acct so cash_available reflects any prior buys.
+			acct = read_account(sid)
 			ok, msg = buy(sid, ticker, price, acct["cash"], reason, today, kmap, dry_run)
 			logger.info(f"	   BUY  {ticker}: {msg}")
 			acct = read_account(sid)
@@ -1658,14 +1682,16 @@ def run_validation() -> bool:
 	# -- 16. PEAD staleness guard is in run_strategy for S07 ------------------
 	def t_pead_staleness_guard():
 		import inspect
-		src = inspect.getsource(run_strategy)
+		# The PEAD guard lives in _run_strategy_inner; run_strategy is the
+		# 4-line try/finally wrapper that only resets logger.strategy_id.
+		src = inspect.getsource(_run_strategy_inner)
 		has_sid_check  = 'sid == "07"' in src
 		has_age_check  = "age_h" in src
 		has_skip       = "PEAD SKIPPED" in src
 		if not (has_sid_check and has_age_check and has_skip):
 			return False, f"Missing guard: sid_check={has_sid_check} age_check={has_age_check} skip_msg={has_skip}"
-		return True, "PEAD staleness guard present in run_strategy"
-	check("PEAD staleness enforcement in run_strategy", t_pead_staleness_guard)
+		return True, "PEAD staleness guard present in _run_strategy_inner"
+	check("PEAD staleness enforcement in _run_strategy_inner", t_pead_staleness_guard)
 
 	# -- Summary ---------------------------------------------------------------
 	passed = sum(1 for ok, _, _ in results if ok)
@@ -1698,20 +1724,24 @@ def main():
 
 	if args.validate:
 		ok = run_validation()
+		logger.flush()
 		sys.exit(0 if ok else 1)
 
 	if args.news_brief:
 		print_news_briefing()
+		logger.flush()
 		return
 
 	if args.init or args.force_init:
 		init_accounts(force=args.force_init)
+		logger.flush()
 		return
 
 	if not ANTHROPIC_API_KEY:
 		logger.error("\n  ERROR: ANTHROPIC_API_KEY not set.")
 		logger.error("  Add it to your .env file or export it as an environment variable.\n")
-		return
+		logger.flush()
+		sys.exit(1)
 
 	logger.info("\n" + "="*65)
 	logger.info("  MULTI-STRATEGY PAPER TRADING ENGINE")
@@ -1724,14 +1754,16 @@ def main():
 	rows, kmap = load_kpi()
 	if not rows:
 		logger.error("\n  ERROR: No KPI data found. Run equity_kpi_analyzer.py first.\n")
-		return
+		logger.flush()
+		sys.exit(1)
 
 	logger.info(f"\n  Loaded {len(rows)} tickers from KPI file.")
 
 	if args.strategy:
 		if args.strategy not in {s[0] for s in STRATEGIES}:
 			logger.error(f"Unknown strategy ID '{args.strategy}'. Valid IDs: {[s[0] for s in STRATEGIES]}")
-			return
+			logger.flush()
+			sys.exit(1)
 		run_ids = [args.strategy]
 	else:
 		run_ids = [s[0] for s in STRATEGIES]
@@ -1755,6 +1787,7 @@ def main():
 	logger.info("-"*65)
 	logger.info("  Leaderboard saved to MySQL (leaderboard table)")
 	logger.info("="*65 + "\n")
+	logger.flush()
 
 
 if __name__ == "__main__":

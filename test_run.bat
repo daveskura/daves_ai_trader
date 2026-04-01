@@ -32,8 +32,10 @@ if errorlevel 1 (
 echo [TEST 0/6] Done.
 echo.
 
-:: -- Hard-reset accounts to a clean slate ----------------------------------
-echo [TEST 1/6] skipping 
+:: -- Step 1: Schema / connectivity verified in TEST 0 ----------------------
+:: (Hard reset intentionally skipped — run strategy_runner.py --init manually
+::  when you need a clean slate, to avoid accidental data loss.)
+echo [TEST 1/6] Schema verified in TEST 0 -- skipping hard reset (run --init manually if needed)
 
 :: -- KPI analyser ----------------------------------------------------------
 echo [TEST 2/6] Running KPI analyser (--universe)...

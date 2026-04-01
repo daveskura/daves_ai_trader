@@ -105,8 +105,11 @@ def main():
     args = parser.parse_args()
 
     try:
-        from db import init_schema
-        init_schema()
+        from db import get_connection
+        # Verify connectivity without running DDL — schema creation belongs
+        # only in the scripts that write data, not in read-only viewers.
+        conn = get_connection()
+        conn.close()
     except Exception as e:
         print(f"ERROR: Could not connect to MySQL: {e}")
         print("Check DB_HOST / DB_USER / DB_PASSWORD in your .env file.")

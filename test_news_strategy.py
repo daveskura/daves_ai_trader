@@ -220,7 +220,14 @@ def step6_cache():
         if cache_path.exists():
             try:
                 macro_data = json.loads(cache_path.read_text(encoding="utf-8"))
-                warn("MySQL cache empty — using JSON fallback. Step 5 may have had a DB issue.")
+                fallback_date = macro_data.get("analysis_date", "")
+                if fallback_date != today:
+                    fail(f"MySQL cache empty and JSON fallback is stale "
+                         f"(cached={fallback_date}, today={today}). "
+                         f"Re-run Step 5 to refresh the news cache.")
+                    return False
+                warn("MySQL cache empty — using today's JSON fallback. "
+                     "Step 5 may have had a DB write issue.")
             except Exception as e:
                 fail(f"MySQL cache empty and JSON fallback unreadable: {e}")
                 return False
@@ -346,15 +353,25 @@ def step9_accounts():
 
 def step10_dry_run():
     header("Step 10 — Full dry-run (strategies 19 & 20, no trades executed)")
-    kpi_path   = Path("equity_kpi_results.csv")
-    cache_path = Path("news_macro_cache.json")
+    from datetime import date
+    from strategy_runner import load_kpi
 
-    if not kpi_path.exists():
-        warn("No KPI data — skipping dry-run (run equity_kpi_analyzer.py first)")
+    # Check prerequisites via MySQL — CSV/JSON files are no longer written
+    rows, _ = load_kpi()
+    if not rows:
+        warn("No KPI data in MySQL — skipping dry-run (run equity_kpi_analyzer.py first)")
         return None
 
-    if not cache_path.exists():
-        warn("No news cache — skipping dry-run (run Step 5 first to populate news_macro_cache.json)")
+    macro = None
+    try:
+        from db import read_news_macro_cache, read_news_macro_cache_latest
+        macro = read_news_macro_cache(date.today().isoformat())
+        if macro is None:
+            macro = read_news_macro_cache_latest()
+    except Exception:
+        pass
+    if macro is None:
+        warn("No news macro cache in MySQL — skipping dry-run (Step 5 must pass first)")
         return None
 
     info("Running: python strategy_runner.py --strategy 19 --dry-run")
