@@ -40,6 +40,11 @@ import yfinance as yf
 
 warnings.filterwarnings("ignore")
 
+# Silence yfinance/peewee DEBUG chatter -- only our messages go to run_logs
+import logging as _logging
+_logging.getLogger("yfinance").setLevel(_logging.WARNING)
+_logging.getLogger("peewee").setLevel(_logging.WARNING)
+
 # -- Load .env if present (mirrors strategy_runner.py) ------------------------
 _env_path = Path(__file__).parent / ".env"
 if _env_path.exists():
@@ -55,6 +60,8 @@ if sys.stdout.encoding != 'utf-8':
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 
 from db import init_schema, write_kpi_rows as _db_write_kpi_rows
+from db_logger import Logger as _DbLogger
+logger = _DbLogger(run_stage="kpi", echo=True)
 
 # Universe manager (same directory)
 try:
@@ -84,8 +91,8 @@ def fetch_macro_fred(fred_key: str | None) -> dict:
     """Fetch latest macro indicators from FRED. Returns empty dict if no key."""
     macro = {}
     if not fred_key:
-        print("  [MACRO] No FRED key provided -- skipping macro data.")
-        print("          Get a free key at: https://fred.stlouisfed.org/docs/api/api_key.html")
+        logger.info("  [MACRO] No FRED key provided -- skipping macro data.")
+        logger.info("          Get a free key at: https://fred.stlouisfed.org/docs/api/api_key.html")
         return macro
 
     try:
@@ -108,12 +115,12 @@ def fetch_macro_fred(fred_key: str | None) -> dict:
             macro["policy_rate_change"] = ffr.iloc[-1] - ffr.iloc[-2]
             macro["policy_rate_current"] = ffr.iloc[-1]
 
-        print(f"  [MACRO] GDP growth: {macro.get('gdp_growth_rate', 'N/A'):.4f}  |  "
+        logger.info(f"  [MACRO] GDP growth: {macro.get('gdp_growth_rate', 'N/A'):.4f}  |  "
               f"CPI: {macro.get('inflation_rate_cpi', 'N/A'):.4f}  |  "
               f"Fed rate: {macro.get('policy_rate_current', 'N/A'):.2f}%")
 
     except Exception as e:
-        print(f"  [MACRO] FRED fetch failed: {e}")
+        logger.error(f"  [MACRO] FRED fetch failed: {e}")
 
     return macro
 
@@ -465,8 +472,7 @@ def main():
     parser.add_argument("--fred-key", default=None,
                         help="FRED API key (free at fred.stlouisfed.org). "
                              "Defaults to FRED_API_KEY environment variable / .env file.")
-    parser.add_argument("--output",   default=str(Path(__file__).parent / "equity_kpi_results.csv"),
-                        help="Output CSV filename")
+
     args = parser.parse_args()
 
     # Fall back to env var so .env file works without passing --fred-key every time
@@ -478,7 +484,7 @@ def main():
         if UNIVERSE_AVAILABLE:
             show_cache_info()
         else:
-            print("universe_manager.py not found in the same directory.")
+            logger.info("universe_manager.py not found in the same directory.")
         return
 
     # -- Resolve ticker list ---------------------------------------------
@@ -487,7 +493,7 @@ def main():
         source  = "manual"
     elif args.universe:
         if not UNIVERSE_AVAILABLE:
-            print("ERROR: universe_manager.py not found. Place it in the same directory.")
+            logger.error("ERROR: universe_manager.py not found. Place it in the same directory.")
             sys.exit(1)
         tickers = get_universe(
             n               = args.universe_n,
@@ -501,35 +507,35 @@ def main():
         tickers = ["AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "JPM", "JNJ", "XOM"]
         source  = "default sample"
 
-    print("\n" + "="*65)
-    print("  EQUITY KPI DAILY ANALYSER")
-    print(f"  Run date : {datetime.date.today()}")
-    print(f"  Universe : {source}  ({len(tickers)} tickers)")
-    print("="*65)
+    logger.info("\n" + "="*65)
+    logger.info("  EQUITY KPI DAILY ANALYSER")
+    logger.info(f"  Run date : {datetime.date.today()}")
+    logger.info(f"  Universe : {source}  ({len(tickers)} tickers)")
+    logger.info("="*65)
 
     # -- Macro & Market data ---------------------------------------------
-    print("\n[1/3] Fetching macro data...")
+    logger.info("\n[1/3] Fetching macro data...")
     macro = fetch_macro_fred(args.fred_key)
 
-    print("\n[2/3] Fetching VIX & S&P 500 benchmark...")
+    logger.info("\n[2/3] Fetching VIX & S&P 500 benchmark...")
     vix = fetch_vix()
-    print(f"  VIX = {vix}")
+    logger.info(f"  VIX = {vix}")
 
     spx_hist = yf.Ticker("^GSPC").history(period="1y")
     market_prices = spx_hist["Close"] if not spx_hist.empty else pd.Series(dtype=float)
 
     # -- Per-ticker loop -------------------------------------------------
-    print(f"\n[3/3] Fetching data for {len(tickers)} tickers...\n")
+    logger.info(f"\n[3/3] Fetching data for {len(tickers)} tickers...\n")
     results = []
     for i, sym in enumerate(tickers, 1):
-        print(f"  [{i}/{len(tickers)}] {sym}...", end=" ", flush=True)
+        logger.info(f"  [{i}/{len(tickers)}] {sym}...", end=" ", flush=True)
         row = fetch_ticker_data(sym, market_prices)
         scores = score_ticker(row, macro, vix)
         row.update(scores)
         row["vix"] = vix
         row.update({f"macro_{k}": v for k, v in macro.items()})
         results.append(row)
-        print(f"composite={row.get('composite_score', 'err')}")
+        logger.info(f"composite={row.get('composite_score', 'err')}")
 
     # -- Build DataFrame -------------------------------------------------
     df = pd.DataFrame(results)
@@ -549,35 +555,23 @@ def main():
                 prev_map = {r["ticker"]: float(r["eps_growth_fwd"])
                             for r in prev_rows
                             if r.get("eps_growth_fwd") not in (None, 0.0)}
-                print(f"  [S16] Loaded prior eps_growth_fwd from MySQL "
+                logger.info(f"  [S16] Loaded prior eps_growth_fwd from MySQL "
                       f"({len(prev_map)} tickers)")
         except Exception as e:
-            print(f"  [S16] MySQL read failed ({e}), trying CSV backup...")
+            logger.error(f"  [S16] MySQL read failed ({e}), trying CSV backup...")
 
-        if not prev_map:
-            prev_path = Path(args.output)
-            if prev_path.exists():
-                try:
-                    prev_df = pd.read_csv(prev_path, dtype=str)
-                    if "ticker" in prev_df.columns and "eps_growth_fwd" in prev_df.columns:
-                        prev_df["eps_growth_fwd"] = pd.to_numeric(
-                            prev_df["eps_growth_fwd"], errors="coerce")
-                        prev_map = prev_df.set_index("ticker")["eps_growth_fwd"].to_dict()
-                        print(f"  [S16] Loaded prior eps_growth_fwd from CSV backup "
-                              f"({len(prev_map)} tickers)")
-                except Exception as e:
-                    print(f"  [S16] CSV backup read failed: {e}")
+        # No CSV fallback — MySQL equity_kpi table is the single source of truth
 
         if prev_map:
             df["eps_revision_pct"] = df.apply(
                 lambda row: _compute_eps_revision_pct(row, prev_map), axis=1
             )
             n_revised = (df["eps_revision_pct"].fillna(0) > 0).sum()
-            print(f"  [S16] EPS revision delta computed -- "
+            logger.info(f"  [S16] EPS revision delta computed -- "
                   f"{n_revised} tickers with upward revisions today")
         else:
             df["eps_revision_pct"] = None
-            print("  [S16] No prior snapshot found -- "
+            logger.warning("  [S16] No prior snapshot found -- "
                   "eps_revision_pct will populate from tomorrow's run")
 
     # -- Console output --------------------------------------------------
@@ -595,45 +589,41 @@ def main():
     pd.set_option("display.width", 200)
     pd.set_option("display.float_format", "{:.4f}".format)
 
-    print("\n" + "="*65)
-    print("  RESULTS  (sorted by composite score)")
-    print("="*65)
-    print(df[available].to_string(index=False))
+    logger.info("\n" + "="*65)
+    logger.info("  RESULTS  (sorted by composite score)")
+    logger.info("="*65)
+    logger.info(df[available].to_string(index=False))
 
     # Top 20 summary
-    print("\n" + "-"*65)
-    print("  TOP 20 SIGNALS")
-    print("-"*65)
+    logger.info("\n" + "-"*65)
+    logger.info("  TOP 20 SIGNALS")
+    logger.info("-"*65)
     for _, r in df.head(20).iterrows():
         score = r.get("composite_score")
         score_str = f"{score:.1f}" if pd.notna(score) else " N/A"
         sector = str(r.get("sector", ""))[:20]
-        print(f"  {r['ticker']:<6}  {score_str:>5}/100   {r.get('signal','N/A'):<18}  {sector}")
+        logger.info(f"  {r['ticker']:<6}  {score_str:>5}/100   {r.get('signal','N/A'):<18}  {sector}")
 
     # Sector summary
     if "sector" in df.columns and "composite_score" in df.columns:
-        print("\n" + "-"*65)
-        print("  SECTOR AVERAGES  (composite score)")
-        print("-"*65)
+        logger.info("\n" + "-"*65)
+        logger.info("  SECTOR AVERAGES  (composite score)")
+        logger.info("-"*65)
         sec_avg = (
             df.groupby("sector")["composite_score"]
             .agg(["mean", "count"])
             .sort_values("mean", ascending=False)
         )
         for sec, row in sec_avg.iterrows():
-            print(f"  {str(sec):<40}  avg={row['mean']:>5.1f}  n={int(row['count'])}")
+            logger.info(f"  {str(sec):<40}  avg={row['mean']:>5.1f}  n={int(row['count'])}")
 
     # -- Save to MySQL ----------------------------------------------------
     init_schema()
     rows = df.to_dict(orient="records")
     _db_write_kpi_rows(rows)
-    print(f"\n(ok) Full results saved to MySQL equity_kpi table ({len(rows)} tickers)")
+    logger.info(f"\n(ok) Full results saved to MySQL equity_kpi table ({len(rows)} tickers)")
 
-    # Also write CSV as a backup / for leaderboard.html compatibility
-    out_path = args.output
-    df.to_csv(out_path, index=False)
-    print(f"(ok) Backup CSV saved to: {out_path}")
-    print("="*65 + "\n")
+    logger.info("="*65 + "\n")
 
     return df
 

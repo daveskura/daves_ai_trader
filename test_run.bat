@@ -100,7 +100,7 @@ echo.
 echo  To inspect results, run:  python show_results.py
 echo.
 
-echo %DATE% %TIME% Test run PASSED >> daily_run.log
+echo %DATE% %TIME% Test run PASSED 
 call :pause_exit 0
 
 :pause_exit

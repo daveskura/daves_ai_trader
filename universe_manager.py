@@ -26,6 +26,17 @@ from pathlib import Path
 import pandas as pd
 import yfinance as yf
 
+# Structured logging to MySQL run_logs table
+from db_logger import Logger as _DbLogger
+logger = _DbLogger(run_stage="kpi", echo=True)
+
+# MySQL persistence — universe cache stored in DB instead of JSON file
+try:
+    from db import write_universe_cache as _db_write_universe,                    read_universe_cache  as _db_read_universe
+    _DB_AVAILABLE = True
+except ImportError:
+    _DB_AVAILABLE = False
+
 # ── Config ──────────────────────────────────────────────────────────────────
 # Use an absolute path so the cache is always written next to this file,
 # regardless of what directory the caller's cwd is set to.
@@ -65,12 +76,19 @@ def _load_cache() -> dict | None:
 
 def _cache_is_fresh(mode: str, n: int) -> bool:
     """
-    Return True only if the cache:
-      1. Exists and is readable
-      2. Was refreshed less than REFRESH_DAYS ago   (using the stored date,
-         NOT the file's mtime which can be reset by git/deployment)
-      3. Was built with the same mode and a large enough n
+    Return True only if a fresh cache exists (MySQL preferred, JSON fallback).
+    Fresh = refreshed within REFRESH_DAYS, same mode, large enough n.
     """
+    # Try MySQL first
+    if _DB_AVAILABLE:
+        try:
+            row = _db_read_universe(mode=mode, max_age_days=REFRESH_DAYS)
+            if row and row.get("n", 0) >= n:
+                return True
+        except Exception:
+            pass
+
+    # Fall back to JSON file
     cached = _load_cache()
     if not cached or "tickers" not in cached or "refreshed" not in cached:
         return False
@@ -93,7 +111,7 @@ def _save_cache(data: dict):
         with open(CACHE_FILE, "w") as f:
             json.dump(data, f, indent=2)
     except Exception as e:
-        print(f"  [UNIVERSE] Warning: could not save cache — {e}")
+        logger.warning(f"  [UNIVERSE] Warning: could not save cache — {e}")
 
 
 # ── Step 1: Fetch S&P 500 constituent list ───────────────────────────────────
@@ -110,10 +128,10 @@ def _fetch_from_wikipedia() -> pd.DataFrame | None:
         df = tables[0][["Symbol", "Security", "GICS Sector", "GICS Sub-Industry"]].copy()
         df.columns = ["ticker", "name", "sector", "sub_industry"]
         df["ticker"] = df["ticker"].str.replace(".", "-", regex=False)
-        print(f"  [UNIVERSE] Wikipedia OK — {len(df)} constituents.")
+        logger.info(f"  [UNIVERSE] Wikipedia OK — {len(df)} constituents.")
         return df
     except Exception as e:
-        print(f"  [UNIVERSE] Wikipedia failed: {e}")
+        logger.error(f"  [UNIVERSE] Wikipedia failed: {e}")
     return None
 
 
@@ -140,10 +158,10 @@ def _fetch_from_slickcharts() -> pd.DataFrame | None:
             "sector":       ["Unknown"] * len(unique),
             "sub_industry": ["Unknown"] * len(unique),
         })
-        print(f"  [UNIVERSE] Slickcharts OK — {len(df)} constituents.")
+        logger.info(f"  [UNIVERSE] Slickcharts OK — {len(df)} constituents.")
         return df
     except Exception as e:
-        print(f"  [UNIVERSE] Slickcharts failed: {e}")
+        logger.error(f"  [UNIVERSE] Slickcharts failed: {e}")
     return None
 
 
@@ -164,10 +182,10 @@ def _fetch_from_github_csv() -> pd.DataFrame | None:
         df["ticker"]       = df["ticker"].str.replace(".", "-", regex=False)
         df["sub_industry"] = "Unknown"
         df = df[["ticker", "name", "sector", "sub_industry"]]
-        print(f"  [UNIVERSE] GitHub CSV OK — {len(df)} constituents (with sectors).")
+        logger.info(f"  [UNIVERSE] GitHub CSV OK — {len(df)} constituents (with sectors).")
         return df
     except Exception as e:
-        print(f"  [UNIVERSE] GitHub CSV failed: {e}")
+        logger.error(f"  [UNIVERSE] GitHub CSV failed: {e}")
     return None
 
 
@@ -179,7 +197,7 @@ def fetch_sp500_constituents() -> pd.DataFrame:
       3. Slickcharts (web scrape fallback)
       4. Hardcoded fallback list
     """
-    print("  [UNIVERSE] Fetching S&P 500 constituents...")
+    logger.info("  [UNIVERSE] Fetching S&P 500 constituents...")
 
     for source_fn in [_fetch_from_github_csv, _fetch_from_wikipedia, _fetch_from_slickcharts]:
         result = source_fn()
@@ -187,7 +205,7 @@ def fetch_sp500_constituents() -> pd.DataFrame:
             return result
 
     # Last resort hardcoded fallback
-    print("  [UNIVERSE] All sources failed — using hardcoded fallback list.")
+    logger.error("  [UNIVERSE] All sources failed — using hardcoded fallback list.")
     return pd.DataFrame({
         "ticker":       FALLBACK_TICKERS,
         "name":         FALLBACK_TICKERS,
@@ -206,11 +224,11 @@ def deduplicate_share_classes(df: pd.DataFrame) -> pd.DataFrame:
     for dup, preferred in DUPLICATE_SHARE_CLASSES.items():
         if dup in tickers_in_df and preferred in tickers_in_df:
             to_drop.append(dup)
-            print(f"  [UNIVERSE] Dedup: dropping {dup} (keeping {preferred})")
+            logger.info(f"  [UNIVERSE] Dedup: dropping {dup} (keeping {preferred})")
         elif dup in tickers_in_df:
             # preferred not present — rename dup to preferred for consistency
             df.loc[df["ticker"] == dup, "ticker"] = preferred
-            print(f"  [UNIVERSE] Dedup: renamed {dup} → {preferred}")
+            logger.info(f"  [UNIVERSE] Dedup: renamed {dup} → {preferred}")
     if to_drop:
         df = df[~df["ticker"].isin(to_drop)].reset_index(drop=True)
     return df
@@ -236,7 +254,7 @@ def enrich_with_market_cap(df: pd.DataFrame, batch_size: int = 50) -> pd.DataFra
     Each ticker in a failed batch is retried individually with backoff,
     so a single rate-limit hit doesn't zero-out an entire batch.
     """
-    print(f"  [UNIVERSE] Fetching market caps for {len(df)} tickers (batched)...")
+    logger.info(f"  [UNIVERSE] Fetching market caps for {len(df)} tickers (batched)...")
     tickers = df["ticker"].tolist()
     cap_map: dict[str, float] = {}
 
@@ -261,16 +279,16 @@ def enrich_with_market_cap(df: pd.DataFrame, batch_size: int = 50) -> pd.DataFra
             cap_map[sym] = _fetch_market_cap_with_retry(sym)
 
         pct = min(100, int((i + batch_size) / len(tickers) * 100))
-        print(f"    ...{pct}% complete", end="\r", flush=True)
+        logger.info(f"    ...{pct}% complete", end="\r", flush=True)
         time.sleep(0.5)   # slightly more polite to Yahoo
 
-    print()
+    logger.info()
     df = df.copy()
     df["market_cap"] = df["ticker"].map(cap_map).fillna(0).astype(float)
 
     zero_cap = (df["market_cap"] == 0).sum()
     if zero_cap > 0:
-        print(f"  [UNIVERSE] Warning: {zero_cap} ticker(s) returned market_cap=0 "
+        logger.warning(f"  [UNIVERSE] Warning: {zero_cap} ticker(s) returned market_cap=0 "
               f"(rate-limit or delisted). They will rank last.")
     return df
 
@@ -304,7 +322,7 @@ def select_sector_balanced(df: pd.DataFrame, n: int, max_per_sector: int) -> lis
             break
 
     if len(selected) < n:
-        print(f"  [UNIVERSE] Warning: only {len(selected)} tickers selected "
+        logger.warning(f"  [UNIVERSE] Warning: only {len(selected)} tickers selected "
               f"(requested {n}) — sector caps may be too restrictive. "
               f"Consider raising MAX_PER_SECTOR or lowering n.")
 
@@ -335,21 +353,30 @@ def get_universe(
     -------
     List of ticker strings, e.g. ["AAPL", "MSFT", ...]
     """
-    print("\n" + "-" * 55)
-    print("  UNIVERSE SELECTION")
-    print("-" * 55)
+    logger.info("\n" + "-" * 55)
+    logger.info("  UNIVERSE SELECTION")
+    logger.info("-" * 55)
 
     # ── Try cache first ──────────────────────────────────────────────
     # Cache validity is checked against the stored 'refreshed' date (not mtime),
     # and must also match the requested mode and n.
     if not force_refresh and _cache_is_fresh(mode=mode, n=n):
-        cached = _load_cache()
+        # Try MySQL first, fall back to JSON file
+        cached = None
+        if _DB_AVAILABLE:
+            try:
+                cached = _db_read_universe(mode=mode, max_age_days=REFRESH_DAYS)
+            except Exception:
+                pass
+        if not cached:
+            cached = _load_cache()
         if cached and "tickers" in cached:
             tickers = cached["tickers"][:n]
             refreshed = cached.get("refreshed", "unknown")
-            print(f"  [UNIVERSE] Loaded {len(tickers)} tickers from cache (refreshed {refreshed})")
-            print(f"  [UNIVERSE] Next refresh in < {REFRESH_DAYS} days  |  mode={cached.get('mode','?')}")
-            print("-" * 55)
+            source = "MySQL" if _DB_AVAILABLE else "cache file"
+            logger.info(f"  [UNIVERSE] Loaded {len(tickers)} tickers from {source} (refreshed {refreshed})")
+            logger.info(f"  [UNIVERSE] Next refresh in < {REFRESH_DAYS} days  |  mode={cached.get('mode','?')}")
+            logger.info("-" * 55)
             return tickers
 
     # ── Fetch fresh data ─────────────────────────────────────────────
@@ -359,7 +386,7 @@ def get_universe(
     constituents = deduplicate_share_classes(constituents)
 
     if skip_market_cap:
-        print("  [UNIVERSE] Skipping market-cap lookup (skip_market_cap=True)")
+        logger.info("  [UNIVERSE] Skipping market-cap lookup (skip_market_cap=True)")
         constituents["market_cap"] = range(len(constituents), 0, -1)
     else:
         constituents = enrich_with_market_cap(constituents)
@@ -373,11 +400,11 @@ def get_universe(
     # ── Show sector breakdown ────────────────────────────────────────
     selected_df = constituents[constituents["ticker"].isin(tickers)]
     breakdown   = selected_df.groupby("sector").size().sort_values(ascending=False)
-    print(f"\n  [UNIVERSE] Selected {len(tickers)} tickers  |  mode={mode}")
-    print("  Sector breakdown:")
+    logger.info(f"\n  [UNIVERSE] Selected {len(tickers)} tickers  |  mode={mode}")
+    logger.info("  Sector breakdown:")
     for sec, cnt in breakdown.items():
         bar = "█" * cnt
-        print(f"    {sec:<40} {cnt:>3}  {bar}")
+        logger.info(f"    {sec:<40} {cnt:>3}  {bar}")
 
     # ── Cache results ────────────────────────────────────────────────
     cache_data = {
@@ -387,9 +414,20 @@ def get_universe(
         "n":         len(tickers),     # store actual count, not requested n
         "sector_breakdown": breakdown.to_dict(),
     }
+    # Persist to MySQL (primary) and JSON file (fallback backup)
+    if _DB_AVAILABLE:
+        try:
+            _db_write_universe(
+                tickers=tickers,
+                mode=mode,
+                sector_breakdown=breakdown.to_dict() if hasattr(breakdown, "to_dict") else breakdown,
+            )
+            logger.info(f"\n  [UNIVERSE] Saved to MySQL universe_cache table")
+        except Exception as _e:
+            logger.warning(f"  [UNIVERSE] MySQL write failed ({_e}) — falling back to JSON file only")
     _save_cache(cache_data)
-    print(f"\n  [UNIVERSE] Saved to cache: {CACHE_FILE}")
-    print("-" * 55)
+    logger.info(f"  [UNIVERSE] Saved to cache file: {CACHE_FILE}")
+    logger.info("-" * 55)
 
     return tickers
 
@@ -402,11 +440,11 @@ def refresh_universe(n: int = DEFAULT_UNIVERSE_N, mode: str = "balanced") -> lis
 def show_cache_info():
     """Print current cache status using the stored refreshed date."""
     if not os.path.exists(CACHE_FILE):
-        print("No universe cache found. Run get_universe() to create one.")
+        logger.info("No universe cache found. Run get_universe() to create one.")
         return
     cached = _load_cache()
     if not cached:
-        print("Cache file exists but could not be read.")
+        logger.warning("Cache file exists but could not be read.")
         return
     try:
         refreshed_date = datetime.date.fromisoformat(cached.get("refreshed", ""))
@@ -415,14 +453,14 @@ def show_cache_info():
     except ValueError:
         age = "?"
         is_fresh = False
-    print(f"\nUniverse Cache Info")
-    print(f"  File       : {CACHE_FILE}")
-    print(f"  Refreshed  : {cached.get('refreshed')}")
-    print(f"  Age        : {age} day(s)  ({'fresh' if is_fresh else 'STALE — will refresh on next run'})")
-    print(f"  Tickers    : {cached.get('n')}  (mode={cached.get('mode')})")
-    print(f"  Sectors    :")
+    logger.info(f"\nUniverse Cache Info")
+    logger.info(f"  File       : {CACHE_FILE}")
+    logger.info(f"  Refreshed  : {cached.get('refreshed')}")
+    logger.warning(f"  Age        : {age} day(s)  ({'fresh' if is_fresh else 'STALE — will refresh on next run'})")
+    logger.info(f"  Tickers    : {cached.get('n')}  (mode={cached.get('mode')})")
+    logger.info(f"  Sectors    :")
     for sec, cnt in (cached.get("sector_breakdown") or {}).items():
-        print(f"    {sec:<40} {cnt}")
+        logger.info(f"    {sec:<40} {cnt}")
 
 
 if __name__ == "__main__":
@@ -438,4 +476,4 @@ if __name__ == "__main__":
         show_cache_info()
     else:
         tickers = get_universe(n=args.n, mode=args.mode, force_refresh=args.refresh)
-        print(f"\nFirst 20 tickers: {tickers[:20]}")
+        logger.info(f"\nFirst 20 tickers: {tickers[:20]}")

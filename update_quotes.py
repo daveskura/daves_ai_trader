@@ -25,7 +25,6 @@ requirements.txt alongside the rest of the trading engine).
 import sys
 import argparse
 import time
-import logging
 from datetime import date, datetime
 from pathlib import Path
 from functools import wraps
@@ -37,17 +36,16 @@ if sys.platform == 'win32':
 	sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 
 # -- Configure logging ----------------------------------------------------------
-_root_logger = logging.getLogger()
-if not _root_logger.handlers:
-	logging.basicConfig(
-		level=logging.INFO,
-		format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-		handlers=[
-			logging.FileHandler(Path(__file__).parent / "quote_update.log", encoding='utf-8'),
-			logging.StreamHandler()
-		]
-	)
-logger = logging.getLogger(__name__)
+# db_logger writes structured rows to the run_logs MySQL table and echoes to
+# stdout. The old quote_update.log FileHandler is removed.
+# yfinance and peewee are silenced at WARNING to eliminate the high-volume
+# per-request DEBUG traces that bloated quote_update.log to 1.2 MB per run.
+import logging
+logging.getLogger("yfinance").setLevel(logging.WARNING)
+logging.getLogger("peewee").setLevel(logging.WARNING)
+
+from db_logger import Logger as _DbLogger
+logger = _DbLogger(run_stage="quotes", echo=True)
 
 # -- UTF-8 output (Windows) ----------------------------------------------------
 if hasattr(sys.stdout, "reconfigure"):

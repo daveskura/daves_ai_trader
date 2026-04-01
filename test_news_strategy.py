@@ -9,7 +9,7 @@ Usage:
     python test_news_strategy.py --step 3 # run a specific step only
 """
 
-import sys, os, json, csv, argparse
+import sys, os, json, argparse
 from pathlib import Path
 
 # ── Make sure we're running from the project folder ────────────────────────
@@ -201,36 +201,46 @@ def step5_macro_analysis():
 # ── Step 6: Cache check ─────────────────────────────────────────────────────
 
 def step6_cache():
-    header("Step 6 — Cache file check")
-    cache_path = Path("news_macro_cache.json")
-
-    if not cache_path.exists():
-        fail("news_macro_cache.json not found — Step 5 may have failed")
-        return False
-
-    try:
-        data = json.loads(cache_path.read_text(encoding="utf-8"))
-    except Exception as e:
-        fail(f"Could not read cache file: {e}")
-        return False
-
+    header("Step 6 — News macro cache check (MySQL)")
     from datetime import date
-    cached_date = data.get("analysis_date", "")
-    today       = date.today().isoformat()
+    today = date.today().isoformat()
 
+    # Primary: MySQL table
+    macro_data = None
+    try:
+        from db import read_news_macro_cache
+        macro_data = read_news_macro_cache(today)
+    except Exception as e:
+        fail(f"Could not query MySQL news_macro_cache: {e}")
+        info("Check DB_HOST / DB_USER / DB_PASSWORD in your .env file.")
+        return False
+
+    if macro_data is None:
+        cache_path = Path("news_macro_cache.json")
+        if cache_path.exists():
+            try:
+                macro_data = json.loads(cache_path.read_text(encoding="utf-8"))
+                warn("MySQL cache empty — using JSON fallback. Step 5 may have had a DB issue.")
+            except Exception as e:
+                fail(f"MySQL cache empty and JSON fallback unreadable: {e}")
+                return False
+        else:
+            fail("News macro cache not found in MySQL or JSON file — Step 5 may have failed")
+            return False
+
+    cached_date = macro_data.get("analysis_date", "")
     if cached_date == today:
         ok(f"Cache is fresh (date={cached_date})")
     else:
         fail(f"Cache date mismatch: cached={cached_date}  today={today}")
         return False
 
-    ok(f"Regime: {data.get('market_regime')}  "
-       f"Themes: {len(data.get('dominant_themes',[]))}  "
-       f"Catalysts: {len(data.get('company_catalysts',[]))}")
+    ok(f"Regime: {macro_data.get('market_regime')}  "
+       f"Themes: {len(macro_data.get('dominant_themes',[]))}  "
+       f"Catalysts: {len(macro_data.get('company_catalysts',[]))}")
 
-    # Verify second call uses cache (no extra API call)
     from strategy_runner import get_news_macro_analysis
-    info("Verifying second call reuses cache (should NOT call Claude again)...")
+    info("Verifying second call reuses MySQL cache (should NOT call Claude again)...")
     macro2 = get_news_macro_analysis(force_refresh=False, verbose=True)
     if macro2 and macro2.get("analysis_date") == today:
         ok("Cache reuse confirmed — Stage 2 will not duplicate the API call")
@@ -240,53 +250,57 @@ def step6_cache():
     return True
 
 
-# ── Step 7: KPI data check ──────────────────────────────────────────────────
-
 def step7_kpi():
-    header("Step 7 — KPI data check")
-    kpi_path = Path("equity_kpi_results.csv")
-
-    if not kpi_path.exists():
-        warn("equity_kpi_results.csv not found")
-        info("Run this to generate it:")
-        info("  python equity_kpi_analyzer.py --universe")
-        info("Skipping scoring tests.")
-        return None   # not a hard failure — just means scoring can't be tested
-
+    header("Step 7 — KPI data check (MySQL)")
     from strategy_runner import load_kpi
     rows, kmap = load_kpi()
-    ok(f"{len(rows)} tickers loaded from KPI file")
 
-    # Check a few important fields are present
-    if rows:
-        sample = rows[0]
-        for field in ["ticker", "composite_score", "sector", "current_price", "beta"]:
-            if field in sample:
-                ok(f"  Field present: {field}")
-            else:
-                warn(f"  Field missing: {field}")
+    if not rows:
+        warn("equity_kpi MySQL table is empty")
+        info("Run this to populate it:")
+        info("  python equity_kpi_analyzer.py --universe")
+        info("Skipping scoring tests.")
+        return None
+
+    ok(f"{len(rows)} tickers loaded from MySQL equity_kpi table")
+
+    sample = rows[0]
+    for field in ["ticker", "composite_score", "sector", "current_price", "beta"]:
+        if field in sample:
+            ok(f"  Field present: {field}")
+        else:
+            warn(f"  Field missing: {field}")
 
     return True
 
 
-# ── Step 8: Scoring dry-run ─────────────────────────────────────────────────
-
 def step8_scoring():
-    header("Step 8 — Scoring functions dry-run")
-    kpi_path = Path("equity_kpi_results.csv")
-    cache_path = Path("news_macro_cache.json")
-
-    if not kpi_path.exists():
-        warn("No KPI data — skipping scoring test (run equity_kpi_analyzer.py first)")
-        return None
-
-    if not cache_path.exists():
-        warn("No news cache — skipping scoring test (Step 5 must pass first)")
-        return None
-
+    header("Step 8 — Scoring functions dry-run (MySQL)")
     from strategy_runner import load_kpi, score_news_macro, score_news_sentiment
+    from datetime import date
+
     rows, kmap = load_kpi()
-    macro = json.loads(cache_path.read_text(encoding="utf-8"))
+    if not rows:
+        warn("No KPI data in MySQL — skipping (run equity_kpi_analyzer.py first)")
+        return None
+
+    macro = None
+    try:
+        from db import read_news_macro_cache
+        macro = read_news_macro_cache(date.today().isoformat())
+    except Exception:
+        pass
+    if macro is None:
+        cache_path = Path("news_macro_cache.json")
+        if cache_path.exists():
+            try:
+                macro = json.loads(cache_path.read_text(encoding="utf-8"))
+                warn("Using JSON fallback for news cache")
+            except Exception:
+                pass
+    if macro is None:
+        warn("No news macro cache — skipping scoring test (Step 5 must pass first)")
+        return None
 
     candidates_19 = score_news_macro(rows, kmap, macro)
     candidates_20 = score_news_sentiment(rows, kmap, macro)
@@ -308,44 +322,27 @@ def step8_scoring():
     return True
 
 
-# ── Step 9: Account file check ──────────────────────────────────────────────
-
 def step9_accounts():
-    header("Step 9 — Account file check (strategies 19 & 20)")
+    header("Step 9 — Account check (strategies 19 & 20, MySQL)")
+    from db import read_account, read_holdings
     all_ok = True
     for sid in ("19", "20"):
-        acct_path = Path(f"account_{sid}.csv")
-        hold_path = Path(f"holdings_{sid}.csv")
-
-        if not acct_path.exists():
-            warn(f"account_{sid}.csv not found")
+        acct = read_account(sid)
+        if not acct:
+            warn(f"Strategy {sid}: no account row found in MySQL")
             info(f"  Fix: python strategy_runner.py --init")
             all_ok = False
             continue
 
-        with open(acct_path, newline="", encoding="utf-8") as fh:
-            rows = list(csv.DictReader(fh))
-        if not rows:
-            fail(f"account_{sid}.csv is empty")
-            all_ok = False
-            continue
+        ok(f"Strategy {sid}: cash=${acct.get('cash','?')}  "
+           f"holdings=${acct.get('holdings_value','?')}  "
+           f"trades={acct.get('trades','?')}")
 
-        r = rows[0]
-        ok(f"Strategy {sid}: cash=${r.get('cash','?')}  "
-           f"holdings=${r.get('holdings_value','?')}  "
-           f"trades={r.get('trades','?')}")
-
-        if not hold_path.exists():
-            warn(f"holdings_{sid}.csv not found")
-        else:
-            with open(hold_path, newline="", encoding="utf-8") as fh:
-                hrows = list(csv.DictReader(fh))
-            ok(f"  holdings_{sid}.csv: {len(hrows)} position(s)")
+        holdings = read_holdings(sid)
+        ok(f"  Holdings: {len(holdings)} position(s)")
 
     return all_ok
 
-
-# ── Step 10: Full dry-run ───────────────────────────────────────────────────
 
 def step10_dry_run():
     header("Step 10 — Full dry-run (strategies 19 & 20, no trades executed)")

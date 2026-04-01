@@ -35,6 +35,20 @@ try:
 except ImportError:
     sys.exit("ERROR: yfinance not installed.  Run: pip install yfinance")
 
+# Structured logging to MySQL run_logs table — silences yfinance DEBUG noise
+import logging as _logging
+_logging.getLogger("yfinance").setLevel(_logging.WARNING)
+_logging.getLogger("peewee").setLevel(_logging.WARNING)
+from db_logger import Logger as _DbLogger
+logger = _DbLogger(run_stage="analysis", echo=True)
+
+# MySQL persistence
+try:
+    from db import write_down_day_results as _db_write_down_day,                    read_down_day_results  as _db_read_down_day
+    _DB_AVAILABLE = True
+except ImportError:
+    _DB_AVAILABLE = False
+
 try:
     import pandas as pd
     import numpy as np
@@ -64,12 +78,12 @@ def load_universe(universe_file: str) -> list[str]:
                 data = json.load(f)
             tickers = data.get("tickers", [])
             if tickers:
-                print(f"  Loaded {len(tickers)} tickers from {universe_file} "
+                logger.info(f"  Loaded {len(tickers)} tickers from {universe_file} "
                       f"(refreshed {data.get('refreshed','?')})")
                 return tickers
         except Exception as e:
-            print(f"  Warning: could not load {universe_file}: {e}")
-    print(f"  Using fallback ticker list ({len(FALLBACK_TICKERS)} tickers)")
+            logger.warning(f"  Warning: could not load {universe_file}: {e}")
+    logger.info(f"  Using fallback ticker list ({len(FALLBACK_TICKERS)} tickers)")
     return FALLBACK_TICKERS
 
 
@@ -82,7 +96,7 @@ def fetch_returns(tickers: list[str], target_date: datetime.date) -> pd.DataFram
     Also fetches the S&P 500 for the market return benchmark.
     """
     all_tickers = tickers + [MARKET_INDEX, VIX_TICKER]
-    print(f"\n  Downloading price data for {len(tickers)} stocks + market indices...")
+    logger.info(f"\n  Downloading price data for {len(tickers)} stocks + market indices...")
 
     try:
         raw = yf.download(
@@ -117,7 +131,7 @@ def fetch_returns(tickers: list[str], target_date: datetime.date) -> pd.DataFram
         if available.empty:
             sys.exit(f"  ERROR: No data available on or before {target_date}")
         target_ts = available[-1]
-        print(f"  Note: {target_date} has no data — using {target_ts.date()} instead")
+        logger.info(f"  Note: {target_date} has no data — using {target_ts.date()} instead")
 
     day_returns = returns.loc[target_ts].dropna()
 
@@ -125,23 +139,23 @@ def fetch_returns(tickers: list[str], target_date: datetime.date) -> pd.DataFram
     market_ret = float(day_returns.get(MARKET_INDEX, 0))
     vix_val    = float(close.get(VIX_TICKER, pd.Series([None])).dropna().iloc[-1]) if VIX_TICKER in close.columns else None
 
-    print(f"\n  {'─'*55}")
-    print(f"  Analysis date : {target_ts.date()}")
-    print(f"  S&P 500 return: {market_ret*100:+.2f}%")
+    logger.info(f"\n  {'─'*55}")
+    logger.info(f"  Analysis date : {target_ts.date()}")
+    logger.info(f"  S&P 500 return: {market_ret*100:+.2f}%")
     if vix_val:
-        print(f"  VIX           : {vix_val:.1f}")
-    print(f"  {'─'*55}")
+        logger.info(f"  VIX           : {vix_val:.1f}")
+    logger.info(f"  {'─'*55}")
 
     if market_ret >= 0:
-        print(f"\n  ⚠  S&P 500 is UP {market_ret*100:+.2f}% today — this tool is designed for DOWN days.")
-        print(f"     Results still show relative outperformers, which is useful on any day.")
+        logger.warning(f"\n  ⚠  S&P 500 is UP {market_ret*100:+.2f}% today — this tool is designed for DOWN days.")
+        logger.info(f"     Results still show relative outperformers, which is useful on any day.")
 
     # Build result dataframe for stocks only.
     # Use CAPM-adjusted abnormal return: stock_ret - (beta * market_ret).
     # Beta comes from yfinance info, fetched in a lightweight batch here so the
     # formula matches equity_kpi_analyzer.py and update_quotes.py exactly.
     # Falls back to beta=1.0 if unavailable (same as plain excess return).
-    print("  Fetching beta values for abnormal return calculation...")
+    logger.info("  Fetching beta values for abnormal return calculation...")
     beta_map: dict[str, float] = {}
     try:
         multi = yf.Tickers(" ".join(tickers))
@@ -152,7 +166,7 @@ def fetch_returns(tickers: list[str], target_date: datetime.date) -> pd.DataFram
                 beta_map[sym] = 1.0
     except Exception:
         # Batch failed — default all betas to 1.0 (equivalent to excess return)
-        print("  Warning: beta fetch failed — using beta=1.0 for all tickers")
+        logger.error("  Warning: beta fetch failed — using beta=1.0 for all tickers")
 
     stock_returns = {t: float(day_returns.get(t, np.nan)) for t in tickers if t in day_returns}
     df = pd.DataFrame([
@@ -176,11 +190,11 @@ def fetch_returns(tickers: list[str], target_date: datetime.date) -> pd.DataFram
 
 def fetch_fundamentals(tickers: list[str]) -> dict[str, dict]:
     """Pull key fundamentals from yfinance for a list of tickers."""
-    print(f"\n  Fetching fundamentals for {len(tickers)} outperformers...")
+    logger.info(f"\n  Fetching fundamentals for {len(tickers)} outperformers...")
     result = {}
     total = len(tickers)
     for i, sym in enumerate(tickers, 1):
-        print(f"    [{i}/{total}] {sym}...", end=" ", flush=True)
+        logger.info(f"    [{i}/{total}] {sym}...", end=" ", flush=True)
         try:
             info = yf.Ticker(sym).info or {}
             result[sym] = {
@@ -236,9 +250,9 @@ def fetch_fundamentals(tickers: list[str]) -> dict[str, dict]:
             high  = result[sym]["52w_high"]
             if price and high and high > 0:
                 result[sym]["pct_from_52w_high"] = (price - high) / high
-            print("✓")
+            logger.info("✓")
         except Exception as e:
-            print(f"✗ ({e})")
+            logger.info(f"✗ ({e})")
             result[sym] = {"name": sym, "sector": "Unknown", "error": str(e)}
     return result
 
@@ -427,9 +441,24 @@ def write_report(df: pd.DataFrame, fundamentals: dict, findings: dict,
 
     out_df = pd.DataFrame(rows).sort_values("abnormal_return_pct", ascending=False)
 
+    # ── Save to MySQL (primary) + CSV fallback ───────────────────────
     csv_path = f"{output_prefix}.csv"
-    out_df.to_csv(csv_path, index=False)
-    print(f"\n  ✓ CSV saved: {csv_path}")
+    if _DB_AVAILABLE:
+        try:
+            _db_write_down_day(
+                analysis_date=str(analysis_date),
+                market_return_pct=market_ret * 100,
+                vix=vix,
+                rows=rows,
+            )
+            logger.info(f"\n  ✓ Results saved to MySQL down_day_results table ({len(rows)} rows)")
+        except Exception as _e:
+            logger.warning(f"  MySQL write failed ({_e}) — writing CSV fallback")
+            out_df.to_csv(csv_path, index=False)
+            logger.info(f"  ✓ CSV fallback saved: {csv_path}")
+    else:
+        out_df.to_csv(csv_path, index=False)
+        logger.info(f"\n  ✓ CSV saved: {csv_path}")
 
     # ── Human-readable summary ────────────────────────────────────────
     txt_path = f"{output_prefix}_summary.txt"
@@ -537,15 +566,15 @@ def write_report(df: pd.DataFrame, fundamentals: dict, findings: dict,
     """)
 
     w("=" * 70)
-    w(f"  Full data saved to: {csv_path}")
+    w(f"  Full data saved to MySQL (down_day_results table) and: {txt_path}")
     w("=" * 70)
 
     with open(txt_path, "w", encoding="utf-8") as f:
         f.write("\n".join(lines))
-    print(f"  ✓ Summary saved: {txt_path}")
+    logger.info(f"  ✓ Summary saved: {txt_path}")
 
     # Also print summary to console
-    print("\n" + "\n".join(lines))
+    logger.info("\n" + "\n".join(lines))
     return csv_path, txt_path
 
 
@@ -565,14 +594,14 @@ def run_validation() -> bool:
             ok, detail = fn()
             results.append((ok, name))
             tag = PASS if ok else FAIL
-            print(f"{tag}  {name}" + (f": {detail}" if detail else ""))
+            logger.info(f"{tag}  {name}" + (f": {detail}" if detail else ""))
         except Exception as e:
             results.append((False, name))
-            print(f"{FAIL}  {name}: EXCEPTION — {e}")
+            logger.error(f"{FAIL}  {name}: EXCEPTION — {e}")
 
-    print("\n" + "="*60)
-    print("  DOWN-DAY ANALYZER — VALIDATION SUITE")
-    print("="*60)
+    logger.info("\n" + "="*60)
+    logger.info("  DOWN-DAY ANALYZER — VALIDATION SUITE")
+    logger.info("="*60)
 
     # 1. analyze_patterns handles empty fundamentals gracefully
     def t_analyze_patterns_empty():
@@ -659,9 +688,10 @@ def run_validation() -> bool:
     passed = sum(1 for ok, _ in results if ok)
     total  = len(results)
     failed = total - passed
-    print("-"*60)
-    print(f"  {passed}/{total} checks passed" + (f"  ({failed} FAILED)" if failed else "  — all good"))
-    print("="*60 + "\n")
+    logger.info("-"*60)
+    level = "error" if failed else "info"
+    logger._log(level.upper(), f"  {passed}/{total} checks passed" + (f"  ({failed} FAILED)" if failed else "  — all good"))
+    logger.info("="*60 + "\n")
     return failed == 0
 
 
@@ -697,10 +727,10 @@ def main():
     else:
         target_date = datetime.date.today()
 
-    print("\n" + "=" * 65)
-    print("  DOWN-DAY RESILIENCE ANALYZER")
-    print(f"  Target date: {target_date}")
-    print("=" * 65)
+    logger.info("\n" + "=" * 65)
+    logger.info("  DOWN-DAY RESILIENCE ANALYZER")
+    logger.info(f"  Target date: {target_date}")
+    logger.info("=" * 65)
 
     # Load universe
     tickers = load_universe(args.universe)
@@ -711,9 +741,9 @@ def main():
     if df.empty:
         sys.exit("ERROR: No return data computed.")
 
-    print(f"\n  Returns computed for {len(df)} tickers.")
-    print(f"  Gainers today (absolute) : {(df['day_return'] > 0).sum()}")
-    print(f"  Outperformed market      : {(df['abnormal_return'] > 0).sum()}")
+    logger.info(f"\n  Returns computed for {len(df)} tickers.")
+    logger.info(f"  Gainers today (absolute) : {(df['day_return'] > 0).sum()}")
+    logger.info(f"  Outperformed market      : {(df['abnormal_return'] > 0).sum()}")
 
     # Filter to outperformers
     df_sorted = df.sort_values("abnormal_return", ascending=False)
@@ -725,10 +755,10 @@ def main():
         df_filtered = df_sorted.head(args.top)
         label = f"top {args.top} outperformers"
 
-    print(f"\n  Analyzing {len(df_filtered)} {label}...")
+    logger.info(f"\n  Analyzing {len(df_filtered)} {label}...")
 
     if df_filtered.empty:
-        print("  No stocks matched the filter. Try relaxing --min-gain or increasing --top.")
+        logger.info("  No stocks matched the filter. Try relaxing --min-gain or increasing --top.")
         return
 
     # Fetch fundamentals for outperformers
@@ -736,7 +766,7 @@ def main():
     fundamentals  = fetch_fundamentals(focus_tickers)
 
     # Pattern analysis
-    print("\n  Running pattern analysis...")
+    logger.info("\n  Running pattern analysis...")
     findings   = analyze_patterns(df_filtered, fundamentals, market_ret)
     hypotheses = generate_hypotheses(findings, market_ret, vix)
 

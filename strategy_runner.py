@@ -22,7 +22,6 @@ import argparse
 import urllib.error
 import urllib.request
 import time
-import logging
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from collections import defaultdict
@@ -30,19 +29,11 @@ from functools import wraps
 from typing import Dict, List, Tuple, Optional, Any
 
 # -- Configure logging ----------------------------------------------------------
-# Guard prevents duplicate handlers if this module is imported multiple times
-# (e.g. by test scripts or the validation suite).
-_root_logger = logging.getLogger()
-if not _root_logger.handlers:
-	logging.basicConfig(
-		level=logging.INFO,
-		format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-		handlers=[
-			logging.FileHandler(Path(__file__).parent / "trading.log"),
-			logging.StreamHandler()
-		]
-	)
-logger = logging.getLogger(__name__)
+# db_logger writes structured rows to the run_logs MySQL table and echoes to
+# stdout. The old trading.log FileHandler is removed -- all log output now
+# goes to MySQL (with automatic stderr fallback if the DB is unreachable).
+from db_logger import Logger as _DbLogger
+logger = _DbLogger(run_stage="full", echo=True)
 
 # -- UTF-8 output (Windows fix) ----------------------------------------------
 if hasattr(sys.stdout, "reconfigure"):
@@ -85,7 +76,10 @@ from db import (
 	write_leaderboard          as _db_write_leaderboard,
 	read_leaderboard_history   as _db_read_lb_history,
 	append_leaderboard_history as _db_append_lb_history,
-	read_kpi_rows  as _db_read_kpi_rows,
+	read_kpi_rows              as _db_read_kpi_rows,
+	write_news_macro_cache     as _db_write_news_macro,
+	read_news_macro_cache      as _db_read_news_macro,
+	read_news_macro_cache_latest as _db_read_news_macro_latest,
 )
 
 # -- Retry decorator for API calls --------------------------------------------
@@ -127,11 +121,8 @@ NEWS_FEEDS = [
 
 # -- Data-layer helpers (MySQL via db.py) -------------------------------------
 
-def check_data_freshness(kpi_file: str = "equity_kpi_results.csv"):
-	"""
-	Warn if KPI data is stale. Checks MAX(updated_at) in the equity_kpi table.
-	kpi_file is accepted for CLI compatibility but ignored in MySQL mode.
-	"""
+def check_data_freshness():
+	"""Warn if KPI data is stale. Checks MAX(updated_at) in the equity_kpi table."""
 	try:
 		conn = _db_get_connection()
 		try:
@@ -353,7 +344,8 @@ def _trading_days_held(purchase_date_str: str, today_str: str) -> int:
 		extra = sum(1 for i in range(remainder) if (start_dow + i) % 7 < 5)
 		weekdays = full_weeks * 5 + extra
 		return weekdays
-	except Exception:
+	except Exception as _e:
+		logger.warning(f"_trading_days_held: could not parse dates ('{purchase_date_str}', '{today_str}'): {_e} -- defaulting to 999 (hold blocked)")
 		return 999
 
 # Holds up to PASSIVE_MAX_POSITIONS largest-cap stocks, equally weighted.
@@ -445,31 +437,35 @@ def update_leaderboard(today: str, kmap: Optional[Dict] = None) -> List[Dict]:
 				"strategy_id":   sid,
 			})
 
-		# If kmap supplied, refresh holdings_value and persist in batch
-		if kmap:
-			update_params = []
-			for sid in acct_map:
-				acct = acct_map[sid]
-				h = holdings_map.get(sid, [])
-				if h:
-					hv = calc_holdings_value(h, kmap)
-					total = round(acct["cash"] + hv, 2)
-					acct["holdings_value"] = hv
-					acct["total"] = total
-					update_params.append((hv, total, sid))
-			if update_params:
-				try:
-					cur.executemany(
-						"UPDATE accounts SET holdings_value=%s, total=%s WHERE strategy_id=%s",
-						update_params,
-					)
-					conn.commit()
-				except Exception:
-					conn.rollback()
-					raise
-
 	finally:
-		conn.close()
+		conn.close()   # release connection before doing any heavy calculation
+
+	# Refresh holdings values using kmap AFTER the connection is closed
+	if kmap:
+		update_params = []
+		for sid in acct_map:
+			acct = acct_map[sid]
+			h = holdings_map.get(sid, [])
+			if h:
+				hv = calc_holdings_value(h, kmap)
+				total = round(acct["cash"] + hv, 2)
+				acct["holdings_value"] = hv
+				acct["total"] = total
+				update_params.append((hv, total, sid))
+		if update_params:
+			conn2 = _db_get_connection()
+			try:
+				cur2 = conn2.cursor()
+				cur2.executemany(
+					"UPDATE accounts SET holdings_value=%s, total=%s WHERE strategy_id=%s",
+					update_params,
+				)
+				conn2.commit()
+			except Exception:
+				conn2.rollback()
+				raise
+			finally:
+				conn2.close()
 
 	rows = []
 	for sid, name, style, risk, desc in STRATEGIES:
@@ -968,16 +964,23 @@ def _load_news_cache(cache_path):
 	return None
 
 
-@retry(max_attempts=3, backoff=2.0, exceptions=(urllib.error.URLError, urllib.error.HTTPError, json.JSONDecodeError))
+@retry(max_attempts=3, backoff=2.0, exceptions=(urllib.error.URLError, urllib.error.HTTPError))
 def get_news_macro_analysis(force_refresh=False, verbose=False):
 	"""Calls Claude API to analyze macro trends from headlines."""
-	cache_path = BASE_DIR / "news_macro_cache.json"
-	
+	cache_path = BASE_DIR / "news_macro_cache.json"  # kept as fallback only
+
 	if not force_refresh:
-		cached = _load_news_cache(cache_path)
+		# Try MySQL first, fall back to JSON file
+		cached = None
+		try:
+			cached = _db_read_news_macro()  # today's date
+		except Exception:
+			pass
+		if not cached:
+			cached = _load_news_cache(cache_path)
 		if cached:
 			if verbose:
-				logger.info("Using cached news analysis")
+				logger.info("Using cached news analysis (MySQL)")
 			return cached
 	
 	if not ANTHROPIC_API_KEY:
@@ -1038,9 +1041,15 @@ def get_news_macro_analysis(force_refresh=False, verbose=False):
 	if "analysis_date" not in result:
 		result["analysis_date"] = date.today().isoformat()
 	
-	# Save to cache
+	# Save to MySQL (primary) and JSON file (fallback)
+	try:
+		_db_write_news_macro(result)
+		if verbose:
+			logger.info("News macro analysis saved to MySQL news_macro_cache table")
+	except Exception as _e:
+		logger.warning(f"MySQL write failed for news cache ({_e}) — saving JSON only")
 	cache_path.write_text(json.dumps(result, indent=2), encoding="utf-8")
-	
+
 	return result
 
 
@@ -1055,32 +1064,32 @@ def print_news_briefing(macro_data: dict = None):
 	if macro_data is None:
 		macro_data = get_news_macro_analysis(force_refresh=False)
 	
-	print("\n" + "="*70)
-	print("  NEWS MACRO BRIEFING")
-	print(f"  Analysis Date: {macro_data.get('analysis_date', 'N/A')}")
-	print("="*70)
+	logger.info("\n" + "="*70)
+	logger.info("  NEWS MACRO BRIEFING")
+	logger.info(f"  Analysis Date: {macro_data.get('analysis_date', 'N/A')}")
+	logger.info("="*70)
 	
 	regime = macro_data.get("market_regime", "UNKNOWN")
 	regime_emoji = "(up)" if regime == "RISK-ON" else "(dn)" if regime == "RISK-OFF" else "(=)?"
-	print(f"\nMarket Regime: {regime_emoji} {regime}")
+	logger.info(f"\nMarket Regime: {regime_emoji} {regime}")
 	
-	print("\nDominant Themes:")
+	logger.info("\nDominant Themes:")
 	for theme in macro_data.get("dominant_themes", []):
-		print(f"  * {theme.get('theme_name', theme.get('theme_id', 'Unknown'))} "
+		logger.info(f"  * {theme.get('theme_name', theme.get('theme_id', 'Unknown'))} "
 			  f"(strength: {theme.get('strength', '?')}/10, "
 			  f"duration: {theme.get('duration_outlook', '?')})")
 		if theme.get("beneficiary_sectors"):
-			print(f"    -> Beneficiaries: {', '.join(theme['beneficiary_sectors'])}")
+			logger.info(f"    -> Beneficiaries: {', '.join(theme['beneficiary_sectors'])}")
 		if theme.get("loser_sectors"):
-			print(f"    -> Losers: {', '.join(theme['loser_sectors'])}")
+			logger.info(f"    -> Losers: {', '.join(theme['loser_sectors'])}")
 	
-	print("\nCompany Catalysts:")
+	logger.info("\nCompany Catalysts:")
 	for cat in macro_data.get("company_catalysts", []):
 		sentiment = "[+]" if cat.get("sentiment") == "positive" else "[-]" if cat.get("sentiment") == "negative" else "[?]"
-		print(f"  {sentiment} {cat.get('ticker', 'Unknown')}: {cat.get('description', '')} "
+		logger.info(f"  {sentiment} {cat.get('ticker', 'Unknown')}: {cat.get('description', '')} "
 			  f"(magnitude: {cat.get('magnitude', '?')}/10)")
 	
-	print("\n" + "="*70)
+	logger.info("\n" + "="*70)
 
 
 def score_news_macro(rows: list, kmap: dict, macro: dict = None) -> list:
@@ -1237,6 +1246,20 @@ SCORE_FN = {
 def run_strategy(sid: str, name: str, style: str, risk: str, desc: str,
 				 rows: List[Dict], kmap: Dict, today: str, dry_run: bool = False):
 	"""Run a single strategy with all safety checks."""
+	# Tag the shared logger with this strategy's ID so every log line written
+	# during this call is queryable by strategy_id in the run_logs table.
+	# try/finally guarantees the tag is cleared even on early returns.
+	logger.strategy_id = sid
+	try:
+		_run_strategy_inner(sid, name, style, risk, desc, rows, kmap, today, dry_run)
+	finally:
+		logger.strategy_id = ""
+		logger.flush()
+
+
+def _run_strategy_inner(sid: str, name: str, style: str, risk: str, desc: str,
+						 rows: List[Dict], kmap: Dict, today: str, dry_run: bool = False):
+	"""Inner implementation — called by run_strategy() which handles logger cleanup."""
 	logger.info(f"\n  [{sid}] {name}")
 	logger.info(f"	   Style: {style}  |  Risk: {risk}")
 
@@ -1294,18 +1317,17 @@ def run_strategy(sid: str, name: str, style: str, risk: str, desc: str,
 		except Exception as _e:
 			logger.debug(f"PEAD age check failed: {_e}")
 
-	# FIX: Strategies 19 & 20 require macro data from news_macro_cache.json
+	# Strategies 19 & 20: load news macro analysis from MySQL (JSON file as fallback)
 	if sid in ("19", "20"):
-		macro_cache = BASE_DIR / "news_macro_cache.json"
+		# Read news macro from MySQL (today or yesterday allowed)
 		macro = None
-		if macro_cache.exists():
-			try:
-				macro = json.loads(macro_cache.read_text(encoding="utf-8"))
-				cache_date = macro.get("analysis_date", "")
-				if cache_date == today:
-					pass  # fresh
-				else:
-					# Allow yesterday's cache only -- anything older is too stale to trade on
+		try:
+			macro = _db_read_news_macro(today)
+			if macro is None:
+				# Try yesterday's cache
+				macro = _db_read_news_macro_latest()
+				if macro:
+					cache_date = macro.get("analysis_date", "")
 					try:
 						cache_age_days = (date.fromisoformat(today) - date.fromisoformat(cache_date)).days
 					except Exception:
@@ -1318,10 +1340,17 @@ def run_strategy(sid: str, name: str, style: str, risk: str, desc: str,
 						macro = None
 					else:
 						logger.info(f"	   News cache is from yesterday ({cache_date}), using it")
-			except (json.JSONDecodeError, OSError) as e:
-				logger.warning(f"	   Could not read news cache: {e}")
-		else:
-			logger.info("	   No news_macro_cache.json -- run news strategies (Stage 1) first")
+		except Exception as _e:
+			# MySQL unavailable — fall back to JSON file
+			macro_cache = BASE_DIR / "news_macro_cache.json"
+			if macro_cache.exists():
+				try:
+					macro = json.loads(macro_cache.read_text(encoding="utf-8"))
+					logger.warning(f"	   MySQL unavailable ({_e}) — using JSON file cache")
+				except Exception:
+					pass
+		if macro is None:
+			logger.info("	   No news macro cache found — run news strategies (Stage 1) first")
 		candidates = score_fn(rows, kmap, macro)
 	else:
 		candidates = score_fn(rows, kmap)
@@ -1404,16 +1433,16 @@ def run_validation() -> bool:
 			ok, detail = fn()
 			tag = PASS if ok else FAIL
 			results.append((ok, name, detail))
-			print(f"{tag}  {name}" + (f": {detail}" if detail else ""))
+			logger.info(f"{tag}  {name}" + (f": {detail}" if detail else ""))
 		except Exception as e:
 			results.append((False, name, str(e)))
-			print(f"{FAIL}  {name}: EXCEPTION -- {e}")
+			logger.error(f"{FAIL}  {name}: EXCEPTION -- {e}")
 			if "--verbose" in sys.argv:
 				traceback.print_exc()
 
-	print("\n" + "="*65)
-	print("  VALIDATION SUITE")
-	print("="*65)
+	logger.info("\n" + "="*65)
+	logger.info("  VALIDATION SUITE")
+	logger.info("="*65)
 
 	# -- 1. constants.py is importable and has required keys ------------------
 	def t_constants():
@@ -1642,9 +1671,13 @@ def run_validation() -> bool:
 	passed = sum(1 for ok, _, _ in results if ok)
 	total  = len(results)
 	failed = total - passed
-	print("-"*65)
-	print(f"  {passed}/{total} checks passed" + (f"  ({failed} FAILED)" if failed else "  -- all good"))
-	print("="*65 + "\n")
+	logger.info("-"*65)
+	summary_msg = f"  {passed}/{total} checks passed" + (f"  ({failed} FAILED)" if failed else "  -- all good")
+	if failed:
+		logger.error(summary_msg)
+	else:
+		logger.info(summary_msg)
+	logger.info("="*65 + "\n")
 	return failed == 0
 
 
@@ -1655,8 +1688,7 @@ def main():
 	parser.add_argument("--init",	   action="store_true", help="Initialise all account files")
 	parser.add_argument("--force-init", action="store_true", help="Re-initialise (resets all accounts!)")
 	parser.add_argument("--strategy",   type=str,			help="Run only this strategy ID, e.g. 01")
-	parser.add_argument("--kpi-file",   type=str, default="equity_kpi_results.csv",
-	                    help="Deprecated: KPI data now read from MySQL. Argument ignored.")
+
 	parser.add_argument("--news-brief", action="store_true", help="Print news briefing and exit")
 	parser.add_argument("--validate",   action="store_true", help="Run self-test suite and exit")
 	args = parser.parse_args()
@@ -1689,7 +1721,7 @@ def main():
 		logger.info("  *** DRY RUN -- no trades will be executed ***")
 	logger.info("="*65)
 
-	rows, kmap = load_kpi(args.kpi_file)
+	rows, kmap = load_kpi()
 	if not rows:
 		logger.error("\n  ERROR: No KPI data found. Run equity_kpi_analyzer.py first.\n")
 		return
@@ -1709,6 +1741,7 @@ def main():
 			continue
 		run_strategy(sid, name, style, risk, desc, rows, kmap, today, dry_run=args.dry_run)
 
+	logger.strategy_id = ""  # reset — leaderboard logs belong to the pipeline, not a strategy
 	logger.info("\n" + "-"*65)
 	logger.info("  LEADERBOARD")
 	logger.info("-"*65)
@@ -1725,9 +1758,5 @@ def main():
 
 
 if __name__ == "__main__":
-	# Parse --kpi-file early so freshness check uses the right path.
-	_pre = argparse.ArgumentParser(add_help=False)
-	_pre.add_argument("--kpi-file", default="equity_kpi_results.csv")
-	_known, _ = _pre.parse_known_args()
-	check_data_freshness(_known.kpi_file)
+	check_data_freshness()
 	main()

@@ -71,6 +71,22 @@ DB_CONFIG = {
 }
 
 
+# -----------------------------------------------------------------------------
+# Internal helpers
+# -----------------------------------------------------------------------------
+
+def _safe_float(v) -> Optional[float]:
+    """Convert a value to float, returning None if not possible."""
+    if v is None:
+        return None
+    try:
+        import math as _math
+        f = float(v)
+        return None if _math.isnan(f) or _math.isinf(f) else round(f, 6)
+    except (TypeError, ValueError):
+        return None
+
+
 def get_connection():
     """Return a new MySQL connection. Caller is responsible for closing it."""
     try:
@@ -176,6 +192,58 @@ CREATE TABLE IF NOT EXISTS equity_kpi (
     extra_json                 JSON,
     updated_at                 TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
                                          ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS down_day_results (
+    id                  BIGINT UNSIGNED  NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    analysis_date       DATE             NOT NULL,
+    market_return_pct   DECIMAL(8,4)     NOT NULL,
+    vix                 DECIMAL(6,2),
+    ticker              VARCHAR(16)      NOT NULL,
+    name                VARCHAR(100),
+    sector              VARCHAR(60),
+    industry            VARCHAR(100),
+    day_return_pct      DECIMAL(8,4),
+    abnormal_return_pct DECIMAL(8,4),
+    actually_gained     TINYINT(1),
+    beta                DECIMAL(6,3),
+    pe_ratio            DECIMAL(10,2),
+    forward_pe          DECIMAL(10,2),
+    net_margin_pct      DECIMAL(8,2),
+    dividend_yield_pct  DECIMAL(8,4),
+    market_cap_B        DECIMAL(12,2),
+    short_pct_float     DECIMAL(8,4),
+    pct_from_52w_high   DECIMAL(8,4),
+    ma_signal           VARCHAR(10),
+    debt_to_equity      DECIMAL(10,4),
+    current_ratio       DECIMAL(8,4),
+    insider_pct         DECIMAL(8,4),
+    analyst_rating      DECIMAL(4,2),
+    created_at          TIMESTAMP        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_date_ticker (analysis_date, ticker),
+    INDEX idx_date (analysis_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS universe_cache (
+    id              BIGINT UNSIGNED  NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    refreshed       DATE             NOT NULL,
+    mode            VARCHAR(20)      NOT NULL DEFAULT 'balanced',
+    n               INT              NOT NULL,
+    tickers_json    JSON             NOT NULL,
+    sector_breakdown_json JSON,
+    created_at      TIMESTAMP        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_refreshed (refreshed)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS news_macro_cache (
+    id              BIGINT UNSIGNED  NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    analysis_date   DATE             NOT NULL UNIQUE,
+    market_regime   VARCHAR(20)      NOT NULL DEFAULT 'NEUTRAL',
+    themes_json     JSON             NOT NULL,
+    catalysts_json  JSON             NOT NULL,
+    raw_json        JSON             NOT NULL,
+    created_at      TIMESTAMP        NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_date (analysis_date)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 """
 
@@ -539,8 +607,8 @@ def write_kpi_rows(rows: List[Dict], fieldnames: Optional[List[str]] = None):
     conn = get_connection()
     try:
         cur = conn.cursor()
-        cur.execute("DELETE FROM equity_kpi")
-
+        # Use INSERT ... ON DUPLICATE KEY UPDATE (not DELETE+INSERT) so the table
+        # is never left empty if the insert fails part-way through.
         insert_rows = []
         for r in rows:
             ticker = r.get("ticker", "")
@@ -607,6 +675,32 @@ def write_kpi_rows(rows: List[Dict], fieldnames: Optional[List[str]] = None):
                 %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
                 %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
             )
+            ON DUPLICATE KEY UPDATE
+                composite_score              = VALUES(composite_score),
+                tier1_score                  = VALUES(tier1_score),
+                tier2_score                  = VALUES(tier2_score),
+                tier3_score                  = VALUES(tier3_score),
+                net_profit_margin            = VALUES(net_profit_margin),
+                eps_growth_fwd               = VALUES(eps_growth_fwd),
+                eps_ttm                      = VALUES(eps_ttm),
+                eps_forward                  = VALUES(eps_forward),
+                pe_ratio                     = VALUES(pe_ratio),
+                current_price                = VALUES(current_price),
+                rsi_14                       = VALUES(rsi_14),
+                ma_50                        = VALUES(ma_50),
+                ma_200                       = VALUES(ma_200),
+                ma_signal                    = VALUES(ma_signal),
+                beta                         = VALUES(beta),
+                market_cap                   = VALUES(market_cap),
+                pct_from_52w_high            = VALUES(pct_from_52w_high),
+                abnormal_return              = VALUES(abnormal_return),
+                net_insider_shares           = VALUES(net_insider_shares),
+                vix                          = VALUES(vix),
+                dividend_yield               = VALUES(dividend_yield),
+                five_year_avg_dividend_yield = VALUES(five_year_avg_dividend_yield),
+                eps_revision_pct             = VALUES(eps_revision_pct),
+                sector                       = VALUES(sector),
+                extra_json                   = VALUES(extra_json)
             """,
             insert_rows,
         )
@@ -673,3 +767,277 @@ def reset_all(starting_cash: float, strategies: list, account_num: str):
         raise
     finally:
         conn.close()
+
+
+# -----------------------------------------------------------------------------
+# Down-day results
+# -----------------------------------------------------------------------------
+
+def write_down_day_results(analysis_date: str, market_return_pct: float,
+                            vix: Optional[float], rows: List[Dict]):
+    """
+    Upsert down-day resilience results for a given analysis date.
+    Existing rows for the date are replaced atomically.
+    """
+    if not rows:
+        return
+    import json as _json
+
+    conn = get_connection()
+    try:
+        cur = conn.cursor()
+        cur.execute("DELETE FROM down_day_results WHERE analysis_date = %s", (analysis_date,))
+        cur.executemany(
+            """
+            INSERT INTO down_day_results (
+                analysis_date, market_return_pct, vix,
+                ticker, name, sector, industry,
+                day_return_pct, abnormal_return_pct, actually_gained,
+                beta, pe_ratio, forward_pe, net_margin_pct,
+                dividend_yield_pct, market_cap_B, short_pct_float,
+                pct_from_52w_high, ma_signal, debt_to_equity,
+                current_ratio, insider_pct, analyst_rating
+            ) VALUES (
+                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+            )
+            ON DUPLICATE KEY UPDATE
+                market_return_pct   = VALUES(market_return_pct),
+                vix                 = VALUES(vix),
+                name                = VALUES(name),
+                sector              = VALUES(sector),
+                industry            = VALUES(industry),
+                day_return_pct      = VALUES(day_return_pct),
+                abnormal_return_pct = VALUES(abnormal_return_pct),
+                actually_gained     = VALUES(actually_gained),
+                beta                = VALUES(beta),
+                pe_ratio            = VALUES(pe_ratio),
+                forward_pe          = VALUES(forward_pe),
+                net_margin_pct      = VALUES(net_margin_pct),
+                dividend_yield_pct  = VALUES(dividend_yield_pct),
+                market_cap_B        = VALUES(market_cap_B),
+                short_pct_float     = VALUES(short_pct_float),
+                pct_from_52w_high   = VALUES(pct_from_52w_high),
+                ma_signal           = VALUES(ma_signal),
+                debt_to_equity      = VALUES(debt_to_equity),
+                current_ratio       = VALUES(current_ratio),
+                insider_pct         = VALUES(insider_pct),
+                analyst_rating      = VALUES(analyst_rating)
+            """,
+            [
+                (
+                    analysis_date,
+                    round(float(market_return_pct), 4),
+                    round(float(vix), 2) if vix is not None else None,
+                    r.get("ticker", ""),
+                    str(r.get("name", ""))[:100],
+                    str(r.get("sector", ""))[:60],
+                    str(r.get("industry", ""))[:100],
+                    _safe_float(r.get("day_return_pct")),
+                    _safe_float(r.get("abnormal_return_pct")),
+                    1 if r.get("actually_gained") == "YES" else 0,
+                    _safe_float(r.get("beta")),
+                    _safe_float(r.get("pe_ratio")),
+                    _safe_float(r.get("forward_pe")),
+                    _safe_float(r.get("net_margin_pct")),
+                    _safe_float(r.get("dividend_yield_pct")),
+                    _safe_float(r.get("market_cap_B")),
+                    _safe_float(r.get("short_pct_float")),
+                    _safe_float(r.get("pct_from_52w_high")),
+                    str(r.get("50d_vs_200d_ma", ""))[:10] or None,
+                    _safe_float(r.get("debt_to_equity")),
+                    _safe_float(r.get("current_ratio")),
+                    _safe_float(r.get("insider_pct")),
+                    _safe_float(r.get("analyst_rating")),
+                )
+                for r in rows
+            ],
+        )
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
+def read_down_day_results(analysis_date: Optional[str] = None,
+                           days: int = 30) -> List[Dict]:
+    """
+    Return down-day results. If analysis_date given, return that date only.
+    Otherwise return the last `days` days of results.
+    """
+    conn = get_connection()
+    try:
+        cur = conn.cursor(dictionary=True)
+        if analysis_date:
+            cur.execute(
+                "SELECT * FROM down_day_results WHERE analysis_date = %s "
+                "ORDER BY abnormal_return_pct DESC",
+                (analysis_date,),
+            )
+        else:
+            cur.execute(
+                "SELECT * FROM down_day_results "
+                "WHERE analysis_date >= DATE_SUB(CURDATE(), INTERVAL %s DAY) "
+                "ORDER BY analysis_date DESC, abnormal_return_pct DESC",
+                (days,),
+            )
+        return cur.fetchall()
+    finally:
+        conn.close()
+
+
+# -----------------------------------------------------------------------------
+# Universe cache
+# -----------------------------------------------------------------------------
+
+def write_universe_cache(tickers: List[str], mode: str,
+                          sector_breakdown: Optional[Dict] = None):
+    """Persist the universe selection to MySQL. One row per refresh."""
+    import json as _json
+    from datetime import date as _date
+    conn = get_connection()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            INSERT INTO universe_cache
+                (refreshed, mode, n, tickers_json, sector_breakdown_json)
+            VALUES (%s, %s, %s, %s, %s)
+            """,
+            (
+                _date.today().isoformat(),
+                mode,
+                len(tickers),
+                _json.dumps(tickers),
+                _json.dumps(sector_breakdown) if sector_breakdown else None,
+            ),
+        )
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
+def read_universe_cache(mode: str = "balanced",
+                         max_age_days: int = 7) -> Optional[Dict]:
+    """
+    Return the most recent universe cache row if it is within max_age_days
+    and matches the requested mode. Returns None if stale or missing.
+    """
+    import json as _json
+    conn = get_connection()
+    try:
+        cur = conn.cursor(dictionary=True)
+        cur.execute(
+            """
+            SELECT * FROM universe_cache
+            WHERE mode = %s
+              AND refreshed >= DATE_SUB(CURDATE(), INTERVAL %s DAY)
+            ORDER BY refreshed DESC, id DESC
+            LIMIT 1
+            """,
+            (mode, max_age_days),
+        )
+        row = cur.fetchone()
+        if not row:
+            return None
+        tickers = _json.loads(row["tickers_json"]) if row.get("tickers_json") else []
+        breakdown = _json.loads(row["sector_breakdown_json"]) if row.get("sector_breakdown_json") else {}
+        return {
+            "tickers":          tickers,
+            "refreshed":        str(row["refreshed"]),
+            "mode":             row["mode"],
+            "n":                row["n"],
+            "sector_breakdown": breakdown,
+        }
+    finally:
+        conn.close()
+
+
+# -----------------------------------------------------------------------------
+# News macro cache
+# -----------------------------------------------------------------------------
+
+def write_news_macro_cache(data: Dict):
+    """
+    Upsert today's news macro analysis to MySQL.
+    Replaces any existing row for the same analysis_date.
+    `data` is the full JSON dict returned by Claude.
+    """
+    import json as _json
+    analysis_date = data.get("analysis_date") or date.today().isoformat()
+    conn = get_connection()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            INSERT INTO news_macro_cache
+                (analysis_date, market_regime, themes_json, catalysts_json, raw_json)
+            VALUES (%s, %s, %s, %s, %s)
+            ON DUPLICATE KEY UPDATE
+                market_regime  = VALUES(market_regime),
+                themes_json    = VALUES(themes_json),
+                catalysts_json = VALUES(catalysts_json),
+                raw_json       = VALUES(raw_json)
+            """,
+            (
+                analysis_date,
+                str(data.get("market_regime", "NEUTRAL"))[:20],
+                _json.dumps(data.get("dominant_themes", [])),
+                _json.dumps(data.get("company_catalysts", [])),
+                _json.dumps(data),
+            ),
+        )
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
+def read_news_macro_cache(analysis_date: Optional[str] = None) -> Optional[Dict]:
+    """
+    Return the news macro analysis for the given date (default: today).
+    Returns None if not found.
+    """
+    import json as _json
+    target = analysis_date or date.today().isoformat()
+    conn = get_connection()
+    try:
+        cur = conn.cursor(dictionary=True)
+        cur.execute(
+            "SELECT * FROM news_macro_cache WHERE analysis_date = %s",
+            (target,),
+        )
+        row = cur.fetchone()
+        if not row:
+            return None
+        # Return the full original dict so callers need no changes
+        return _json.loads(row["raw_json"])
+    finally:
+        conn.close()
+
+
+def read_news_macro_cache_latest() -> Optional[Dict]:
+    """Return the most recent news macro cache row regardless of date."""
+    import json as _json
+    conn = get_connection()
+    try:
+        cur = conn.cursor(dictionary=True)
+        cur.execute(
+            "SELECT * FROM news_macro_cache ORDER BY analysis_date DESC LIMIT 1"
+        )
+        row = cur.fetchone()
+        if not row:
+            return None
+        return _json.loads(row["raw_json"])
+    finally:
+        conn.close()
+
+
+
