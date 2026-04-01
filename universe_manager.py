@@ -21,12 +21,16 @@ if sys.stdout.encoding != 'utf-8':
 import json
 import datetime
 import time
+from pathlib import Path
 
 import pandas as pd
 import yfinance as yf
 
 # ── Config ──────────────────────────────────────────────────────────────────
-CACHE_FILE          = "universe_cache.json"
+# Use an absolute path so the cache is always written next to this file,
+# regardless of what directory the caller's cwd is set to.
+_BASE_DIR           = Path(__file__).parent
+CACHE_FILE          = str(_BASE_DIR / "universe_cache.json")
 REFRESH_DAYS        = 7          # re-fetch constituents every N days
 DEFAULT_UNIVERSE_N  = 200        # how many stocks to return
 MAX_PER_SECTOR      = 40         # sector cap for balanced mode

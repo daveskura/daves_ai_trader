@@ -1033,9 +1033,16 @@ def get_news_macro_analysis(force_refresh=False, verbose=False):
 	return result
 
 
-def print_news_briefing():
-	"""Prints a formatted news briefing for review."""
-	macro_data = get_news_macro_analysis(force_refresh=False)
+def print_news_briefing(macro_data: dict = None):
+	"""Prints a formatted news briefing for review.
+
+	Args:
+	    macro_data: Pre-fetched macro analysis dict. If None, fetches from cache
+	                (or calls the API if no cache exists). Passing data avoids a
+	                redundant API call when the caller already has the result.
+	"""
+	if macro_data is None:
+		macro_data = get_news_macro_analysis(force_refresh=False)
 	
 	print("\n" + "="*70)
 	print("  NEWS MACRO BRIEFING")

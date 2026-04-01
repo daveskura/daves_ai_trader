@@ -62,31 +62,13 @@ try:
 except ImportError:
 	sys.exit("ERROR: pandas not installed.  Run:  pip install pandas")
 
-# ── Constants — must mirror strategy_runner.py ────────────────────────────────
-STARTING_CASH = 1_000.00
-ACCOUNT_NUM   = "123456789"
-BASE_DIR	  = Path(__file__).parent
+# ── Constants — imported from single source of truth ─────────────────────────
+from constants import STARTING_CASH, ACCOUNT_NUM, STRATEGIES
 
-# FIX: Added stale price threshold (warn if price deviates > 5% from avg_cost)
+BASE_DIR = Path(__file__).parent
+
+# Warn if fallback price deviates more than this % from avg_cost
 DEFAULT_STALE_THRESHOLD = 5.0  # percent
-
-STRATEGIES = [
-	("02", "Mean reversion",				   "contrarian",  "med"),
-	("03", "Value investing",				  "value",	   "low"),
-	("06", "Low volatility / defensive",	   "defensive",   "low"),
-	("07", "Earnings surprise (PEAD)",		 "event",	   "high"),
-	("08", "Dividend growth",				  "income",	  "low"),
-	("09", "Insider buying signal",			"alt-data",	"med"),
-	("10", "Macro-regime adaptive",			"macro",	   "med"),
-	("11", "S&P 500 value tilt",			   "academic",	"med"),
-	("12", "Momentum (academic / Asness)",	 "academic",	"high"),
-	("13", "Quality / profitability",		  "academic",	"low"),
-	("14", "Passive S&P 500 benchmark",		"passive",	 "low"),
-	("18", "Capex beneficiary / semis",		"thematic",	"high"),
-	("19", "News macro catalyst",			  "macro",	   "med"),
-	("20", "News sentiment momentum",		  "alt-data",	"med"),
-	("21", "Defense & war economy",			"thematic",	"med"),
-]
 
 # ── Retry decorator for yfinance calls ────────────────────────────────────────
 def retry(max_attempts: int = 3, backoff: float = 2.0):
@@ -303,10 +285,6 @@ def fetch_quotes(tickers: set, stale_threshold: float = DEFAULT_STALE_THRESHOLD)
 			logger.error("No data returned from yfinance")
 			return {}, {}
 
-		if 'pd' not in globals():
-			logger.error("Pandas is required for MultiIndex checks.")
-			return {}, {}
-
 		# Get the most recent close and previous close for each ticker
 		if hasattr(data.columns, 'get_level_values') and isinstance(data.columns, pd.MultiIndex):
 			# Multi-ticker case
@@ -465,14 +443,15 @@ def update_strategy(sid: str, prices: dict, previous_closes: dict, today: str,
 	acct["holdings_value"] = round(hv, 2)
 	acct["total"] = round(acct["cash"] + hv, 2)
 	save_account(sid, acct)
-	save_holdings(sid, holdings)
+	# Note: holdings themselves (cost basis, shares) are not modified here —
+	# only the account's holdings_value total is updated. No need to rewrite holdings CSV.
 	return acct
 
 # ── Rebuild leaderboard ───────────────────────────────────────────────────────
 def update_leaderboard(today: str, run_ids: list, all_ids: list) -> list:
 	"""Re-reads every strategy account and rewrites leaderboard.csv."""
 	rows = []
-	for sid, name, style, risk in all_ids:
+	for sid, name, style, risk, *_ in all_ids:  # *_ absorbs description field
 		acct = read_account(sid)
 		if acct is None:
 			continue

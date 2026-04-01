@@ -417,3 +417,152 @@
 2026-03-31 23:30:45,834 - __main__ - INFO -   Leaderboard saved to: leaderboard.csv  (history: leaderboard_history.csv)
 2026-03-31 23:30:45,834 - __main__ - INFO - =================================================================
 
+2026-04-01 00:25:01,776 - __main__ - INFO - 
+=================================================================
+2026-04-01 00:25:01,777 - __main__ - INFO -   MULTI-STRATEGY PAPER TRADING ENGINE
+2026-04-01 00:25:01,778 - __main__ - INFO -   Date: 2026-04-01  |  Strategies: 15  |  Goal: $2,000 each
+2026-04-01 00:25:01,778 - __main__ - INFO -   Model: claude-sonnet-4-6
+2026-04-01 00:25:01,778 - __main__ - INFO - =================================================================
+2026-04-01 00:25:01,782 - __main__ - INFO - 
+  Loaded 200 tickers from KPI file.
+2026-04-01 00:25:01,782 - __main__ - INFO - 
+  [02] Mean reversion
+2026-04-01 00:25:01,782 - __main__ - INFO - 	   Style: contrarian  |  Risk: med
+2026-04-01 00:25:01,783 - __main__ - INFO - 	   Cash: $    40.00  |  Holdings: $   973.51  |  Total: $  1013.51
+2026-04-01 00:25:01,784 - __main__ - INFO - 	   Top candidate: HCA (score 82.6)
+2026-04-01 00:25:11,212 - __main__ - INFO - 	   Summary: Hold both existing positions as they remain in profit and below RSI 50 exit threshold; attempt a small BUY on HCA given its exceptional RSI=9 oversold signal and top score of 82.6, subject to available cash after reserve requirements.
+2026-04-01 00:25:11,213 - __main__ - INFO - 	   HOLD ECL: Held since 2026-03-19, positive P&L +1.5%, RSI not yet recov
+2026-04-01 00:25:11,218 - __main__ - INFO - 	   HOLD UPS: Held since 2026-03-19, positive P&L +1.3%, RSI not yet recov
+2026-04-01 00:25:11,221 - __main__ - INFO - 	   BUY  HCA: Insufficient funds
+2026-04-01 00:25:11,221 - __main__ - INFO - 
+  [03] Value investing
+2026-04-01 00:25:11,222 - __main__ - INFO - 	   Style: value  |  Risk: low
+2026-04-01 00:25:11,223 - __main__ - INFO - 	   Cash: $    40.00  |  Holdings: $   932.07  |  Total: $   972.07
+2026-04-01 00:25:11,224 - __main__ - INFO - 	   Top candidate: SPG (score 96.3)
+2026-04-01 00:25:16,968 - __main__ - INFO - 	   Summary: Holding both existing positions as they remain within the minimum hold period, scores have not deteriorated, and both retain value characteristics consistent with the strategy; insufficient cash reserves to add a meaningful third position.
+2026-04-01 00:25:16,969 - __main__ - INFO - 	   HOLD SPG: Top-ranked candidate with score 96.3, Golden Cross, P/E 13.2
+2026-04-01 00:25:16,971 - __main__ - INFO - 	   HOLD CMCSA: Score 55.5, RSI 30 (oversold), Golden Cross, very low P/E 5.
+2026-04-01 00:25:16,973 - __main__ - INFO - 
+  [06] Low volatility / defensive
+2026-04-01 00:25:16,974 - __main__ - INFO - 	   Style: defensive  |  Risk: low
+2026-04-01 00:25:16,977 - __main__ - INFO - 	   Cash: $    40.00  |  Holdings: $   966.15  |  Total: $  1006.15
+2026-04-01 00:25:16,978 - __main__ - INFO - 	   Top candidate: NOC (score 85.4)
+2026-04-01 00:25:24,936 - __main__ - INFO - 	   Summary: Hold both existing positions through minimum hold period while adding NOC as the top-scored, deeply oversold defensive name to deploy remaining available cash.
+2026-04-01 00:25:24,937 - __main__ - INFO - 	   HOLD MRK: Score 78.2, Golden Cross, low beta 0.26, +4.5% P&L. RSI at 6
+2026-04-01 00:25:24,938 - __main__ - INFO - 	   HOLD CME: Score 77.3, Golden Cross, low beta 0.26, RSI neutral at 42. 
+2026-04-01 00:25:24,939 - __main__ - INFO - 	   BUY  NOC: Insufficient funds
+2026-04-01 00:25:24,940 - __main__ - INFO - 
+  [07] Earnings surprise (PEAD)
+2026-04-01 00:25:24,940 - __main__ - INFO - 	   Style: event  |  Risk: high
+2026-04-01 00:25:24,942 - __main__ - INFO - 	   Cash: $    40.00  |  Holdings: $   943.21  |  Total: $   983.21
+2026-04-01 00:25:24,943 - __main__ - INFO - 	   Top candidate: FCX (score 243.3)
+2026-04-01 00:25:32,374 - __main__ - INFO - 	   Summary: Hold both existing positions (CVS and AMD) as they are young and signals remain intact, while opening a small third position in top-ranked FCX given its exceptional PEAD score, strong forward growth, and positive abnormal return today.
+2026-04-01 00:25:32,376 - __main__ - INFO - 	   HOLD CVS: Held since 2026-03-19, still within early holding period. Do
+2026-04-01 00:25:32,380 - __main__ - INFO - 	   HOLD AMD: Small gain of 0.6%, held since 2026-03-19. Position is young
+2026-04-01 00:25:32,384 - __main__ - INFO - 	   BUY  FCX: Insufficient funds
+2026-04-01 00:25:32,384 - __main__ - INFO - 
+  [08] Dividend growth
+2026-04-01 00:25:32,385 - __main__ - INFO - 	   Style: income  |  Risk: low
+2026-04-01 00:25:32,435 - __main__ - INFO - 	   Cash: $    40.00  |  Holdings: $   948.32  |  Total: $   988.32
+2026-04-01 00:25:32,436 - __main__ - INFO - 	   Top candidate: PGR (score 4141.5)
+2026-04-01 00:25:40,818 - __main__ - INFO - 	   Summary: Hold both existing positions (minimum hold period not met) and open a small fractional position in UPS using available cash, as it ranks second overall with a Golden Cross and strong dividend growth credentials.
+2026-04-01 00:25:40,820 - __main__ - INFO - 	   HOLD PGR: Held only since 2026-03-19 (well under 15 trading days), sma
+2026-04-01 00:25:40,824 - __main__ - INFO - 	   HOLD MO: Held only since 2026-03-19 (well under 15 trading days), min
+2026-04-01 00:25:40,829 - __main__ - INFO - 	   BUY  UPS: Insufficient funds
+2026-04-01 00:25:40,829 - __main__ - INFO - 
+  [09] Insider buying signal
+2026-04-01 00:25:40,830 - __main__ - INFO - 	   Style: alt-data  |  Risk: med
+2026-04-01 00:25:40,832 - __main__ - INFO - 	   Cash: $  1000.00  |  Holdings: $     0.00  |  Total: $  1000.00
+2026-04-01 00:25:40,836 - __main__ - INFO - No candidates matched this strategy's filters today
+2026-04-01 00:25:40,836 - __main__ - INFO - 
+  [10] Macro-regime adaptive
+2026-04-01 00:25:40,837 - __main__ - INFO - 	   Style: macro  |  Risk: med
+2026-04-01 00:25:40,838 - __main__ - INFO - 	   Cash: $    40.00  |  Holdings: $   992.50  |  Total: $  1032.50
+2026-04-01 00:25:40,839 - __main__ - INFO - 	   Top candidate: NOC (score 76.8)
+2026-04-01 00:25:49,062 - __main__ - INFO - 	   Summary: Hold existing MRK and JNJ positions which remain strong under defensive regime, and add a small position in top-ranked NOC given its oversold RSI and highest strategy score, using available cash while maintaining reserve.
+2026-04-01 00:25:49,064 - __main__ - INFO - 	   HOLD MRK: Score remains strong at 73.0 with Golden Cross MA, positive 
+2026-04-01 00:25:49,069 - __main__ - INFO - 	   HOLD JNJ: Score at 70.5 with Golden Cross MA, positive P&L of +1.4%. P
+2026-04-01 00:25:49,072 - __main__ - INFO - 	   BUY  NOC: Insufficient funds
+2026-04-01 00:25:49,072 - __main__ - INFO - 
+  [11] S&P 500 value tilt
+2026-04-01 00:25:49,073 - __main__ - INFO - 	   Style: academic  |  Risk: med
+2026-04-01 00:25:49,074 - __main__ - INFO - 	   Cash: $     4.00  |  Holdings: $   977.75  |  Total: $   981.75
+2026-04-01 00:25:49,075 - __main__ - INFO - 	   Top candidate: CMCSA (score 76.3)
+2026-04-01 00:25:55,811 - __main__ - INFO - 	   Summary: All three positions are within minimum hold periods and show no deterioration signals; CMCSA remains the top-ranked stock today, reinforcing conviction to hold all current positions while maintaining the cash reserve.
+2026-04-01 00:25:55,813 - __main__ - INFO - 	   HOLD SPG: Held since 2026-03-19 (within minimum hold period), still sh
+2026-04-01 00:25:55,817 - __main__ - INFO - 	   HOLD USB: Score remains solid at 64.9, Golden MA, RSI neutral at 48, s
+2026-04-01 00:25:55,819 - __main__ - INFO - 	   HOLD CMCSA: Top-ranked candidate today with score 76.3, RSI=30 (oversold
+2026-04-01 00:25:55,822 - __main__ - INFO - 
+  [12] Momentum (academic / Asness)
+2026-04-01 00:25:55,822 - __main__ - INFO - 	   Style: academic  |  Risk: high
+2026-04-01 00:25:55,825 - __main__ - INFO - 	   Cash: $    40.00  |  Holdings: $   970.21  |  Total: $  1010.21
+2026-04-01 00:25:55,826 - __main__ - INFO - 	   Top candidate: NEM (score 60.5)
+2026-04-01 00:26:06,599 - __main__ - INFO - 	   Summary: Hold both existing positions within their minimum hold periods while adding top-ranked NEM for its strong score, defensive low-beta profile, and Golden Cross signal, deploying most available cash while maintaining 5% reserve.
+2026-04-01 00:26:06,600 - __main__ - INFO - 	   HOLD UNP: Held since 2026-03-19, showing +2.7% gain, positive momentum
+2026-04-01 00:26:06,603 - __main__ - INFO - 	   HOLD AMGN: Held since 2026-03-19, still within minimum hold period. Sco
+2026-04-01 00:26:06,604 - __main__ - INFO - 	   BUY  NEM: Insufficient funds
+2026-04-01 00:26:06,605 - __main__ - INFO - 
+  [13] Quality / profitability
+2026-04-01 00:26:06,605 - __main__ - INFO - 	   Style: academic  |  Risk: low
+2026-04-01 00:26:06,607 - __main__ - INFO - 	   Cash: $    40.00  |  Holdings: $   921.58  |  Total: $   961.58
+2026-04-01 00:26:06,608 - __main__ - INFO - 	   Top candidate: AVGO (score 115.8)
+2026-04-01 00:26:14,455 - __main__ - INFO - 	   Summary: Hold both existing positions (minimum hold period not met) and open a small third position in LLY, which offers a golden cross signal, low beta, and oversold RSI at a quality-screened entry point.
+2026-04-01 00:26:14,455 - __main__ - INFO - 	   HOLD AVGO: Held fewer than 15 trading days (since 2026-03-19); highest 
+2026-04-01 00:26:14,457 - __main__ - INFO - 	   HOLD CME: Held fewer than 15 trading days (since 2026-03-19); strong g
+2026-04-01 00:26:14,457 - __main__ - INFO - 	   BUY  LLY: Insufficient funds
+2026-04-01 00:26:14,458 - __main__ - INFO - 
+  [14] Passive S&P 500 benchmark
+2026-04-01 00:26:14,458 - __main__ - INFO - 	   Style: passive  |  Risk: low
+2026-04-01 00:26:14,461 - __main__ - INFO -   [14] BUY WMT: Insufficient funds
+2026-04-01 00:26:14,461 - __main__ - INFO -   [14] Cash: $   568.00 | Holdings: $   417.01 | Total: $   985.01 | Positions: ['NVDA']
+2026-04-01 00:26:14,461 - __main__ - INFO - 
+  [18] Capex beneficiary / semis
+2026-04-01 00:26:14,462 - __main__ - INFO - 	   Style: thematic  |  Risk: high
+2026-04-01 00:26:14,463 - __main__ - INFO - 	   Cash: $    40.00  |  Holdings: $   913.29  |  Total: $   953.29
+2026-04-01 00:26:14,464 - __main__ - INFO - No candidates matched this strategy's filters today
+2026-04-01 00:26:14,464 - __main__ - INFO - 
+  [19] News macro catalyst
+2026-04-01 00:26:14,464 - __main__ - INFO - 	   Style: macro  |  Risk: med
+2026-04-01 00:26:14,465 - __main__ - INFO - 	   Cash: $  1000.00  |  Holdings: $     0.00  |  Total: $  1000.00
+2026-04-01 00:26:14,466 - __main__ - INFO - 	   No news_macro_cache.json — run news strategies (Stage 1) first
+2026-04-01 00:26:14,466 - __main__ - INFO - No candidates matched this strategy's filters today
+2026-04-01 00:26:14,467 - __main__ - INFO - 
+  [20] News sentiment momentum
+2026-04-01 00:26:14,467 - __main__ - INFO - 	   Style: alt-data  |  Risk: med
+2026-04-01 00:26:14,468 - __main__ - INFO - 	   Cash: $  1000.00  |  Holdings: $     0.00  |  Total: $  1000.00
+2026-04-01 00:26:14,469 - __main__ - INFO - 	   No news_macro_cache.json — run news strategies (Stage 1) first
+2026-04-01 00:26:14,469 - __main__ - INFO - No candidates matched this strategy's filters today
+2026-04-01 00:26:14,469 - __main__ - INFO - 
+  [21] Defense & war economy
+2026-04-01 00:26:14,469 - __main__ - INFO - 	   Style: thematic  |  Risk: med
+2026-04-01 00:26:14,470 - __main__ - INFO - 	   Cash: $    40.00  |  Holdings: $  1013.39  |  Total: $  1053.39
+2026-04-01 00:26:14,471 - __main__ - INFO - 	   Top candidate: VRT (score 139.1)
+2026-04-01 00:26:22,151 - __main__ - INFO - 	   Summary: Hold existing VRT and EMR positions (both young and performing well), and deploy remaining ~$38 cash into HON which shows a strong score, oversold RSI of 30, and golden cross MA as a third diversifying position.
+2026-04-01 00:26:22,152 - __main__ - INFO - 	   HOLD VRT: Top-ranked score of 139.1, golden cross MA, strong forward g
+2026-04-01 00:26:22,156 - __main__ - INFO - 	   HOLD EMR: Score 108.8, golden cross MA, RSI=36 near oversold suggestin
+2026-04-01 00:26:22,160 - __main__ - INFO - 	   BUY  HON: Insufficient funds
+2026-04-01 00:26:22,160 - __main__ - INFO - 
+-----------------------------------------------------------------
+2026-04-01 00:26:22,161 - __main__ - INFO -   LEADERBOARD
+2026-04-01 00:26:22,161 - __main__ - INFO - -----------------------------------------------------------------
+2026-04-01 00:26:22,178 - __main__ - INFO -   Rank  ID   Strategy                                Total       P&L   Return
+2026-04-01 00:26:22,178 - __main__ - INFO -   ---- ---- ----------------------------------- --------- --------- --------
+2026-04-01 00:26:22,179 - __main__ - INFO -   1     21   Defense & war economy               $ 1053.39 +$   53.39 +   5.34%
+2026-04-01 00:26:22,179 - __main__ - INFO -   2     10   Macro-regime adaptive               $ 1032.50 +$   32.50 +   3.25%
+2026-04-01 00:26:22,180 - __main__ - INFO -   3     02   Mean reversion                      $ 1013.51 +$   13.51 +   1.35%
+2026-04-01 00:26:22,180 - __main__ - INFO -   4     12   Momentum (academic / Asness)        $ 1010.21 +$   10.21 +   1.02%
+2026-04-01 00:26:22,180 - __main__ - INFO -   5     06   Low volatility / defensive          $ 1006.15 +$    6.15 +   0.61%
+2026-04-01 00:26:22,181 - __main__ - INFO -   6     09   Insider buying signal               $ 1000.00 +$    0.00 +   0.00%
+2026-04-01 00:26:22,181 - __main__ - INFO -   7     19   News macro catalyst                 $ 1000.00 +$    0.00 +   0.00%
+2026-04-01 00:26:22,181 - __main__ - INFO -   8     20   News sentiment momentum             $ 1000.00 +$    0.00 +   0.00%
+2026-04-01 00:26:22,182 - __main__ - INFO -   9     08   Dividend growth                     $  988.32 $  -11.68   -1.17%
+2026-04-01 00:26:22,182 - __main__ - INFO -   10    14   Passive S&P 500 benchmark           $  985.01 $  -14.99   -1.50%
+2026-04-01 00:26:22,182 - __main__ - INFO -   11    07   Earnings surprise (PEAD)            $  983.21 $  -16.79   -1.68%
+2026-04-01 00:26:22,182 - __main__ - INFO -   12    11   S&P 500 value tilt                  $  981.75 $  -18.25   -1.82%
+2026-04-01 00:26:22,183 - __main__ - INFO -   13    03   Value investing                     $  972.07 $  -27.93   -2.79%
+2026-04-01 00:26:22,183 - __main__ - INFO -   14    13   Quality / profitability             $  961.58 $  -38.42   -3.84%
+2026-04-01 00:26:22,183 - __main__ - INFO -   15    18   Capex beneficiary / semis           $  953.29 $  -46.71   -4.67%
+2026-04-01 00:26:22,184 - __main__ - INFO - -----------------------------------------------------------------
+2026-04-01 00:26:22,184 - __main__ - INFO -   Leaderboard saved to: leaderboard.csv  (history: leaderboard_history.csv)
+2026-04-01 00:26:22,184 - __main__ - INFO - =================================================================
+

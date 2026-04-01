@@ -51,14 +51,14 @@ if [ "$RUN_MODE" = "auto" ]; then
     fi
 fi
 
-# ── Log rotation (keep last 90 lines) ────────────────────────────────────
+# ── Log rotation (keep last 500 lines) ────────────────────────────────────
 log_rotate() {
     local log="daily_run.log"
     if [ -f "$log" ]; then
         local count
         count=$(wc -l < "$log")
-        if [ "$count" -gt 90 ]; then
-            tail -90 "$log" > "${log}.tmp" && mv "${log}.tmp" "$log"
+        if [ "$count" -gt 500 ]; then
+            tail -500 "$log" > "${log}.tmp" && mv "${log}.tmp" "$log"
         fi
     fi
 }
@@ -116,17 +116,27 @@ run_full() {
     echo "[STEP 1] Done."
     echo
 
-    echo "[STEP 2] Running all strategies..."
+    echo "[STEP 2] Refreshing live quotes and abnormal_return..."
+    if ! python3 update_quotes.py --no-kpi-refresh; then
+        echo "WARNING: Quote updater failed — strategy runner will use KPI file prices."
+        echo "$(date) Quote updater FAILED (non-fatal)" >> daily_run.log
+        # Non-fatal: strategy_runner can still run with KPI file prices
+    fi
+    echo "[STEP 2] Done."
+    echo
+
+    echo "[STEP 3] Running all strategies..."
     if ! python3 strategy_runner.py; then
         echo "ERROR: Strategy runner failed."
         echo "$(date) Strategy runner FAILED" >> daily_run.log
         exit 1
     fi
-    echo "[STEP 2] Done."
+    echo "[STEP 3] Done."
     echo
 
     echo "============================================"
-    echo " All done. Open leaderboard.html and drop"
+    echo " All done. Steps: KPI → quotes → strategies."
+    echo " Open leaderboard.html and drop"
     echo " leaderboard.csv onto it to see results."
     echo "============================================"
     echo
