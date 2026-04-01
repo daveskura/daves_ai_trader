@@ -1,28 +1,25 @@
-Here's what I'd prioritize, roughly in order of expected P&L impact:
-
-Trailing stop-loss — The current hard 20% stop is a cliff edge. A trailing stop (e.g. sell if price drops 10% from the peak since purchase, not from cost basis) locks in gains on winners instead of giving back everything before finally selling. NVDA up 30% then down 20% from peak should trigger a sell; right now it doesn't fire until you're back to flat.
-Add volume confirmation — None of the scoring functions use volume. A golden cross on 10x average volume is a completely different signal from one on 0.5x volume. yfinance already returns volume in tk.history() — adding a volume_ratio (today vs 20-day average) as a Tier 2 signal would cost one line in equity_kpi_analyzer.py and improve entry quality across every momentum and PEAD strategy.
-Equity curve charting — leaderboard_history.csv accumulates daily rows but nothing visualizes it. A simple charts.py script using matplotlib that plots all 15 strategy equity curves on one chart (with SPY as benchmark overlay) would make it immediately obvious which strategies are genuinely working vs getting lucky.
 
 
-Execution & Risk
-Position sizing by signal strength — Every buy deploys up to 60% of cash regardless of signal quality. A stock scoring 95 should get a bigger allocation than one scoring 52. Simple fix: spend = cash * 0.30 * (score / 100) * 2, capped at 60%. Higher-conviction trades get more capital.
-Take-profit target — Claude is told to "hold with conviction" but never told when a win is good enough to bank. A configurable target (e.g. +25% for momentum strategies, +15% for value) would prevent giving back gains while waiting for a signal to deteriorate.
+Design / Logic Issues
+8. Strategy 14 (passive) can never grow beyond 2 positions
+run_passive hard-codes top2 = [...[:2]] and breaks after 2 holdings. If the goal is to benchmark against the S&P 500, holding only 2 stocks (even if they're the largest cap) produces highly variable returns that aren't representative of the index. Consider holding 5–10 positions or using SPY directly.
+9. Stop-loss and minimum hold period interact poorly for PEAD (S07)
+Strategy 07 depends on abnormal_return as a key signal. The abnormal_return in the KPI file is computed at morning run time and goes stale. update_quotes.py refreshes it, but only if it's run separately after market close. If strategy_runner.py is run before update_quotes.py, S07 is making decisions on 8+ hour old signals. You already noted this in the comments, but there's no enforcement or warning in strategy_runner.py itself to flag this.
+10. leaderboard_history.csv deduplication only removes today's entries
+pythonexisting_history = [r for r in read_csv(hist_path) if r.get("date") != today]
+This correctly avoids duplicate dates, but if the file grows unbounded it'll eventually be very large. There's no archiving or max-rows logic.
+11. score_dividend_growth fallback branch ignores dividend entirely
+When dy == 0, the function falls back to scoring by beta and P/E with no dividend component at all. This means non-dividend payers can score highly in a dividend growth strategy, which defeats the strategy's purpose. These stocks should simply be excluded.
+12. Commission model understates real costs for small positions
+At STARTING_CASH = $1000 with COMMISSION = $1.00, a single buy+sell costs $2 minimum on a ~$500–600 position (0.3–0.4%). This is actually reasonable for modern brokers, but the SPREAD_PCT = 0.0005 (0.05%) is very optimistic for small-cap or less liquid names in your universe.
+13. Claude prompt context window pressure
+The ask_claude prompt includes full holdings detail and 10 candidates. As trades accumulate and position counts grow, the prompt stays bounded (max 3 positions, top 10 candidates), which is good. However, the reason strings in candidates can be long — worth truncating them explicitly rather than relying on Claude to ignore excess detail.
 
-Signal Quality
-Recency-weight the composite score — The KPI scorer averages fundamentals (quarterly, slow-moving) with technicals (daily, fast-moving) at a fixed 60/30/10 split. In trending markets technicals should dominate; in mean-reversion setups fundamentals matter more. Each strategy's scoring function could re-weight tiers based on its own thesis.
-Relative strength vs sector — Stocks are scored in isolation. A stock with RSI=55 looks neutral; a stock with RSI=55 when its entire sector averages RSI=35 is actually a leader. Adding sector-relative RSI and sector-relative abnormal return would let strategies preferentially pick the strongest stock within the best sector rather than just the strongest stock overall.
-52-week high proximity as a sell signal — pct_from_52w_high is used in S12 to avoid buying near the top, but it's never used as a sell signal. A position that has become the 52-week high leader (within 2% of the high) after a big run is a natural trim point, especially for momentum strategies.
+Minor Issues
+14. _trading_days_held doesn't account for market holidays
+It counts weekdays only, not actual trading days. A position bought before a long weekend (e.g. Thanksgiving) will appear to have been held longer than it actually was in market terms. For a paper trader this is low stakes, but it could cause premature sell signals for strategies with short hold periods like S02 (3 days).
+15. reset_accounts.py uses a different STRATEGIES list than strategy_runner.py
+reset_accounts.py has 15 entries; strategy_runner.py also has 15, but they're defined independently. If you add a strategy to one file, you have to remember to add it to the other. Consider importing STRATEGIES from a shared constants file.
+16. equity_kpi_analyzer.py five_year_avg_dividend_yield normalization comment is correct but fragile
+You correctly normalize the yfinance quirk (returns as % not decimal). Add an assertion or log warning if the raw value seems already normalized (e.g. raw_dy5 < 0.20) to catch if Yahoo ever fixes this inconsistency.
 
-Strategy-Level
-Strategy correlation tracking — Many strategies likely own the same 3-5 names (NVDA, MSFT, etc.) simultaneously. You're paying 15 separate commissions to hold essentially the same portfolio. Adding a cross-strategy holdings report to the leaderboard output would make this visible, and you could then deliberately diversify strategy mandates to reduce overlap.
-Dynamic regime gating — S10 switches between aggressive and defensive based on VIX alone. A richer regime detector combining VIX + yield curve slope + SPY 50/200 MA would catch more market states. When the regime is clearly RISK-OFF, strategies like S07 (PEAD), S12 (momentum), and S18 (semis) should be paused entirely rather than continuing to fire and lose.
-Earnings calendar awareness — Buying a stock 2 days before its earnings report is a coin flip regardless of signal quality. yfinance provides tk.calendar with the next earnings date. Blocking buys within 3 trading days of an earnings event (for all strategies except S07 which is specifically hunting the event) would eliminate a meaningful source of random variance.
-S09 (Insider buying) signal decay — Insider transactions reported to the SEC can be up to 2 days old, and the market often prices them in within a week. The current scoring doesn't penalize old filings. Adding a date-weighted decay (score *= max(0.3, 1 - days_since_filing / 30)) would make the signal act on fresh filings and ignore stale ones.
-
-Infrastructure
-Per-strategy transaction cost report — You can compute sum(commission) / starting_cash from transactions_XX.csv for each strategy. Strategies that have paid >3% in commissions since reset are almost certainly churning, regardless of gross P&L. Surfacing this in the leaderboard would help identify which ones need their hold periods tightened further.
-Graceful API retry with exponential backoff — The Claude API call currently has a single try/except with a 60-second timeout. A transient 529 (overloaded) or 503 response kills that strategy's run for the day. Adding 3 retries with 5/15/30 second waits would recover from nearly all transient errors automatically.
-Paper-to-live readiness flag — Each strategy could track a "consistency score": number of profitable weeks / total weeks run. Strategies consistently above 55% win rate over 8+ weeks would be flagged as candidates for live trading with real (small) capital. This turns the paper engine into a genuine evaluation pipeline.
-
-The top three I'd actually implement first: trailing stop, volume confirmation, and equity curve charting — the first two directly affect P&L, and the third would immediately show you which strategies are actually working so you can focus improvement effort where it matters.
