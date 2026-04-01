@@ -801,7 +801,8 @@ def score_academic_momentum(rows, kmap):
 		if beta > 2.2: continue
 		if pct_from_high > -0.05: continue
 		
-		score = cs * 0.6 + (100 - rsi) * 0.2 + r.get("abnormal_return", 0) * 100
+		# RSI rewards stronger trend — use rsi directly (not 100-rsi which penalises momentum)
+		score = cs * 0.6 + rsi * 0.2 + r.get("abnormal_return", 0) * 100
 		out.append((r["ticker"], round(score, 2),
 					f"Asness: RSI={rsi:.1f} beta={beta:.2f} from52wh={pct_from_high*100:.1f}%"))
 	return sorted(out, key=lambda x: -x[1])
