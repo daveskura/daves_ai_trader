@@ -497,7 +497,9 @@ def main():
 	args = parser.parse_args()
 
 	if args.verbose:
-		logging.getLogger().setLevel(logging.DEBUG)
+		# Target only this module's logger — raising the root level would
+		# re-enable the yfinance/peewee DEBUG noise suppressed at module load.
+		logging.getLogger(__name__).setLevel(logging.DEBUG)
 
 	today = date.today().isoformat()
 	now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -513,7 +515,8 @@ def main():
 		valid_ids = {s[0] for s in STRATEGIES}
 		if args.strategy not in valid_ids:
 			logger.error(f"Unknown strategy ID '{args.strategy}'. Valid IDs: {sorted(valid_ids)}")
-			return
+			logger.flush()
+			sys.exit(1)
 		run_ids = [args.strategy]
 	else:
 		run_ids = [s[0] for s in STRATEGIES]
@@ -527,12 +530,14 @@ def main():
 	if not tickers:
 		logger.info("\n  No open positions found -- nothing to update.")
 		logger.info("  (Run strategy_runner.py to open positions first.)\n")
+		logger.flush()
 		return
 
 	# 3. Fetch quotes
 	prices, previous_closes = fetch_quotes(tickers, args.stale_threshold)
 	if not prices and not previous_closes:
 		logger.error("\n  ERROR: Could not fetch any quotes. Check internet connection.\n")
+		logger.flush()
 		return
 
 	fetched_at = datetime.now().strftime("%H:%M:%S")
@@ -576,6 +581,7 @@ def main():
 	if fallback_count > 0:
 		logger.warning(f"  Note: {fallback_count} ticker(s) using previous close due to no current quote")
 	logger.info("=" * 65 + "\n")
+	logger.flush()
 
 
 if __name__ == "__main__":

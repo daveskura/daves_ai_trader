@@ -2,7 +2,7 @@
 """
 show_results.py
 Pretty-prints the latest leaderboard snapshot from MySQL.
-Run after test_run.bat to inspect results without needing a MySQL client.
+Run after run_daily.sh (Linux) or test_run.bat (Windows) to inspect results.
 
 Usage:
     python show_results.py
@@ -21,8 +21,8 @@ def main():
     args = parser.parse_args()
 
     try:
-        from db import init_schema
-        init_schema()
+        # Verify connectivity only — schema creation belongs in write-path
+        # scripts; a SELECT-only DB user would fail on CREATE TABLE.
         conn = get_connection()
     except Exception as e:
         print(f"ERROR: Could not connect to MySQL: {e}")

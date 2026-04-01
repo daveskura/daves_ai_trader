@@ -44,7 +44,11 @@ logger = _DbLogger(run_stage="analysis", echo=True)
 
 # MySQL persistence
 try:
-    from db import write_down_day_results as _db_write_down_day,                    read_down_day_results  as _db_read_down_day
+    from db import (
+        write_down_day_results as _db_write_down_day,
+        read_down_day_results  as _db_read_down_day,
+        read_universe_cache    as _db_read_universe,
+    )
     _DB_AVAILABLE = True
 except ImportError:
     _DB_AVAILABLE = False
@@ -71,6 +75,19 @@ VIX_TICKER     = "^VIX"
 # ── Load universe ───────────────────────────────────────────────────────────
 
 def load_universe(universe_file: str) -> list[str]:
+    # Try MySQL first (primary store) — same layered pattern as universe_manager.
+    if _DB_AVAILABLE:
+        try:
+            row = _db_read_universe(mode="balanced", max_age_days=7)
+            if row and row.get("tickers"):
+                tickers = row["tickers"]
+                logger.info(f"  Loaded {len(tickers)} tickers from MySQL universe cache "
+                      f"(refreshed {row.get('refreshed', '?')})")
+                return tickers
+        except Exception as e:
+            logger.warning(f"  MySQL universe cache unavailable ({e}) — trying JSON file")
+
+    # Fall back to JSON file on disk
     path = Path(universe_file)
     if path.exists():
         try:
@@ -83,6 +100,7 @@ def load_universe(universe_file: str) -> list[str]:
                 return tickers
         except Exception as e:
             logger.warning(f"  Warning: could not load {universe_file}: {e}")
+
     logger.info(f"  Using fallback ticker list ({len(FALLBACK_TICKERS)} tickers)")
     return FALLBACK_TICKERS
 
@@ -107,10 +125,10 @@ def fetch_returns(tickers: list[str], target_date: datetime.date) -> pd.DataFram
             threads=True,
         )
     except Exception as e:
-        sys.exit(f"  ERROR fetching price data: {e}")
+        raise RuntimeError(f"ERROR fetching price data: {e}") from e
 
     if raw.empty:
-        sys.exit("  ERROR: No price data returned.")
+        raise RuntimeError("ERROR: No price data returned.")
 
     # Handle both single and multi-ticker response shapes
     if isinstance(raw.columns, pd.MultiIndex):
@@ -129,7 +147,7 @@ def fetch_returns(tickers: list[str], target_date: datetime.date) -> pd.DataFram
         # Fall back to most recent trading day
         available = returns.index[returns.index <= target_ts]
         if available.empty:
-            sys.exit(f"  ERROR: No data available on or before {target_date}")
+            raise RuntimeError(f"ERROR: No data available on or before {target_date}")
         target_ts = available[-1]
         logger.info(f"  Note: {target_date} has no data — using {target_ts.date()} instead")
 
@@ -716,6 +734,7 @@ def main():
 
     if args.validate:
         ok = run_validation()
+        logger.flush()
         sys.exit(0 if ok else 1)
 
     # Resolve target date
@@ -723,7 +742,9 @@ def main():
         try:
             target_date = datetime.date.fromisoformat(args.date)
         except ValueError:
-            sys.exit(f"ERROR: invalid date '{args.date}'. Use YYYY-MM-DD format.")
+            logger.error(f"ERROR: invalid date '{args.date}'. Use YYYY-MM-DD format.")
+            logger.flush()
+            sys.exit(1)
     else:
         target_date = datetime.date.today()
 
@@ -736,9 +757,15 @@ def main():
     tickers = load_universe(args.universe)
 
     # Fetch returns
-    df, market_ret, vix, analysis_date = fetch_returns(tickers, target_date)
+    try:
+        df, market_ret, vix, analysis_date = fetch_returns(tickers, target_date)
+    except RuntimeError as e:
+        logger.error(f"  {e}")
+        logger.flush()
+        sys.exit(1)
 
     if df.empty:
+        logger.flush()
         sys.exit("ERROR: No return data computed.")
 
     logger.info(f"\n  Returns computed for {len(df)} tickers.")
@@ -759,6 +786,7 @@ def main():
 
     if df_filtered.empty:
         logger.info("  No stocks matched the filter. Try relaxing --min-gain or increasing --top.")
+        logger.flush()
         return
 
     # Fetch fundamentals for outperformers
@@ -774,6 +802,7 @@ def main():
     output_prefix = args.output or f"down_day_report_{analysis_date}"
     write_report(df_filtered, fundamentals, findings, hypotheses,
                  market_ret, vix, analysis_date, output_prefix)
+    logger.flush()
 
 
 if __name__ == "__main__":

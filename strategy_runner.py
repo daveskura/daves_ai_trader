@@ -980,7 +980,7 @@ def get_news_macro_analysis(force_refresh=False, verbose=False):
 		# Try MySQL first, fall back to JSON file
 		cached = None
 		try:
-			cached = _db_read_news_macro()  # today's date
+			cached = _db_read_news_macro(date.today().isoformat())
 		except Exception:
 			pass
 		if not cached:
@@ -1298,19 +1298,28 @@ def _run_strategy_inner(sid: str, name: str, style: str, risk: str, desc: str,
 	# opening a second DB connection per strategy run.
 	if sid == "07":
 		age_h = _kpi_age_hours
-		if age_h is not None:
-			if age_h >= KPI_WARN_HOURS_PEAD * 2:
-				logger.warning(
-					f"  [07] PEAD SKIPPED: KPI data is {age_h:.1f}h old "
-					f"(limit: {KPI_WARN_HOURS_PEAD * 2}h). "
-					f"Run update_quotes.py + equity_kpi_analyzer.py first."
+		if age_h is None:
+			# KPI age unknown (DB was unreachable at startup or table empty).
+			# Safer to skip PEAD than trade on data of unknown freshness.
+			logger.warning(
+				"  [07] PEAD SKIPPED: KPI data freshness unknown "
+				"(check_data_freshness failed at startup). "
+				"Run equity_kpi_analyzer.py first."
 			)
-				return
-			elif age_h >= KPI_WARN_HOURS_PEAD:
-				logger.warning(
-					f"  [07] PEAD WARNING: KPI data is {age_h:.1f}h old -- "
-					f"abnormal_return signal may be stale. "
-					f"Results will be used but treated with lower confidence."
+			return
+		# age_h is guaranteed non-None here (None case returned above)
+		if age_h >= KPI_WARN_HOURS_PEAD * 2:
+			logger.warning(
+				f"  [07] PEAD SKIPPED: KPI data is {age_h:.1f}h old "
+				f"(limit: {KPI_WARN_HOURS_PEAD * 2}h). "
+				f"Run update_quotes.py + equity_kpi_analyzer.py first."
+			)
+			return
+		elif age_h >= KPI_WARN_HOURS_PEAD:
+			logger.warning(
+				f"  [07] PEAD WARNING: KPI data is {age_h:.1f}h old -- "
+				f"abnormal_return signal may be stale. "
+				f"Results will be used but treated with lower confidence."
 			)
 
 	# Strategies 19 & 20: load news macro analysis from MySQL (JSON file as fallback)
@@ -1363,8 +1372,11 @@ def _run_strategy_inner(sid: str, name: str, style: str, risk: str, desc: str,
 	if at_capacity:
 		logger.info(f"	   At capacity ({len(current_holdings)}/3 positions) — filtering to SELL/HOLD only")
 		candidates = [(t, s, r) for t, s, r in candidates if t in {h['ticker'] for h in current_holdings}]
+		if not candidates:
+			logger.info("	   No held positions in today's candidate list — nothing to do")
+			return
 
-	decision, err = ask_claude(sid, name, desc, candidates, holdings, acct, today, kmap=kmap)
+	decision, err = ask_claude(sid, name, desc, candidates, current_holdings, acct, today, kmap=kmap)
 	if err:
 		logger.error(f"Claude error: {err}")
 		return
@@ -1382,9 +1394,12 @@ def _run_strategy_inner(sid: str, name: str, style: str, risk: str, desc: str,
 			continue
 
 		if atype == "BUY":
-			# Re-read acct before each buy so cash_available reflects any
-			# prior buys in this loop — buy() uses this for position sizing
-			# before its own internal re-read.
+			# Re-check capacity before each BUY — a prior BUY in this loop
+			# may have filled the last slot.
+			if len(read_holdings(sid)) >= 3:
+				logger.info(f"	   BUY {ticker} skipped — already at 3-position capacity")
+				continue
+			# Re-read acct so cash_available reflects any prior buys.
 			acct = read_account(sid)
 			ok, msg = buy(sid, ticker, price, acct["cash"], reason, today, kmap, dry_run)
 			logger.info(f"	   BUY  {ticker}: {msg}")
@@ -1708,14 +1723,17 @@ def main():
 
 	if args.validate:
 		ok = run_validation()
+		logger.flush()
 		sys.exit(0 if ok else 1)
 
 	if args.news_brief:
 		print_news_briefing()
+		logger.flush()
 		return
 
 	if args.init or args.force_init:
 		init_accounts(force=args.force_init)
+		logger.flush()
 		return
 
 	if not ANTHROPIC_API_KEY:
