@@ -1,12 +1,13 @@
+# -*- coding: utf-8 -*-
 """
-update_quotes.py — Fetch live quotes for all held positions and refresh
+update_quotes.py -- Fetch live quotes for all held positions and refresh
 				   every strategy's holdings_value, account total, and
 				   the leaderboard WITHOUT triggering any buy/sell logic.
 
 Also recomputes abnormal_return for ALL tickers in equity_kpi_results.csv
 using today's live prices vs yesterday's close and SPY as the market proxy.
 This fixes the data-freshness gap where strategy_runner.py (running at 4:30 PM)
-was using an abnormal_return computed from the morning KPI run — 8+ hours stale
+was using an abnormal_return computed from the morning KPI run -- 8+ hours stale
 for PEAD (S07) which depends entirely on that signal.
 
 Usage:
@@ -22,7 +23,6 @@ requirements.txt alongside the rest of the trading engine).
 """
 
 import sys
-import csv
 import argparse
 import time
 import logging
@@ -31,13 +31,13 @@ from pathlib import Path
 from collections import defaultdict
 from functools import wraps
 
-# ── Fix Windows console encoding ──────────────────────────────────────────────
+# -- Fix Windows console encoding ----------------------------------------------
 if sys.platform == 'win32':
 	import io
 	sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 	sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 
-# ── Configure logging ──────────────────────────────────────────────────────────
+# -- Configure logging ----------------------------------------------------------
 logging.basicConfig(
 	level=logging.INFO,
 	format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -48,7 +48,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# ── UTF-8 output (Windows) ────────────────────────────────────────────────────
+# -- UTF-8 output (Windows) ----------------------------------------------------
 if hasattr(sys.stdout, "reconfigure"):
 	sys.stdout.reconfigure(encoding="utf-8")
 
@@ -62,15 +62,24 @@ try:
 except ImportError:
 	sys.exit("ERROR: pandas not installed.  Run:  pip install pandas")
 
-# ── Constants — imported from single source of truth ─────────────────────────
+# -- Constants -- imported from single source of truth -------------------------
 from constants import STARTING_CASH, ACCOUNT_NUM, STRATEGIES
-
-BASE_DIR = Path(__file__).parent
+from db import (
+    init_schema,
+    read_account   as _db_read_account,
+    save_account   as _db_save_account,
+    read_holdings  as _db_read_holdings,
+    save_holdings  as _db_save_holdings,
+    write_leaderboard as _db_write_leaderboard,
+    update_kpi_abnormal_returns as _db_update_kpi_ab,
+    read_kpi_rows  as _db_read_kpi_rows,
+    write_kpi_rows as _db_write_kpi_rows,
+)
 
 # Warn if fallback price deviates more than this % from avg_cost
 DEFAULT_STALE_THRESHOLD = 5.0  # percent
 
-# ── Retry decorator for yfinance calls ────────────────────────────────────────
+# -- Retry decorator for yfinance calls ----------------------------------------
 def retry(max_attempts: int = 3, backoff: float = 2.0):
 	"""Retry decorator with exponential backoff for network operations."""
 	def decorator(func):
@@ -93,68 +102,36 @@ def retry(max_attempts: int = 3, backoff: float = 2.0):
 		return wrapper
 	return decorator
 
-# ── File helpers ──────────────────────────────────────────────────────────────
-
-def acct_file(sid: str) -> Path: return BASE_DIR / f"account_{sid}.csv"
-def hold_file(sid: str) -> Path: return BASE_DIR / f"holdings_{sid}.csv"
-def leader_file() -> Path: return BASE_DIR / "leaderboard.csv"
-KPI_FILE = BASE_DIR / "equity_kpi_results.csv"
-
-def read_csv(path: Path) -> list:
-	if not path.exists():
-		return []
-	with open(path, newline="", encoding="utf-8") as f:
-		return list(csv.DictReader(f))
-
-def write_csv(path: Path, rows: list, fieldnames: list):
-	with open(path, "w", newline="", encoding="utf-8") as f:
-		w = csv.DictWriter(f, fieldnames=fieldnames)
-		w.writeheader()
-		w.writerows(rows)
+# -- Data-layer helpers (MySQL via db.py) --------------------------------------
 
 def read_account(sid: str) -> dict | None:
-	rows = read_csv(acct_file(sid))
-	if not rows:
-		return None
-	r = rows[0]
-	r["cash"] = float(r["cash"])
-	r["holdings_value"] = float(r["holdings_value"])
-	r["total"] = float(r["total"])
-	r["trades"] = int(r.get("trades", 0))
-	return r
+	return _db_read_account(sid) or None
 
 def save_account(sid: str, acct: dict):
-	write_csv(acct_file(sid), [acct],
-			  ["account", "strategy_id", "cash", "holdings_value", "total", "start_date", "trades"])
+	_db_save_account(sid, acct)
 
 def read_holdings(sid: str) -> list:
-	rows = read_csv(hold_file(sid))
-	for r in rows:
-		r["shares"] = float(r["shares"])
-		r["avg_cost"] = float(r["avg_cost"])
-		r["cost_basis"] = float(r["cost_basis"])
-	return rows
+	return _db_read_holdings(sid)
 
 def save_holdings(sid: str, holdings: list):
-	write_csv(hold_file(sid), holdings,
-			  ["ticker", "shares", "avg_cost", "cost_basis", "purchase_date", "strategy_id"])
+	_db_save_holdings(sid, holdings)
 
-# ── Improved abnormal_return refresh with better error handling ──────────
+# -- Improved abnormal_return refresh with better error handling ----------
 @retry(max_attempts=2, backoff=1.0)
 def refresh_abnormal_returns(verbose: bool = True) -> int:
 	"""
-	Recompute abnormal_return for every ticker in equity_kpi_results.csv
+	Recompute abnormal_return for every ticker in the equity_kpi table
 	using today's live intraday move vs yesterday's close, with SPY as the
 	market proxy.
 
 	Returns the number of tickers successfully updated.
 	"""
-	if not KPI_FILE.exists():
+	try:
+		kpi_rows = _db_read_kpi_rows()
+	except Exception as e:
 		if verbose:
-			logger.warning(f"KPI file not found: {KPI_FILE} — skipping abnormal_return refresh")
+			logger.warning(f"Could not read KPI from database: {e}")
 		return 0
-
-	kpi_rows = read_csv(KPI_FILE)
 	if not kpi_rows:
 		return 0
 
@@ -189,7 +166,7 @@ def refresh_abnormal_returns(verbose: bool = True) -> int:
 		spy_closes = closes["SPY"].dropna()
 		if len(spy_closes) < 2:
 			if verbose:
-				logger.warning("Insufficient SPY history — skipping abnormal_return refresh")
+				logger.warning("Insufficient SPY history -- skipping abnormal_return refresh")
 			return 0
 		spy_ret = (spy_closes.iloc[-1] - spy_closes.iloc[-2]) / spy_closes.iloc[-2]
 	except Exception as e:
@@ -223,19 +200,9 @@ def refresh_abnormal_returns(verbose: bool = True) -> int:
 			logger.warning("No abnormal returns computed")
 		return 0
 
-	# Patch the KPI rows with fresh abnormal_return values
-	updated = 0
-	fieldnames = list(kpi_rows[0].keys()) if kpi_rows else []
-	if "abnormal_return" not in fieldnames:
-		fieldnames.append("abnormal_return")
-
-	for r in kpi_rows:
-		sym = r.get("ticker", "")
-		if sym in ab_map:
-			r["abnormal_return"] = ab_map[sym]
-			updated += 1
-
-	write_csv(KPI_FILE, kpi_rows, fieldnames)
+	# Patch abnormal_return for updated tickers only (fast targeted UPDATE)
+	updated = len(ab_map)
+	_db_update_kpi_ab(ab_map)
 
 	if verbose:
 		logger.info(f"abnormal_return refreshed for {updated}/{len(tickers)} tickers "
@@ -249,7 +216,7 @@ def collect_tickers(run_ids: list) -> set:
 			tickers.add(h["ticker"])
 	return tickers
 
-# ── Improved quote fetching with better fallback handling ─────────────────
+# -- Improved quote fetching with better fallback handling -----------------
 @retry(max_attempts=2, backoff=1.0)
 def fetch_quotes(tickers: set, stale_threshold: float = DEFAULT_STALE_THRESHOLD) -> tuple[dict, dict]:
 	"""
@@ -361,7 +328,7 @@ def fetch_quotes(tickers: set, stale_threshold: float = DEFAULT_STALE_THRESHOLD)
 
 	return prices, previous_closes
 
-# ── Update one strategy with stale-price warnings ────────────────────────
+# -- Update one strategy with stale-price warnings ------------------------
 def update_strategy(sid: str, prices: dict, previous_closes: dict, today: str, 
 					show: bool, stale_threshold: float) -> dict | None:
 	"""
@@ -370,7 +337,7 @@ def update_strategy(sid: str, prices: dict, previous_closes: dict, today: str,
 	"""
 	acct = read_account(sid)
 	if acct is None:
-		logger.warning(f"[{sid}] No account file — skipped (run --init first)")
+		logger.warning(f"[{sid}] No account file -- skipped (run --init first)")
 		return None
 
 	holdings = read_holdings(sid)
@@ -400,7 +367,7 @@ def update_strategy(sid: str, prices: dict, previous_closes: dict, today: str,
 		if price is None:
 			price = avg_cost
 			price_source = "avg_cost"
-			logger.warning(f"[{sid}] {sym}: No quote or prev_close available — using avg_cost ${avg_cost:.2f}")
+			logger.warning(f"[{sid}] {sym}: No quote or prev_close available -- using avg_cost ${avg_cost:.2f}")
 
 		mv = round(shares * price, 2)
 		hv += mv
@@ -443,13 +410,13 @@ def update_strategy(sid: str, prices: dict, previous_closes: dict, today: str,
 	acct["holdings_value"] = round(hv, 2)
 	acct["total"] = round(acct["cash"] + hv, 2)
 	save_account(sid, acct)
-	# Note: holdings themselves (cost basis, shares) are not modified here —
+	# Note: holdings themselves (cost basis, shares) are not modified here --
 	# only the account's holdings_value total is updated. No need to rewrite holdings CSV.
 	return acct
 
-# ── Rebuild leaderboard ───────────────────────────────────────────────────────
+# -- Rebuild leaderboard -------------------------------------------------------
 def update_leaderboard(today: str, run_ids: list, all_ids: list) -> list:
-	"""Re-reads every strategy account and rewrites leaderboard.csv."""
+	"""Re-reads every strategy account and upserts leaderboard rows in MySQL."""
 	rows = []
 	for sid, name, style, risk, *_ in all_ids:  # *_ absorbs description field
 		acct = read_account(sid)
@@ -475,12 +442,10 @@ def update_leaderboard(today: str, run_ids: list, all_ids: list) -> list:
 	rows.sort(key=lambda x: -x["total"])
 	for i, r in enumerate(rows, 1):
 		r["rank"] = i
-	write_csv(leader_file(), rows,
-			  ["rank", "date", "strategy_id", "strategy_name", "style", "risk",
-			   "cash", "holdings_value", "total", "pnl", "pct_return", "trades"])
+	_db_write_leaderboard(rows)
 	return rows
 
-# ── Pretty leaderboard print (ASCII only) ─────────────────────────────────────
+# -- Pretty leaderboard print (ASCII only) -------------------------------------
 def print_leaderboard(lb: list):
 	logger.info(f"\n  {'Rk':<4} {'ID':<4} {'Strategy':<35} {'Cash':>9} {'Holdings':>10} "
 				f"{'Total':>9} {'P&L':>9} {'Return':>8}")
@@ -492,7 +457,7 @@ def print_leaderboard(lb: list):
 					f"${r['total']:>8.2f} {sign}${r['pnl']:>8.2f} "
 					f"{sign}{r['pct_return']:>6.2f}%")
 
-# ── Main ──────────────────────────────────────────────────────────────────────
+# -- Main ----------------------------------------------------------------------
 def main():
 	parser = argparse.ArgumentParser(
 		description="Fetch live quotes and update holdings values for all strategies")
@@ -519,6 +484,7 @@ def main():
 	logger.info(f"  {now}")
 	logger.info("=" * 65)
 
+	init_schema()  # ensure MySQL tables exist
 	all_ids = [(s[0], s[1], s[2], s[3]) for s in STRATEGIES]
 	run_ids = [args.strategy] if args.strategy else [s[0] for s in STRATEGIES]
 
@@ -529,7 +495,7 @@ def main():
 	# 2. Collect all tickers we need prices for
 	tickers = collect_tickers(run_ids)
 	if not tickers:
-		logger.info("\n  No open positions found — nothing to update.")
+		logger.info("\n  No open positions found -- nothing to update.")
 		logger.info("  (Run strategy_runner.py to open positions first.)\n")
 		return
 
@@ -575,7 +541,7 @@ def main():
 	print_leaderboard(lb)
 	logger.info("-" * 65)
 	logger.info(f"\n  Updated {updated} strategy account(s).")
-	logger.info(f"  Leaderboard saved -> {leader_file().name}")  # FIX: replaced arrow with ->
+	logger.info("  Leaderboard saved -> MySQL (leaderboard table)")
 	logger.info(f"  Prices as of: {fetched_at}")
 	if fallback_count > 0:
 		logger.warning(f"  Note: {fallback_count} ticker(s) using previous close due to no current quote")

@@ -1,3 +1,0 @@
-date,strategy_id,action,ticker,shares,price,commission,net_amount,cash_after,reason
-2026-03-30,21,BUY,VRT,2.539291,234.22,4.95,-600.0001,399.9999,"Top-ranked candidate with score 128.4, strong forward growth of 135.1%, and RSI of 32.9 indicating oversold conditions — good entry point. Allocating ~$380 (38% of portfolio) to stay within 60% max single-stock limit and maintain cash reserve."
-2026-03-30,21,BUY,EMR,2.878122,123.3,4.95,-359.9999,40.0,"Second-ranked candidate with score 102.9, 75.8% forward growth, and extremely oversold RSI of 15.1 — strong mean-reversion setup. Allocating ~$380 (38% of portfolio) for second position slot."

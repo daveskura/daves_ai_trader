@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 equity_kpi_analyzer.py
 ======================
@@ -39,7 +40,7 @@ import yfinance as yf
 
 warnings.filterwarnings("ignore")
 
-# ── Load .env if present (mirrors strategy_runner.py) ────────────────────────
+# -- Load .env if present (mirrors strategy_runner.py) ------------------------
 _env_path = Path(__file__).parent / ".env"
 if _env_path.exists():
     for _line in _env_path.read_text(encoding="utf-8").splitlines():
@@ -53,6 +54,8 @@ if _env_path.exists():
 if sys.stdout.encoding != 'utf-8':
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 
+from db import init_schema, write_kpi_rows as _db_write_kpi_rows
+
 # Universe manager (same directory)
 try:
     from universe_manager import get_universe, show_cache_info
@@ -60,9 +63,9 @@ try:
 except ImportError:
     UNIVERSE_AVAILABLE = False
 
-# ─────────────────────────────────────────────
+# ---------------------------------------------
 #  CONFIG
-# ─────────────────────────────────────────────
+# ---------------------------------------------
 DEFAULT_TICKERS = ["AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "JPM", "JNJ", "XOM"]
 LOOKBACK_DAYS   = 365          # history window for price-based calculations
 RSI_PERIOD      = 14
@@ -73,15 +76,15 @@ MA_LONG         = 200
 TIER_WEIGHT = {1: 0.60, 2: 0.30, 3: 0.10}
 
 
-# ─────────────────────────────────────────────
+# ---------------------------------------------
 #  MACRO DATA  (FRED)
-# ─────────────────────────────────────────────
+# ---------------------------------------------
 
 def fetch_macro_fred(fred_key: str | None) -> dict:
     """Fetch latest macro indicators from FRED. Returns empty dict if no key."""
     macro = {}
     if not fred_key:
-        print("  [MACRO] No FRED key provided — skipping macro data.")
+        print("  [MACRO] No FRED key provided -- skipping macro data.")
         print("          Get a free key at: https://fred.stlouisfed.org/docs/api/api_key.html")
         return macro
 
@@ -126,9 +129,9 @@ def fetch_vix() -> float | None:
     return None
 
 
-# ─────────────────────────────────────────────
+# ---------------------------------------------
 #  TECHNICAL INDICATORS
-# ─────────────────────────────────────────────
+# ---------------------------------------------
 
 def compute_rsi(prices: pd.Series, period: int = 14) -> float | None:
     if len(prices) < period + 1:
@@ -165,9 +168,9 @@ def compute_abnormal_return(prices: pd.Series, market_prices: pd.Series, beta: f
     return round(stock_ret - beta * market_ret, 4)
 
 
-# ─────────────────────────────────────────────
+# ---------------------------------------------
 #  PER-TICKER FUNDAMENTALS
-# ─────────────────────────────────────────────
+# ---------------------------------------------
 
 def fetch_ticker_data(ticker_symbol: str, market_prices: pd.Series) -> dict:
     row = {"ticker": ticker_symbol}
@@ -176,7 +179,7 @@ def fetch_ticker_data(ticker_symbol: str, market_prices: pd.Series) -> dict:
         tk   = yf.Ticker(ticker_symbol)
         info = tk.info or {}
 
-        # ── TIER 1: Financial Performance ──────────────────────────────
+        # -- TIER 1: Financial Performance ------------------------------
         # Net Profit Margin
         net_income = info.get("netIncomeToCommon")
         revenue    = info.get("totalRevenue")
@@ -207,7 +210,7 @@ def fetch_ticker_data(ticker_symbol: str, market_prices: pd.Series) -> dict:
         # dividendYield is always a decimal in yfinance (e.g. 0.015 = 1.5%).
         # fiveYearAvgDividendYield changed behaviour across yfinance versions:
         #   - Older versions returned a percentage (e.g. 1.5 meaning 1.5%)
-        #   - Newer versions (≥0.2.x) return a decimal (e.g. 0.015)
+        #   - Newer versions (>=0.2.x) return a decimal (e.g. 0.015)
         # We detect which format is in use at runtime: values > 0.5 are almost
         # certainly percentages (no realistic stock yields 50%+), so we divide
         # by 100. Both fields are normalised to decimal for consistent scoring.
@@ -223,7 +226,7 @@ def fetch_ticker_data(ticker_symbol: str, market_prices: pd.Series) -> dict:
                 dy5_val = dy5_val / 100
             row["five_year_avg_dividend_yield"] = round(dy5_val, 6)
 
-        # ── TIER 2: Technical Indicators ───────────────────────────────
+        # -- TIER 2: Technical Indicators -------------------------------
         hist = tk.history(period="1y")
         if not hist.empty:
             prices = hist["Close"]
@@ -242,7 +245,7 @@ def fetch_ticker_data(ticker_symbol: str, market_prices: pd.Series) -> dict:
                 (prices.iloc[-1] - prices.max()) / prices.max(), 4
             )
 
-        # ── TIER 3: Insider & Analyst Data ─────────────────────────────
+        # -- TIER 3: Insider & Analyst Data -----------------------------
         # Analyst ratings
         try:
             rec = tk.recommendations
@@ -281,9 +284,9 @@ def fetch_ticker_data(ticker_symbol: str, market_prices: pd.Series) -> dict:
     return row
 
 
-# ─────────────────────────────────────────────
+# ---------------------------------------------
 #  SCORING ENGINE
-# ─────────────────────────────────────────────
+# ---------------------------------------------
 
 def score_ticker(row: dict, macro: dict, vix: float | None) -> dict:
     """
@@ -292,7 +295,7 @@ def score_ticker(row: dict, macro: dict, vix: float | None) -> dict:
     """
     scores = {}
 
-    # ── TIER 1 ──────────────────────────────────────────────────────────
+    # -- TIER 1 ----------------------------------------------------------
     t1 = []
 
     # Net Profit Margin (target > 20%)
@@ -328,7 +331,7 @@ def score_ticker(row: dict, macro: dict, vix: float | None) -> dict:
     # Policy Rate Change (rate cuts = bullish)
     prc = macro.get("policy_rate_change")
     if prc is not None:
-        # -0.25 pp cut → 100, 0 → 50, +0.25 hike → 0
+        # -0.25 pp cut -> 100, 0 -> 50, +0.25 hike -> 0
         t1.append(min(100, max(0, 50 - prc / 0.25 * 50)))
 
     # VIX (< 20 = 100, > 30 = 0)
@@ -337,7 +340,7 @@ def score_ticker(row: dict, macro: dict, vix: float | None) -> dict:
 
     scores["tier1_score"] = round(np.mean(t1), 1) if t1 else None
 
-    # ── TIER 2 ──────────────────────────────────────────────────────────
+    # -- TIER 2 ----------------------------------------------------------
     t2 = []
 
     # RSI (30-70 neutral; < 30 oversold = opportunity = high score; > 70 = low score)
@@ -357,14 +360,14 @@ def score_ticker(row: dict, macro: dict, vix: float | None) -> dict:
     elif "BEARISH" in ma_sig:
         t2.append(20)
 
-    # Abnormal Return (positive = good signal, cap at ±5%)
+    # Abnormal Return (positive = good signal, cap at +/-5%)
     ar = row.get("abnormal_return")
     if ar is not None:
         t2.append(min(100, max(0, 50 + ar / 0.05 * 50)))
 
     scores["tier2_score"] = round(np.mean(t2), 1) if t2 else None
 
-    # ── TIER 3 ──────────────────────────────────────────────────────────
+    # -- TIER 3 ----------------------------------------------------------
     t3 = []
 
     # Analyst Consensus (1-5 scale)
@@ -384,7 +387,7 @@ def score_ticker(row: dict, macro: dict, vix: float | None) -> dict:
 
     scores["tier3_score"] = round(np.mean(t3), 1) if t3 else None
 
-    # ── COMPOSITE ───────────────────────────────────────────────────────
+    # -- COMPOSITE -------------------------------------------------------
     weighted, weight_sum = 0.0, 0.0
     for tier, key in [(1, "tier1_score"), (2, "tier2_score"), (3, "tier3_score")]:
         val = scores.get(key)
@@ -397,18 +400,18 @@ def score_ticker(row: dict, macro: dict, vix: float | None) -> dict:
     return scores
 
 
-# ─────────────────────────────────────────────
+# ---------------------------------------------
 #  SIGNAL LABELS
-# ─────────────────────────────────────────────
+# ---------------------------------------------
 
 def signal_label(score: float | None) -> str:
     if score is None:
         return "N/A"
-    if score >= 75: return "STRONG BUY  ▲▲"
-    if score >= 60: return "BUY         ▲"
-    if score >= 45: return "HOLD        ─"
-    if score >= 30: return "SELL        ▼"
-    return              "STRONG SELL ▼▼"
+    if score >= 75: return "STRONG BUY  ^^"
+    if score >= 60: return "BUY         ^"
+    if score >= 45: return "HOLD        -"
+    if score >= 30: return "SELL        v"
+    return              "STRONG SELL vv"
 
 
 def _compute_eps_revision_pct(row: dict, prev_map: dict) -> float | None:
@@ -433,9 +436,9 @@ def _compute_eps_revision_pct(row: dict, prev_map: dict) -> float | None:
     return round((float(curr) - float(prev)) / abs(float(prev)), 4)
 
 
-# ─────────────────────────────────────────────
+# ---------------------------------------------
 #  MAIN
-# ─────────────────────────────────────────────
+# ---------------------------------------------
 
 def main():
     parser = argparse.ArgumentParser(description="Daily equity KPI scorer")
@@ -470,7 +473,7 @@ def main():
     if not args.fred_key:
         args.fred_key = os.environ.get("FRED_API_KEY") or None
 
-    # ── Universe info only ──────────────────────────────────────────────
+    # -- Universe info only ----------------------------------------------
     if args.universe_info:
         if UNIVERSE_AVAILABLE:
             show_cache_info()
@@ -478,7 +481,7 @@ def main():
             print("universe_manager.py not found in the same directory.")
         return
 
-    # ── Resolve ticker list ─────────────────────────────────────────────
+    # -- Resolve ticker list ---------------------------------------------
     if args.tickers:
         tickers = args.tickers
         source  = "manual"
@@ -504,7 +507,7 @@ def main():
     print(f"  Universe : {source}  ({len(tickers)} tickers)")
     print("="*65)
 
-    # ── Macro & Market data ─────────────────────────────────────────────
+    # -- Macro & Market data ---------------------------------------------
     print("\n[1/3] Fetching macro data...")
     macro = fetch_macro_fred(args.fred_key)
 
@@ -515,7 +518,7 @@ def main():
     spx_hist = yf.Ticker("^GSPC").history(period="1y")
     market_prices = spx_hist["Close"] if not spx_hist.empty else pd.Series(dtype=float)
 
-    # ── Per-ticker loop ─────────────────────────────────────────────────
+    # -- Per-ticker loop -------------------------------------------------
     print(f"\n[3/3] Fetching data for {len(tickers)} tickers...\n")
     results = []
     for i, sym in enumerate(tickers, 1):
@@ -528,14 +531,14 @@ def main():
         results.append(row)
         print(f"composite={row.get('composite_score', 'err')}")
 
-    # ── Build DataFrame ─────────────────────────────────────────────────
+    # -- Build DataFrame -------------------------------------------------
     df = pd.DataFrame(results)
     df["signal"] = df["composite_score"].apply(signal_label)
     df = df.sort_values("composite_score", ascending=False)
 
-    # ── EPS revision delta (Strategy 16 signal) ─────────────────────────
+    # -- EPS revision delta (Strategy 16 signal) -------------------------
     # Compare today's eps_growth_fwd to yesterday's snapshot (if it exists).
-    # Snapshot is the previous output CSV — we read it before overwriting.
+    # Snapshot is the previous output CSV -- we read it before overwriting.
     prev_path = Path(args.output)
     if prev_path.exists() and "eps_growth_fwd" in df.columns:
         try:
@@ -548,7 +551,7 @@ def main():
                     lambda row: _compute_eps_revision_pct(row, prev_map), axis=1
                 )
                 n_revised = (df["eps_revision_pct"].fillna(0) > 0).sum()
-                print(f"  [S16] EPS revision delta computed — "
+                print(f"  [S16] EPS revision delta computed -- "
                       f"{n_revised} tickers with upward revisions today")
             else:
                 df["eps_revision_pct"] = None
@@ -558,10 +561,10 @@ def main():
     else:
         df["eps_revision_pct"] = None
         if not prev_path.exists():
-            print(f"  [S16] No prior snapshot found at {args.output} — "
+            print(f"  [S16] No prior snapshot found at {args.output} -- "
                   f"eps_revision_pct will populate from tomorrow's run")
 
-    # ── Console output ──────────────────────────────────────────────────
+    # -- Console output --------------------------------------------------
     DISPLAY_COLS = [
         "ticker", "sector", "current_price", "composite_score", "signal",
         "tier1_score", "tier2_score", "tier3_score",
@@ -582,9 +585,9 @@ def main():
     print(df[available].to_string(index=False))
 
     # Top 20 summary
-    print("\n" + "─"*65)
+    print("\n" + "-"*65)
     print("  TOP 20 SIGNALS")
-    print("─"*65)
+    print("-"*65)
     for _, r in df.head(20).iterrows():
         score = r.get("composite_score")
         score_str = f"{score:.1f}" if pd.notna(score) else " N/A"
@@ -593,9 +596,9 @@ def main():
 
     # Sector summary
     if "sector" in df.columns and "composite_score" in df.columns:
-        print("\n" + "─"*65)
+        print("\n" + "-"*65)
         print("  SECTOR AVERAGES  (composite score)")
-        print("─"*65)
+        print("-"*65)
         sec_avg = (
             df.groupby("sector")["composite_score"]
             .agg(["mean", "count"])
@@ -604,10 +607,16 @@ def main():
         for sec, row in sec_avg.iterrows():
             print(f"  {str(sec):<40}  avg={row['mean']:>5.1f}  n={int(row['count'])}")
 
-    # ── Save CSV ────────────────────────────────────────────────────────
+    # -- Save to MySQL ----------------------------------------------------
+    init_schema()
+    rows = df.to_dict(orient="records")
+    _db_write_kpi_rows(rows)
+    print(f"\n(ok) Full results saved to MySQL equity_kpi table ({len(rows)} tickers)")
+
+    # Also write CSV as a backup / for leaderboard.html compatibility
     out_path = args.output
     df.to_csv(out_path, index=False)
-    print(f"\n✓ Full results saved to: {out_path}")
+    print(f"(ok) Backup CSV saved to: {out_path}")
     print("="*65 + "\n")
 
     return df

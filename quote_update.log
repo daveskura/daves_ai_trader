@@ -13193,3 +13193,95 @@
 2026-03-31 13:33:38,493 - __main__ - INFO -   Prices as of: 13:33:38
 2026-03-31 13:33:38,493 - __main__ - INFO - =================================================================
 
+2026-04-01 08:47:10,950 - __main__ - INFO - 
+=================================================================
+2026-04-01 08:47:10,952 - __main__ - INFO -   PORTFOLIO QUOTE UPDATER
+2026-04-01 08:47:10,953 - __main__ - INFO -   2026-04-01 08:47:10
+2026-04-01 08:47:10,953 - __main__ - INFO - =================================================================
+2026-04-01 08:47:11,076 - mysql.connector - INFO - package: mysql.connector.plugins
+2026-04-01 08:47:11,076 - mysql.connector - INFO - plugin_name: caching_sha2_password
+2026-04-01 08:47:11,077 - mysql.connector - INFO - AUTHENTICATION_PLUGIN_CLASS: MySQLCachingSHA2PasswordAuthPlugin
+2026-04-01 08:47:11,162 - __main__ - INFO - Refreshing abnormal_return for 200 tickers ...
+2026-04-01 08:47:14,544 - __main__ - INFO - abnormal_return refreshed for 200/200 tickers (SPY today: +2.91%)
+2026-04-01 08:47:15,587 - __main__ - INFO - Fetching quotes for 14 ticker(s) via Yahoo Finance ...
+2026-04-01 08:47:15,883 - __main__ - INFO -   Got 14 current prices, 0 fallback (prev close) for 14 tickers  (as of 08:47:15)
+2026-04-01 08:47:15,883 - __main__ - INFO - 
+2026-04-01 08:47:15,884 - __main__ - INFO -   [02] Mean reversion
+2026-04-01 08:47:16,006 - __main__ - INFO - 	AMGN      1.0188 sh  cost $  353.36  now $  351.85  MV $   358.46  P&L -0.4%
+2026-04-01 08:47:16,007 - __main__ - INFO - 	HCA       1.2638 sh  cost $  474.74  now $  473.24  MV $   598.10  P&L -0.3%
+2026-04-01 08:47:16,068 - __main__ - INFO - 	   Cash $    40.00  Holdings $   956.56  Total $   996.56  P&L $-3.44
+2026-04-01 08:47:16,068 - __main__ - INFO -   [03] Value investing
+2026-04-01 08:47:16,185 - __main__ - INFO - 	CMCSA    12.4856 sh  cost $   28.83  now $   28.71  MV $   358.46  P&L -0.4%
+2026-04-01 08:47:16,186 - __main__ - INFO - 	SPG       3.2065 sh  cost $  187.12  now $  186.53  MV $   598.10  P&L -0.3%
+2026-04-01 08:47:16,251 - __main__ - INFO - 	   Cash $    40.00  Holdings $   956.56  Total $   996.56  P&L $-3.44
+2026-04-01 08:47:16,252 - __main__ - INFO -   [06] Low volatility / defensive
+2026-04-01 08:47:16,380 - __main__ - INFO - 	VRTX      1.3394 sh  cost $  447.96  now $  446.54  MV $   598.10  P&L -0.3%
+2026-04-01 08:47:16,442 - __main__ - INFO - 	   Cash $   400.00  Holdings $   598.10  Total $   998.10  P&L $-1.90
+2026-04-01 08:47:16,443 - __main__ - INFO -   [07] Earnings surprise (PEAD)
+2026-04-01 08:47:16,568 - __main__ - INFO - 	FCX      10.1753 sh  cost $   58.97  now $   58.78  MV $   598.10  P&L -0.3%
+2026-04-01 08:47:16,569 - __main__ - INFO - 	NEM       3.3114 sh  cost $  108.71  now $  108.25  MV $   358.46  P&L -0.4%
+2026-04-01 08:47:16,635 - __main__ - INFO - 	   Cash $    40.00  Holdings $   956.56  Total $   996.56  P&L $-3.44
+2026-04-01 08:47:16,635 - __main__ - INFO -   [08] Dividend growth
+2026-04-01 08:47:16,757 - __main__ - INFO - 	CMCSA     1.2173 sh  cost $   29.57  now $   28.71  MV $    34.95  P&L -2.9%
+2026-04-01 08:47:16,757 - __main__ - INFO - 	MO        9.0635 sh  cost $   66.20  now $   65.99  MV $   598.10  P&L -0.3%
+2026-04-01 08:47:16,758 - __main__ - INFO - 	VZ        7.1407 sh  cost $   50.42  now $   50.20  MV $   358.46  P&L -0.4%
+2026-04-01 08:47:16,820 - __main__ - INFO - 	   Cash $     4.00  Holdings $   991.51  Total $   995.51  P&L $-4.49
+2026-04-01 08:47:16,821 - __main__ - INFO -   [09] Insider buying signal
+2026-04-01 08:47:17,028 - __main__ - INFO - 	   Cash $  1000.00  Holdings $     0.00  Total $  1000.00  P&L +$0.00
+2026-04-01 08:47:17,029 - __main__ - INFO -   [10] Macro-regime adaptive
+2026-04-01 08:47:17,155 - __main__ - INFO - 	VRTX      1.3394 sh  cost $  447.96  now $  446.54  MV $   598.10  P&L -0.3%
+2026-04-01 08:47:17,218 - __main__ - INFO - 	   Cash $   400.00  Holdings $   598.10  Total $   998.10  P&L $-1.90
+2026-04-01 08:47:17,218 - __main__ - INFO -   [11] S&P 500 value tilt
+2026-04-01 08:47:17,360 - __main__ - INFO - 	CMCSA    20.8326 sh  cost $   28.80  now $   28.71  MV $   598.10  P&L -0.3%
+2026-04-01 08:47:17,360 - __main__ - INFO - 	MO        5.4321 sh  cost $   66.27  now $   65.99  MV $   358.46  P&L -0.4%
+2026-04-01 08:47:17,426 - __main__ - INFO - 	   Cash $    40.00  Holdings $   956.56  Total $   996.56  P&L $-3.44
+2026-04-01 08:47:17,426 - __main__ - INFO -   [12] Momentum (academic / Asness)
+2026-04-01 08:47:17,548 - __main__ - INFO - 	AMGN      1.0188 sh  cost $  353.36  now $  351.85  MV $   358.46  P&L -0.4%
+2026-04-01 08:47:17,548 - __main__ - INFO - 	NEM       5.5252 sh  cost $  108.59  now $  108.25  MV $   598.10  P&L -0.3%
+2026-04-01 08:47:17,613 - __main__ - INFO - 	   Cash $    40.00  Holdings $   956.56  Total $   996.56  P&L $-3.44
+2026-04-01 08:47:17,613 - __main__ - INFO -   [13] Quality / profitability
+2026-04-01 08:47:17,735 - __main__ - INFO - 	AVGO      1.9324 sh  cost $  310.49  now $  309.51  MV $   598.10  P&L -0.3%
+2026-04-01 08:47:17,736 - __main__ - INFO - 	CME       1.2137 sh  cost $  296.62  now $  295.35  MV $   358.46  P&L -0.4%
+2026-04-01 08:47:17,800 - __main__ - INFO - 	   Cash $    40.00  Holdings $   956.56  Total $   996.56  P&L $-3.44
+2026-04-01 08:47:17,800 - __main__ - INFO -   [14] Passive S&P 500 benchmark
+2026-04-01 08:47:17,942 - __main__ - INFO - 	WMT       1.3658 sh  cost $  125.20  now $  124.28  MV $   169.75  P&L -0.7%
+2026-04-01 08:47:18,034 - __main__ - INFO - 	   Cash $   829.00  Holdings $   169.75  Total $   998.75  P&L $-1.25
+2026-04-01 08:47:18,034 - __main__ - INFO -   [18] Capex beneficiary / semis
+2026-04-01 08:47:18,221 - __main__ - INFO - 	   Cash $  1000.00  Holdings $     0.00  Total $  1000.00  P&L +$0.00
+2026-04-01 08:47:18,221 - __main__ - INFO -   [19] News macro catalyst
+2026-04-01 08:47:18,410 - __main__ - INFO - 	   Cash $  1000.00  Holdings $     0.00  Total $  1000.00  P&L +$0.00
+2026-04-01 08:47:18,410 - __main__ - INFO -   [20] News sentiment momentum
+2026-04-01 08:47:18,599 - __main__ - INFO - 	   Cash $  1000.00  Holdings $     0.00  Total $  1000.00  P&L +$0.00
+2026-04-01 08:47:18,599 - __main__ - INFO -   [21] Defense & war economy
+2026-04-01 08:47:18,725 - __main__ - INFO - 	HON       1.5859 sh  cost $  227.00  now $  226.03  MV $   358.46  P&L -0.4%
+2026-04-01 08:47:18,726 - __main__ - INFO - 	VRT       2.3869 sh  cost $  251.37  now $  250.58  MV $   598.10  P&L -0.3%
+2026-04-01 08:47:18,791 - __main__ - INFO - 	   Cash $    40.00  Holdings $   956.56  Total $   996.56  P&L $-3.44
+2026-04-01 08:47:19,855 - __main__ - INFO - 
+-----------------------------------------------------------------
+2026-04-01 08:47:19,855 - __main__ - INFO -   LEADERBOARD  (all strategies, ranked by total value)
+2026-04-01 08:47:19,857 - __main__ - INFO - -----------------------------------------------------------------
+2026-04-01 08:47:19,857 - __main__ - INFO - 
+  Rk   ID   Strategy                                 Cash   Holdings     Total       P&L   Return
+2026-04-01 08:47:19,857 - __main__ - INFO -   -----------------------------------------------------------------------------------------------
+2026-04-01 08:47:19,858 - __main__ - INFO -   1    09   Insider buying signal               $ 1000.00 $     0.00 $ 1000.00 +$    0.00 +  0.00%
+2026-04-01 08:47:19,858 - __main__ - INFO -   2    18   Capex beneficiary / semis           $ 1000.00 $     0.00 $ 1000.00 +$    0.00 +  0.00%
+2026-04-01 08:47:19,859 - __main__ - INFO -   3    19   News macro catalyst                 $ 1000.00 $     0.00 $ 1000.00 +$    0.00 +  0.00%
+2026-04-01 08:47:19,859 - __main__ - INFO -   4    20   News sentiment momentum             $ 1000.00 $     0.00 $ 1000.00 +$    0.00 +  0.00%
+2026-04-01 08:47:19,859 - __main__ - INFO -   5    14   Passive S&P 500 benchmark           $  829.00 $   169.75 $  998.75 $   -1.25  -0.12%
+2026-04-01 08:47:19,859 - __main__ - INFO -   6    06   Low volatility / defensive          $  400.00 $   598.10 $  998.10 $   -1.90  -0.19%
+2026-04-01 08:47:19,860 - __main__ - INFO -   7    10   Macro-regime adaptive               $  400.00 $   598.10 $  998.10 $   -1.90  -0.19%
+2026-04-01 08:47:19,860 - __main__ - INFO -   8    02   Mean reversion                      $   40.00 $   956.56 $  996.56 $   -3.44  -0.34%
+2026-04-01 08:47:19,860 - __main__ - INFO -   9    03   Value investing                     $   40.00 $   956.56 $  996.56 $   -3.44  -0.34%
+2026-04-01 08:47:19,861 - __main__ - INFO -   10   07   Earnings surprise (PEAD)            $   40.00 $   956.56 $  996.56 $   -3.44  -0.34%
+2026-04-01 08:47:19,861 - __main__ - INFO -   11   11   S&P 500 value tilt                  $   40.00 $   956.56 $  996.56 $   -3.44  -0.34%
+2026-04-01 08:47:19,861 - __main__ - INFO -   12   12   Momentum (academic / Asness)        $   40.00 $   956.56 $  996.56 $   -3.44  -0.34%
+2026-04-01 08:47:19,862 - __main__ - INFO -   13   13   Quality / profitability             $   40.00 $   956.56 $  996.56 $   -3.44  -0.34%
+2026-04-01 08:47:19,862 - __main__ - INFO -   14   21   Defense & war economy               $   40.00 $   956.56 $  996.56 $   -3.44  -0.34%
+2026-04-01 08:47:19,862 - __main__ - INFO -   15   08   Dividend growth                     $    4.00 $   991.51 $  995.51 $   -4.49  -0.45%
+2026-04-01 08:47:19,863 - __main__ - INFO - -----------------------------------------------------------------
+2026-04-01 08:47:19,863 - __main__ - INFO - 
+  Updated 15 strategy account(s).
+2026-04-01 08:47:19,863 - __main__ - INFO -   Leaderboard saved -> MySQL (leaderboard table)
+2026-04-01 08:47:19,863 - __main__ - INFO -   Prices as of: 08:47:15
+2026-04-01 08:47:19,864 - __main__ - INFO - =================================================================
+

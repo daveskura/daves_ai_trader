@@ -1,3 +1,0 @@
-date,strategy_id,action,ticker,shares,price,commission,net_amount,cash_after,reason
-2026-03-19,17,BUY,MU,1.338719,444.27,4.95,-600.0001,399.9999,"Top-ranked candidate with score 861.1, beta=1.54 (in target range), exceptional fwd_growth=807.2%, strong margin=28.1%, RSI=57.2 indicating healthy momentum without being overbought. Allocating ~$580 (58% of portfolio, within 60% cap)."
-2026-03-19,17,BUY,NVDA,1.987413,178.56,4.95,-359.9999,40.0,"Score=219.8, archetypal high-beta quality growth stock with beta=2.38, outstanding margin=55.6%, fwd_growth=126.4%, RSI=51.8 neutral — strong fundamentals justify the volatility. Allocating ~$350 (~35% of portfolio), keeping cash reserve above 5%."
