@@ -1,25 +1,35 @@
+ Real Bugs
+B1 — reset_accounts.py: S11 name mismatch + 4-tuple vs 5-tuple STRATEGIES
+reset_accounts.py has S11 named "Mid-to-large value (Fama-French)" but constants.py has "S&P 500 value tilt". After a reset, the leaderboard shows the wrong name. Also, reset_accounts.py defines its own 4-tuple STRATEGIES (no description field) instead of importing from constants.py — it'll silently diverge every time constants.py is updated.
+B2 — update_quotes.py: 'pd' not in globals() check is always False
+Line 306: if 'pd' not in globals(): — pd is always imported at module level or the script already exited. This guard can never fire. If the intent was to protect against pd not being available, the check needs to be pd is None or removed and the import guard at the top relied on instead.
+B3 — update_quotes.py: save_holdings() called with unmodified list
+update_strategy() computes new market values per holding but never writes the new price back to the holdings dict — it only updates acct. Then it calls save_holdings(sid, holdings) which rewrites the file with the original unchanged data. This is a no-op write that wastes an I/O and is confusing.
+B4 — update_quotes.py / reset_accounts.py: STARTING_CASH, ACCOUNT_NUM, STRATEGIES still defined inline
+Both files duplicate constants that now live in constants.py. A change to STARTING_CASH or the strategy list in constants.py will not propagate to either file.
+B5 — test_news_strategy.py Step 5: calls print_news_briefing(macro) but signature is print_news_briefing()
+strategy_runner.py line 1036: def print_news_briefing(): — no argument. The test calls it with print_news_briefing(macro) and will TypeError.
+B6 — test_news_strategy.py Step 9: unclosed file handles
+Lines 326 and 340 use open(...) without a with statement, which leaks file handles on CPython (they close on GC, but it's not guaranteed and will fail on PyPy/resource-limited systems).
+B7 — run_daily.sh: update_quotes.py completely missing from the Stage 2 pipeline
+The full run does: equity_kpi_analyzer.py ? strategy_runner.py. It never calls update_quotes.py, meaning S07 (PEAD) always runs on morning abnormal_return data even in the post-market run. This defeats the entire purpose of update_quotes.py.
+B8 — down_day_analyzer.py: abnormal_return ignores beta
+Line 142: "abnormal_return": r - market_ret — this is just excess return, not a true abnormal return. The CAPM-adjusted formula stock_ret - (beta * market_ret) is used everywhere else in the codebase (equity_kpi_analyzer.py line 163, update_quotes.py line 234). A low-beta defensive stock that drops 1% when the market drops 3% looks like a +2% abnormal return here, which is correct — but a high-beta stock dropping 4% when the market drops 3% also looks like +1% abnormal return without beta adjustment.
+B9 — equity_kpi_analyzer.py: _revision_pct function defined inside a try block, not in a loop
+It's technically not re-created in a loop (it's used with df.apply()), but the nested def inside a try/if block is fragile — if the try block is refactored, the function disappears silently. It should be a module-level helper.
 
+?? Design / Logic Issues
+D1 — run_daily.sh log rotation keeps only 90 lines
+90 lines is extremely short for a daily run log — a single full pipeline run can easily produce 100+ lines. Logs from the previous day get truncated. Should be 500–1000 lines or rotate by date instead.
+D2 — update_quotes.py: STRATEGIES is a 4-tuple but unpacked as (s[0], s[1], s[2], s[3]) explicitly
+The whole point of constants.py is to be the single source. This file still has its own 15-entry STRATEGIES list that will silently fall out of sync.
+D3 — universe_manager.py: CACHE_FILE is a bare filename, not an absolute path
+CACHE_FILE = "universe_cache.json" — if called from a different working directory, the cache writes and reads from the wrong place. Should be Path(__file__).parent / "universe_cache.json" like BASE_DIR is handled in other scripts.
+D4 — equity_kpi_analyzer.py: fiveYearAvgDividendYield normalisation assumption may be wrong
+The comment says yfinance returns it as a percentage (e.g. 1.5 means 1.5%) and divides by 100. But yfinance has changed this behaviour across versions — newer versions return it as a decimal. This will silently halve or double the five-year yield used in S08 scoring depending on yfinance version.
+D5 — down_day_analyzer.py: no --validate / self-test mode
+The other scripts all have --validate or test files. down_day_analyzer.py has no offline test mode — it always makes live network calls.
+D6 — test_news_strategy.py Step 10: runs strategy_runner.py as a subprocess without --kpi-file
+Step 10 runs strategy_runner.py --strategy 19 --dry-run but doesn't check whether a KPI file exists first (Step 7 does, but steps can be run individually). A missing KPI file causes a non-zero exit and a misleading [FAIL].
 
-Design / Logic Issues
-8. Strategy 14 (passive) can never grow beyond 2 positions
-run_passive hard-codes top2 = [...[:2]] and breaks after 2 holdings. If the goal is to benchmark against the S&P 500, holding only 2 stocks (even if they're the largest cap) produces highly variable returns that aren't representative of the index. Consider holding 5–10 positions or using SPY directly.
-9. Stop-loss and minimum hold period interact poorly for PEAD (S07)
-Strategy 07 depends on abnormal_return as a key signal. The abnormal_return in the KPI file is computed at morning run time and goes stale. update_quotes.py refreshes it, but only if it's run separately after market close. If strategy_runner.py is run before update_quotes.py, S07 is making decisions on 8+ hour old signals. You already noted this in the comments, but there's no enforcement or warning in strategy_runner.py itself to flag this.
-10. leaderboard_history.csv deduplication only removes today's entries
-pythonexisting_history = [r for r in read_csv(hist_path) if r.get("date") != today]
-This correctly avoids duplicate dates, but if the file grows unbounded it'll eventually be very large. There's no archiving or max-rows logic.
-11. score_dividend_growth fallback branch ignores dividend entirely
-When dy == 0, the function falls back to scoring by beta and P/E with no dividend component at all. This means non-dividend payers can score highly in a dividend growth strategy, which defeats the strategy's purpose. These stocks should simply be excluded.
-12. Commission model understates real costs for small positions
-At STARTING_CASH = $1000 with COMMISSION = $1.00, a single buy+sell costs $2 minimum on a ~$500–600 position (0.3–0.4%). This is actually reasonable for modern brokers, but the SPREAD_PCT = 0.0005 (0.05%) is very optimistic for small-cap or less liquid names in your universe.
-13. Claude prompt context window pressure
-The ask_claude prompt includes full holdings detail and 10 candidates. As trades accumulate and position counts grow, the prompt stays bounded (max 3 positions, top 10 candidates), which is good. However, the reason strings in candidates can be long — worth truncating them explicitly rather than relying on Claude to ignore excess detail.
-
-Minor Issues
-14. _trading_days_held doesn't account for market holidays
-It counts weekdays only, not actual trading days. A position bought before a long weekend (e.g. Thanksgiving) will appear to have been held longer than it actually was in market terms. For a paper trader this is low stakes, but it could cause premature sell signals for strategies with short hold periods like S02 (3 days).
-15. reset_accounts.py uses a different STRATEGIES list than strategy_runner.py
-reset_accounts.py has 15 entries; strategy_runner.py also has 15, but they're defined independently. If you add a strategy to one file, you have to remember to add it to the other. Consider importing STRATEGIES from a shared constants file.
-16. equity_kpi_analyzer.py five_year_avg_dividend_yield normalization comment is correct but fragile
-You correctly normalize the yfinance quirk (returns as % not decimal). Add an assertion or log warning if the raw value seems already normalized (e.g. raw_dy5 < 0.20) to catch if Yahoo ever fixes this inconsistency.
-
+Want me to apply all the fixes now? I can do them all in one pass and produce clean updated versions of each file.

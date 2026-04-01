@@ -323,7 +323,8 @@ def step9_accounts():
             all_ok = False
             continue
 
-        rows = list(csv.DictReader(open(acct_path, newline="", encoding="utf-8")))
+        with open(acct_path, newline="", encoding="utf-8") as fh:
+            rows = list(csv.DictReader(fh))
         if not rows:
             fail(f"account_{sid}.csv is empty")
             all_ok = False
@@ -337,7 +338,8 @@ def step9_accounts():
         if not hold_path.exists():
             warn(f"holdings_{sid}.csv not found")
         else:
-            hrows = list(csv.DictReader(open(hold_path, newline="", encoding="utf-8")))
+            with open(hold_path, newline="", encoding="utf-8") as fh:
+                hrows = list(csv.DictReader(fh))
             ok(f"  holdings_{sid}.csv: {len(hrows)} position(s)")
 
     return all_ok
@@ -347,10 +349,15 @@ def step9_accounts():
 
 def step10_dry_run():
     header("Step 10 — Full dry-run (strategies 19 & 20, no trades executed)")
-    kpi_path = Path("equity_kpi_results.csv")
+    kpi_path   = Path("equity_kpi_results.csv")
+    cache_path = Path("news_macro_cache.json")
 
     if not kpi_path.exists():
         warn("No KPI data — skipping dry-run (run equity_kpi_analyzer.py first)")
+        return None
+
+    if not cache_path.exists():
+        warn("No news cache — skipping dry-run (run Step 5 first to populate news_macro_cache.json)")
         return None
 
     info("Running: python strategy_runner.py --strategy 19 --dry-run")

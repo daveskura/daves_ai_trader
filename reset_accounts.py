@@ -13,28 +13,10 @@ import sys, csv, argparse
 from datetime import date
 from pathlib import Path
 
-# ── Mirror the constants from strategy_runner.py ─────────────────────────────
-STARTING_CASH = 1000.00
-ACCOUNT_NUM   = "123456789"
-BASE_DIR      = Path(__file__).parent
+# ── Single source of truth — never define these inline ───────────────────────
+from constants import STARTING_CASH, ACCOUNT_NUM, STRATEGIES
 
-STRATEGIES = [
-    ("02", "Mean reversion",                   "contrarian",  "med"),
-    ("03", "Value investing",                  "value",       "low"),
-    ("06", "Low volatility / defensive",       "defensive",   "low"),
-    ("07", "Earnings surprise (PEAD)",         "event",       "high"),
-    ("08", "Dividend growth",                  "income",      "low"),
-    ("09", "Insider buying signal",            "alt-data",    "med"),
-    ("10", "Macro-regime adaptive",            "macro",       "med"),
-    ("11", "Mid-to-large value (Fama-French)", "academic",    "med"),
-    ("12", "Momentum (academic / Asness)",     "academic",    "high"),
-    ("13", "Quality / profitability",          "academic",    "low"),
-    ("14", "Passive S&P 500 benchmark",        "passive",     "low"),
-    ("18", "Capex beneficiary / semis",        "thematic",    "high"),
-    ("19", "News macro catalyst",              "macro",       "med"),
-    ("20", "News sentiment momentum",          "alt-data",    "med"),
-    ("21", "Defense & war economy",            "thematic",    "med"),
-]
+BASE_DIR = Path(__file__).parent
 
 # ── File name helpers (must match strategy_runner.py) ────────────────────────
 def acct_file(sid):  return BASE_DIR / f"account_{sid}.csv"
@@ -84,12 +66,14 @@ def reset(yes=False):
     print(f"\n  {deleted} file(s) removed.")
 
     # ── Reinitialise accounts ─────────────────────────────────────────────────
+    # STRATEGIES is a 5-tuple: (id, name, style, risk, description)
+    # Use *_ to safely absorb any future extra fields.
     print("\n  Creating fresh account files...")
     acct_fields = ["account","strategy_id","cash","holdings_value","total",
                    "start_date","trades"]
     hold_fields = ["ticker","shares","avg_cost","cost_basis","purchase_date","strategy_id"]
 
-    for sid, name, style, risk in STRATEGIES:
+    for sid, name, style, risk, *_ in STRATEGIES:
         acct = {
             "account":        ACCOUNT_NUM,
             "strategy_id":    sid,
@@ -107,7 +91,7 @@ def reset(yes=False):
     lb_fields = ["rank","date","strategy_id","strategy_name","style","risk",
                  "cash","holdings_value","total","pnl","pct_return","trades"]
     lb_rows = []
-    for i, (sid, name, style, risk) in enumerate(STRATEGIES, 1):
+    for i, (sid, name, style, risk, *_) in enumerate(STRATEGIES, 1):
         lb_rows.append({
             "rank": i, "date": today, "strategy_id": sid,
             "strategy_name": name, "style": style, "risk": risk,

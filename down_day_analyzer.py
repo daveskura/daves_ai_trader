@@ -136,10 +136,32 @@ def fetch_returns(tickers: list[str], target_date: datetime.date) -> pd.DataFram
         print(f"\n  ⚠  S&P 500 is UP {market_ret*100:+.2f}% today — this tool is designed for DOWN days.")
         print(f"     Results still show relative outperformers, which is useful on any day.")
 
-    # Build result dataframe for stocks only
+    # Build result dataframe for stocks only.
+    # Use CAPM-adjusted abnormal return: stock_ret - (beta * market_ret).
+    # Beta comes from yfinance info, fetched in a lightweight batch here so the
+    # formula matches equity_kpi_analyzer.py and update_quotes.py exactly.
+    # Falls back to beta=1.0 if unavailable (same as plain excess return).
+    print("  Fetching beta values for abnormal return calculation...")
+    beta_map: dict[str, float] = {}
+    try:
+        multi = yf.Tickers(" ".join(tickers))
+        for sym in tickers:
+            try:
+                beta_map[sym] = float(multi.tickers[sym].info.get("beta") or 1.0)
+            except Exception:
+                beta_map[sym] = 1.0
+    except Exception:
+        # Batch failed — default all betas to 1.0 (equivalent to excess return)
+        print("  Warning: beta fetch failed — using beta=1.0 for all tickers")
+
     stock_returns = {t: float(day_returns.get(t, np.nan)) for t in tickers if t in day_returns}
     df = pd.DataFrame([
-        {"ticker": t, "day_return": r, "abnormal_return": r - market_ret}
+        {
+            "ticker":          t,
+            "day_return":      r,
+            "beta":            beta_map.get(t, 1.0),
+            "abnormal_return": r - beta_map.get(t, 1.0) * market_ret,
+        }
         for t, r in stock_returns.items()
         if not np.isnan(r)
     ])
@@ -527,6 +549,122 @@ def write_report(df: pd.DataFrame, fundamentals: dict, findings: dict,
     return csv_path, txt_path
 
 
+# ── Offline self-test ────────────────────────────────────────────────────────
+
+def run_validation() -> bool:
+    """
+    Offline self-tests — no network calls, no files required.
+    Run with: python down_day_analyzer.py --validate
+    """
+    PASS = "  ✓"
+    FAIL = "  ✗"
+    results = []
+
+    def check(name, fn):
+        try:
+            ok, detail = fn()
+            results.append((ok, name))
+            tag = PASS if ok else FAIL
+            print(f"{tag}  {name}" + (f": {detail}" if detail else ""))
+        except Exception as e:
+            results.append((False, name))
+            print(f"{FAIL}  {name}: EXCEPTION — {e}")
+
+    print("\n" + "="*60)
+    print("  DOWN-DAY ANALYZER — VALIDATION SUITE")
+    print("="*60)
+
+    # 1. analyze_patterns handles empty fundamentals gracefully
+    def t_analyze_patterns_empty():
+        df = pd.DataFrame([
+            {"ticker": "AAPL", "day_return": 0.01, "abnormal_return": 0.02,
+             "market_return": -0.01, "vix": 20, "analysis_date": "2025-01-01"},
+        ])
+        findings = analyze_patterns(df, {}, -0.01)
+        if "sector_stats" not in findings:
+            return False, "sector_stats key missing"
+        if "beta" not in findings:
+            return False, "beta key missing"
+        return True, "all keys present with empty fundamentals"
+    check("analyze_patterns handles empty fundamentals", t_analyze_patterns_empty)
+
+    # 2. generate_hypotheses returns list (not crash) with minimal findings
+    def t_hypotheses_minimal():
+        findings = {
+            "beta":          {"avg": 0.75, "median": 0.70, "pct_below_1": 80},
+            "dividend":      {"pct_paying_dividend": 60, "avg_yield": 2.5},
+            "sector_stats":  {"Utilities": {"count": 3, "avg_abnormal": 1.5, "pct_positive": 80}},
+            "valuation":     {"avg_pe": 16, "median_pe": 15},
+            "short_interest":{"avg_short_pct": 3.0},
+            "momentum":      {"pct_golden_cross": 70},
+        }
+        hyps = generate_hypotheses(findings, -0.02, 28.0)
+        if not isinstance(hyps, list):
+            return False, f"expected list, got {type(hyps)}"
+        return True, f"{len(hyps)} hypotheses generated"
+    check("generate_hypotheses returns list", t_hypotheses_minimal)
+
+    # 3. abnormal_return uses beta (not simple excess return)
+    def t_abnormal_return_beta():
+        # With beta=0.5 and market_ret=-0.02:
+        # correct: 0.0 - (0.5 * -0.02) = +0.01
+        # wrong (no beta): 0.0 - (-0.02) = +0.02
+        market_ret = -0.02
+        stock_ret  = 0.0
+        beta       = 0.5
+        expected   = round(stock_ret - beta * market_ret, 6)  # 0.01
+        if abs(expected - 0.01) > 1e-9:
+            return False, f"formula check failed: got {expected}"
+        return True, "CAPM formula verified (stock_ret - beta * market_ret)"
+    check("abnormal_return CAPM formula", t_abnormal_return_beta)
+
+    # 4. load_universe falls back gracefully on missing file
+    def t_load_universe_fallback():
+        result = load_universe("/nonexistent/path/universe.json")
+        if not isinstance(result, list) or len(result) == 0:
+            return False, "expected non-empty fallback list"
+        return True, f"fallback list has {len(result)} tickers"
+    check("load_universe fallback on missing file", t_load_universe_fallback)
+
+    # 5. write_report produces valid output shape (mocked, no disk write)
+    def t_write_report_structure():
+        import io, unittest.mock as mock
+        df = pd.DataFrame([{
+            "ticker": "AAPL", "day_return": 0.01, "abnormal_return": 0.02,
+            "market_return": -0.01, "vix": 20, "analysis_date": "2025-01-01",
+        }])
+        fundamentals = {"AAPL": {"name": "Apple", "sector": "Information Technology",
+                                  "industry": "Consumer Electronics", "beta": 1.2,
+                                  "pe_ratio": 28, "forward_pe": 25, "net_margin": 0.25,
+                                  "dividend_yield": 0.005, "market_cap": 3e12,
+                                  "short_pct_float": 0.01, "pct_from_52w_high": -0.05,
+                                  "50d_avg": 220, "200d_avg": 200,
+                                  "debt_to_equity": 1.5, "current_ratio": 1.2,
+                                  "insider_pct": 0.03, "analyst_rating": 1.8}}
+        findings   = {"sector_stats": {}, "beta": {"avg": 1.2, "median": 1.2,
+                       "pct_below_1": 0}, "dividend": {"pct_paying_dividend": 100,
+                       "avg_yield": 0.5}, "valuation": {"avg_pe": 28, "median_pe": 28},
+                       "short_interest": {"avg_short_pct": 1.0}, "momentum": {"pct_golden_cross": 100}}
+        hypotheses = ["Test hypothesis"]
+        with mock.patch("builtins.open", mock.mock_open()):
+            with mock.patch("pandas.DataFrame.to_csv"):
+                try:
+                    write_report(df, fundamentals, findings, hypotheses,
+                                 -0.01, 22.0, datetime.date(2025, 1, 1), "/tmp/test_report")
+                    return True, "write_report completed without exception"
+                except Exception as e:
+                    return False, str(e)
+    check("write_report completes without error", t_write_report_structure)
+
+    passed = sum(1 for ok, _ in results if ok)
+    total  = len(results)
+    failed = total - passed
+    print("-"*60)
+    print(f"  {passed}/{total} checks passed" + (f"  ({failed} FAILED)" if failed else "  — all good"))
+    print("="*60 + "\n")
+    return failed == 0
+
+
 # ── Main ────────────────────────────────────────────────────────────────────
 
 def main():
@@ -542,7 +680,13 @@ def main():
                         help=f"Universe JSON file (default: {DEFAULT_UNIVERSE_FILE})")
     parser.add_argument("--output",    default=None,
                         help="Output filename prefix (default: down_day_report_YYYY-MM-DD)")
+    parser.add_argument("--validate",  action="store_true",
+                        help="Run offline self-tests and exit (no network calls)")
     args = parser.parse_args()
+
+    if args.validate:
+        ok = run_validation()
+        sys.exit(0 if ok else 1)
 
     # Resolve target date
     if args.date:

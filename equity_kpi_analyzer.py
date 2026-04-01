@@ -204,16 +204,24 @@ def fetch_ticker_data(ticker_symbol: str, market_prices: pd.Series) -> dict:
         row["beta"]        = info.get("beta", 1.0)
 
         # FIX-9: Dividend data for Strategy 08 (dividend growth)
-        # dividendYield is the trailing 12-month yield as a decimal (e.g. 0.015 = 1.5%)
-        # fiveYearAvgDividendYield is reported as a percentage by yfinance (e.g. 1.5)
-        # Normalise both to decimal form for consistent scoring.
+        # dividendYield is always a decimal in yfinance (e.g. 0.015 = 1.5%).
+        # fiveYearAvgDividendYield changed behaviour across yfinance versions:
+        #   - Older versions returned a percentage (e.g. 1.5 meaning 1.5%)
+        #   - Newer versions (≥0.2.x) return a decimal (e.g. 0.015)
+        # We detect which format is in use at runtime: values > 0.5 are almost
+        # certainly percentages (no realistic stock yields 50%+), so we divide
+        # by 100. Both fields are normalised to decimal for consistent scoring.
         raw_dy  = info.get("dividendYield")
         raw_dy5 = info.get("fiveYearAvgDividendYield")
         if raw_dy is not None:
             row["dividend_yield"] = round(float(raw_dy), 6)
         if raw_dy5 is not None:
-            # yfinance returns fiveYearAvgDividendYield as a % (e.g. 1.5 means 1.5%)
-            row["five_year_avg_dividend_yield"] = round(float(raw_dy5) / 100, 6)
+            dy5_val = float(raw_dy5)
+            # If the value looks like a percentage (>0.5), convert to decimal.
+            # This handles both old and new yfinance versions automatically.
+            if dy5_val > 0.5:
+                dy5_val = dy5_val / 100
+            row["five_year_avg_dividend_yield"] = round(dy5_val, 6)
 
         # ── TIER 2: Technical Indicators ───────────────────────────────
         hist = tk.history(period="1y")
@@ -403,6 +411,28 @@ def signal_label(score: float | None) -> str:
     return              "STRONG SELL ▼▼"
 
 
+def _compute_eps_revision_pct(row: dict, prev_map: dict) -> float | None:
+    """
+    Compute the percentage change in eps_growth_fwd vs the previous day's snapshot.
+    Returns None if either value is missing/zero (not a reliable revision signal).
+    Kept at module level so it can be tested independently and doesn't disappear
+    if the surrounding try-block is refactored.
+    """
+    import math
+    prev = prev_map.get(row["ticker"])
+    curr = row.get("eps_growth_fwd")
+    if prev is None or curr is None:
+        return None
+    try:
+        if math.isnan(float(prev)) or math.isnan(float(curr)):
+            return None
+    except (TypeError, ValueError):
+        return None
+    if float(prev) == 0:
+        return None
+    return round((float(curr) - float(prev)) / abs(float(prev)), 4)
+
+
 # ─────────────────────────────────────────────
 #  MAIN
 # ─────────────────────────────────────────────
@@ -514,15 +544,9 @@ def main():
                 prev_df["eps_growth_fwd"] = pd.to_numeric(
                     prev_df["eps_growth_fwd"], errors="coerce")
                 prev_map = prev_df.set_index("ticker")["eps_growth_fwd"].to_dict()
-                def _revision_pct(row):
-                    prev = prev_map.get(row["ticker"])
-                    curr = row.get("eps_growth_fwd")
-                    if prev is None or curr is None or pd.isna(prev) or pd.isna(curr):
-                        return None
-                    if prev == 0:
-                        return None
-                    return round((curr - prev) / abs(prev), 4)
-                df["eps_revision_pct"] = df.apply(_revision_pct, axis=1)
+                df["eps_revision_pct"] = df.apply(
+                    lambda row: _compute_eps_revision_pct(row, prev_map), axis=1
+                )
                 n_revised = (df["eps_revision_pct"].fillna(0) > 0).sum()
                 print(f"  [S16] EPS revision delta computed — "
                       f"{n_revised} tickers with upward revisions today")
