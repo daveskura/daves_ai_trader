@@ -2,8 +2,8 @@
 """
 strategy_runner.py  --  Multi-strategy paper trading engine
 Runs 20 active strategies + 1 passive benchmark concurrently.
-Each strategy has its own account, holdings, and transactions CSV.
-Produces a daily leaderboard CSV for the dashboard.
+Each strategy has its own account, holdings, and transactions in MySQL.
+Produces a daily leaderboard stored in MySQL.
 
 Usage:
 	python strategy_runner.py				  # run all strategies
@@ -18,27 +18,30 @@ import sys
 import os
 import re
 import json
-import math
 import argparse
 import urllib.error
 import urllib.request
 import time
 import logging
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from collections import defaultdict
 from functools import wraps
-from typing import Dict, List, Tuple, Optional, Any, Union
+from typing import Dict, List, Tuple, Optional, Any
 
 # -- Configure logging ----------------------------------------------------------
-logging.basicConfig(
-	level=logging.INFO,
-	format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-	handlers=[
-		logging.FileHandler(Path(__file__).parent / "trading.log"),
-		logging.StreamHandler()
-	]
-)
+# Guard prevents duplicate handlers if this module is imported multiple times
+# (e.g. by test scripts or the validation suite).
+_root_logger = logging.getLogger()
+if not _root_logger.handlers:
+	logging.basicConfig(
+		level=logging.INFO,
+		format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+		handlers=[
+			logging.FileHandler(Path(__file__).parent / "trading.log"),
+			logging.StreamHandler()
+		]
+	)
 logger = logging.getLogger(__name__)
 
 # -- UTF-8 output (Windows fix) ----------------------------------------------
@@ -73,6 +76,7 @@ from constants import (
 )
 from db import (
 	init_schema,
+	get_connection as _db_get_connection,
 	read_account   as _db_read_account,
 	save_account   as _db_save_account,
 	read_holdings  as _db_read_holdings,
@@ -129,8 +133,7 @@ def check_data_freshness(kpi_file: str = "equity_kpi_results.csv"):
 	kpi_file is accepted for CLI compatibility but ignored in MySQL mode.
 	"""
 	try:
-		from db import get_connection
-		conn = get_connection()
+		conn = _db_get_connection()
 		try:
 			cur = conn.cursor()
 			cur.execute("SELECT MAX(updated_at) FROM equity_kpi")
@@ -199,7 +202,6 @@ def load_kpi(kpi_path: str = "equity_kpi_results.csv") -> Tuple[List[Dict], Dict
 	kmap = {r["ticker"]: r for r in rows}
 	return rows, kmap
 
-# -- FIX-11: Fixed stop-loss with batch execution (no race condition) ---------
 def enforce_stop_losses(sid: str, holdings: List[Dict], kmap: Dict, today: str,
 						dry_run: bool = False) -> List[Dict]:
 	"""
@@ -212,8 +214,13 @@ def enforce_stop_losses(sid: str, holdings: List[Dict], kmap: Dict, today: str,
 		ticker	= h["ticker"]
 		avg_cost  = float(h["avg_cost"])
 		_raw_price = kmap.get(ticker, {}).get("current_price")
-		price	 = _raw_price if _raw_price is not None else avg_cost
-		loss_pct  = (price - avg_cost) / avg_cost
+		if _raw_price is None:
+			logger.warning(f"[STOP-LOSS] {ticker}: no market price in KPI data -- "
+						   f"stop-loss check skipped (using avg_cost as fallback)")
+			price = avg_cost
+		else:
+			price = _raw_price
+		loss_pct  = (price - avg_cost) / avg_cost if avg_cost else 0.0
 
 		if loss_pct <= -STOP_LOSS_PCT:
 			reason = (f"Hard stop-loss: price ${price:.2f} is "
@@ -230,7 +237,6 @@ def enforce_stop_losses(sid: str, holdings: List[Dict], kmap: Dict, today: str,
 		holdings = read_holdings(sid)   # reload once after all stops
 	return holdings
 
-# -- FIX-2, FIX-3, FIX-21, FIX-6: Improved buy/sell with proper price handling -
 def buy(sid: str, ticker: str, price: float, cash_available: float, reason: str,
 		today: str, kmap: Dict, dry_run: bool = False) -> Tuple[bool, str]:
 	"""Buy as many shares as cash allows (up to 60% of total account)."""
@@ -261,10 +267,9 @@ def buy(sid: str, ticker: str, price: float, cash_available: float, reason: str,
 		logger.info(f"[DRY-RUN] BUY {shares:.4f} x {ticker} @ ${price:.2f} cost=${net_cost:.2f}")
 		return True, "dry-run"
 
-	# Re-check cash balance before finalizing (in case something changed)
-	acct = read_account(sid)
+	# Verify cash is still sufficient (single authoritative read at top of function)
 	if acct["cash"] < net_cost:
-		return False, f"Insufficient cash after refresh: ${acct['cash']:.2f} < ${net_cost:.2f}"
+		return False, f"Insufficient funds: ${acct['cash']:.2f} < ${net_cost:.2f}"
 	
 	acct["cash"] = round(acct["cash"] - net_cost, 4)
 	acct["trades"] += 1
@@ -336,21 +341,21 @@ def sell(sid: str, ticker: str, price: float, reason: str, today: str,
 def _trading_days_held(purchase_date_str: str, today_str: str) -> int:
 	"""Return number of weekdays between purchase_date and today."""
 	try:
-		from datetime import timedelta
 		d0 = date.fromisoformat(purchase_date_str)
 		d1 = date.fromisoformat(today_str)
 		delta = (d1 - d0).days
 		if delta <= 0:
 			return 0
-		weekdays = sum(
-			1 for i in range(delta)
-			if (d0 + timedelta(days=i)).weekday() < 5
-		)
+		# O(1) formula: count full weeks * 5 + remaining weekdays
+		full_weeks, remainder = divmod(delta, 7)
+		# Count weekdays in the remaining partial week
+		start_dow = d0.weekday()  # 0=Mon, 6=Sun
+		extra = sum(1 for i in range(remainder) if (start_dow + i) % 7 < 5)
+		weekdays = full_weeks * 5 + extra
 		return weekdays
 	except Exception:
 		return 999
 
-# -- FIX-4: Passive strategy (no Claude call) ---------------------------------
 # Holds up to PASSIVE_MAX_POSITIONS largest-cap stocks, equally weighted.
 # 5 positions is a reasonable S&P 500 proxy without being as variable as 2.
 PASSIVE_MAX_POSITIONS = 5
@@ -408,26 +413,27 @@ def update_leaderboard(today: str, kmap: Optional[Dict] = None) -> List[Dict]:
 	Uses a single shared connection to read all accounts + holdings at once,
 	rather than one connection per strategy, to minimise DB round-trips.
 	"""
-	from db import get_connection as _get_conn
-	conn = _get_conn()
+	acct_map: Dict[str, Dict] = {}
+	holdings_map: Dict[str, List[Dict]] = {}
+	conn = _db_get_connection()
 	try:
 		cur = conn.cursor(dictionary=True)
 
 		# Fetch all accounts in one query
 		cur.execute("SELECT * FROM accounts")
-		acct_map = {r["strategy_id"]: {
-			"account":        r["account"],
-			"strategy_id":    r["strategy_id"],
-			"cash":           float(r["cash"]),
-			"holdings_value": float(r["holdings_value"]),
-			"total":          float(r["total"]),
-			"start_date":     str(r["start_date"]),
-			"trades":         int(r["trades"]),
-		} for r in cur.fetchall()}
+		for r in cur.fetchall():
+			acct_map[r["strategy_id"]] = {
+				"account":        r["account"],
+				"strategy_id":    r["strategy_id"],
+				"cash":           float(r["cash"]),
+				"holdings_value": float(r["holdings_value"]),
+				"total":          float(r["total"]),
+				"start_date":     str(r["start_date"]),
+				"trades":         int(r["trades"]),
+			}
 
 		# Fetch all holdings in one query
 		cur.execute("SELECT * FROM holdings")
-		holdings_map: Dict[str, List[Dict]] = {}
 		for r in cur.fetchall():
 			sid = r["strategy_id"]
 			holdings_map.setdefault(sid, []).append({
@@ -452,11 +458,15 @@ def update_leaderboard(today: str, kmap: Optional[Dict] = None) -> List[Dict]:
 					acct["total"] = total
 					update_params.append((hv, total, sid))
 			if update_params:
-				cur.executemany(
-					"UPDATE accounts SET holdings_value=%s, total=%s WHERE strategy_id=%s",
-					update_params,
-				)
-				conn.commit()
+				try:
+					cur.executemany(
+						"UPDATE accounts SET holdings_value=%s, total=%s WHERE strategy_id=%s",
+						update_params,
+					)
+					conn.commit()
+				except Exception:
+					conn.rollback()
+					raise
 
 	finally:
 		conn.close()
@@ -548,7 +558,7 @@ Top-ranked candidates today (by strategy scoring):
 {cand_str}
 
 Rules:
-- Commission is $1.00 per trade + 0.15% spread (larger for less-liquid names). Round-trip ? $2-4 -- a position needs ~0.4-0.8% gain just to break even.
+- Commission is $1.00 per trade + 0.15% spread (larger for less-liquid names). Round-trip ~$2-4 -- a position needs ~0.4-0.8% gain just to break even.
 - Max 3 positions at once; max 60% of portfolio in any one stock
 - Keep at least 5% cash reserve
 - MINIMUM HOLD: do NOT sell a position held fewer than {hold_floor} trading days
@@ -586,9 +596,13 @@ Respond ONLY with a JSON object. No explanation outside the JSON.
 	
 	with urllib.request.urlopen(req, timeout=60) as resp:
 		data = json.loads(resp.read().decode("utf-8"))
-	
-	text = data["content"][0]["text"].strip()
-	
+
+	content_blocks = data.get("content", [])
+	if not content_blocks or content_blocks[0].get("type") != "text":
+		logger.error(f"ask_claude [{strategy_id}]: unexpected response structure: {data}")
+		return None, "Unexpected API response structure"
+	text = content_blocks[0]["text"].strip()
+
 	if data.get("stop_reason") == "max_tokens":
 		logger.warning(f"Claude response truncated (hit max_tokens=1200). Partial text: {text[:200]}...")
 		return None, "Response truncated"
@@ -999,9 +1013,13 @@ def get_news_macro_analysis(force_refresh=False, verbose=False):
 	
 	with urllib.request.urlopen(req, timeout=60) as resp:
 		data = json.loads(resp.read().decode("utf-8"))
-	
-	text = data["content"][0]["text"].strip()
-	
+
+	content_blocks = data.get("content", [])
+	if not content_blocks or content_blocks[0].get("type") != "text":
+		logger.error(f"get_news_macro_analysis: unexpected response structure: {data}")
+		return {"analysis_date": date.today().isoformat(), "dominant_themes": [], "company_catalysts": []}
+	text = content_blocks[0]["text"].strip()
+
 	if data.get("stop_reason") == "max_tokens":
 		logger.warning(f"Claude response truncated (hit max_tokens=1500). Partial text: {text[:200]}...")
 	
@@ -1058,7 +1076,7 @@ def print_news_briefing(macro_data: dict = None):
 	
 	print("\nCompany Catalysts:")
 	for cat in macro_data.get("company_catalysts", []):
-		sentiment = "?" if cat.get("sentiment") == "positive" else "?" if cat.get("sentiment") == "negative" else "?"
+		sentiment = "[+]" if cat.get("sentiment") == "positive" else "[-]" if cat.get("sentiment") == "negative" else "[?]"
 		print(f"  {sentiment} {cat.get('ticker', 'Unknown')}: {cat.get('description', '')} "
 			  f"(magnitude: {cat.get('magnitude', '?')}/10)")
 	
@@ -1237,7 +1255,6 @@ def run_strategy(sid: str, name: str, style: str, risk: str, desc: str,
 				f"Holdings: ${acct['holdings_value']:>9.2f}  |  "
 				f"Total: ${acct['total']:>9.2f}")
 
-	# FIX-11: Fixed stop-loss execution
 	holdings = enforce_stop_losses(sid, holdings, kmap, today, dry_run)
 	acct = read_account(sid)
 
@@ -1252,8 +1269,7 @@ def run_strategy(sid: str, name: str, style: str, risk: str, desc: str,
 	# when the data is so old it's unreliable (>= 2x the threshold).
 	if sid == "07":
 		try:
-			from db import get_connection
-			_conn = get_connection()
+			_conn = _db_get_connection()
 			try:
 				_cur = _conn.cursor()
 				_cur.execute("SELECT MAX(updated_at) FROM equity_kpi")
@@ -1285,8 +1301,23 @@ def run_strategy(sid: str, name: str, style: str, risk: str, desc: str,
 		if macro_cache.exists():
 			try:
 				macro = json.loads(macro_cache.read_text(encoding="utf-8"))
-				if macro.get("analysis_date") != today:
-					logger.info(f"	   News cache is stale ({macro.get('analysis_date')}), using anyway")
+				cache_date = macro.get("analysis_date", "")
+				if cache_date == today:
+					pass  # fresh
+				else:
+					# Allow yesterday's cache only -- anything older is too stale to trade on
+					try:
+						cache_age_days = (date.fromisoformat(today) - date.fromisoformat(cache_date)).days
+					except Exception:
+						cache_age_days = 99
+					if cache_age_days > 1:
+						logger.warning(
+							f"	   News cache is {cache_age_days} days old ({cache_date}) -- "
+							f"too stale to trade on. Skipping S{sid}."
+						)
+						macro = None
+					else:
+						logger.info(f"	   News cache is from yesterday ({cache_date}), using it")
 			except (json.JSONDecodeError, OSError) as e:
 				logger.warning(f"	   Could not read news cache: {e}")
 		else:
@@ -1366,7 +1397,6 @@ def run_validation() -> bool:
 
 	PASS  = "  (ok)"
 	FAIL  = "  (x)"
-	SKIP  = "  -"
 	results = []
 
 	def check(name, fn):
@@ -1625,7 +1655,8 @@ def main():
 	parser.add_argument("--init",	   action="store_true", help="Initialise all account files")
 	parser.add_argument("--force-init", action="store_true", help="Re-initialise (resets all accounts!)")
 	parser.add_argument("--strategy",   type=str,			help="Run only this strategy ID, e.g. 01")
-	parser.add_argument("--kpi-file",   type=str, default="equity_kpi_results.csv")
+	parser.add_argument("--kpi-file",   type=str, default="equity_kpi_results.csv",
+	                    help="Deprecated: KPI data now read from MySQL. Argument ignored.")
 	parser.add_argument("--news-brief", action="store_true", help="Print news briefing and exit")
 	parser.add_argument("--validate",   action="store_true", help="Run self-test suite and exit")
 	args = parser.parse_args()
@@ -1665,7 +1696,13 @@ def main():
 
 	logger.info(f"\n  Loaded {len(rows)} tickers from KPI file.")
 
-	run_ids = [args.strategy] if args.strategy else [s[0] for s in STRATEGIES]
+	if args.strategy:
+		if args.strategy not in {s[0] for s in STRATEGIES}:
+			logger.error(f"Unknown strategy ID '{args.strategy}'. Valid IDs: {[s[0] for s in STRATEGIES]}")
+			return
+		run_ids = [args.strategy]
+	else:
+		run_ids = [s[0] for s in STRATEGIES]
 
 	for sid, name, style, risk, desc in STRATEGIES:
 		if sid not in run_ids:
