@@ -4,7 +4,7 @@ update_quotes.py -- Fetch live quotes for all held positions and refresh
 				   every strategy's holdings_value, account total, and
 				   the leaderboard WITHOUT triggering any buy/sell logic.
 
-Also recomputes abnormal_return for ALL tickers in equity_kpi_results.csv
+Also recomputes abnormal_return for ALL tickers in the equity_kpi MySQL table
 using today's live prices vs yesterday's close and SPY as the market proxy.
 This fixes the data-freshness gap where strategy_runner.py (running at 4:30 PM)
 was using an abnormal_return computed from the morning KPI run -- 8+ hours stale
@@ -26,9 +26,8 @@ import sys
 import argparse
 import time
 import logging
-from datetime import date, datetime, timezone
+from datetime import date, datetime
 from pathlib import Path
-from collections import defaultdict
 from functools import wraps
 
 # -- Fix Windows console encoding ----------------------------------------------
@@ -38,14 +37,16 @@ if sys.platform == 'win32':
 	sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 
 # -- Configure logging ----------------------------------------------------------
-logging.basicConfig(
-	level=logging.INFO,
-	format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-	handlers=[
-		logging.FileHandler(Path(__file__).parent / "quote_update.log", encoding='utf-8'),
-		logging.StreamHandler()
-	]
-)
+_root_logger = logging.getLogger()
+if not _root_logger.handlers:
+	logging.basicConfig(
+		level=logging.INFO,
+		format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+		handlers=[
+			logging.FileHandler(Path(__file__).parent / "quote_update.log", encoding='utf-8'),
+			logging.StreamHandler()
+		]
+	)
 logger = logging.getLogger(__name__)
 
 # -- UTF-8 output (Windows) ----------------------------------------------------
@@ -66,6 +67,7 @@ except ImportError:
 from constants import STARTING_CASH, ACCOUNT_NUM, STRATEGIES
 from db import (
     init_schema,
+    get_connection as _db_get_connection,
     read_account   as _db_read_account,
     save_account   as _db_save_account,
     read_holdings  as _db_read_holdings,
@@ -210,11 +212,20 @@ def refresh_abnormal_returns(verbose: bool = True) -> int:
 	return updated
 
 def collect_tickers(run_ids: list) -> set:
-	tickers = set()
-	for sid in run_ids:
-		for h in read_holdings(sid):
-			tickers.add(h["ticker"])
-	return tickers
+	"""Return all tickers held by the given strategy IDs. Single DB query."""
+	if not run_ids:
+		return set()
+	conn = _db_get_connection()
+	try:
+		cur = conn.cursor()
+		placeholders = ",".join(["%s"] * len(run_ids))
+		cur.execute(
+			f"SELECT DISTINCT ticker FROM holdings WHERE strategy_id IN ({placeholders})",
+			run_ids,
+		)
+		return {row[0] for row in cur.fetchall()}
+	finally:
+		conn.close()
 
 # -- Improved quote fetching with better fallback handling -----------------
 @retry(max_attempts=2, backoff=1.0)
@@ -224,7 +235,6 @@ def fetch_quotes(tickers: set, stale_threshold: float = DEFAULT_STALE_THRESHOLD)
 	prices: {ticker: current_price}
 	previous_closes: {ticker: prev_close} for fallback
 	
-	FIX: Now also fetches previous close as a fallback when current price is stale.
 	"""
 	if not tickers:
 		return {}, {}
@@ -235,7 +245,6 @@ def fetch_quotes(tickers: set, stale_threshold: float = DEFAULT_STALE_THRESHOLD)
 	prices = {}
 	previous_closes = {}
 	failed = []
-	stale_warnings = []
 
 	try:
 		# Batch download with 2 days of history to get previous close
@@ -333,7 +342,6 @@ def update_strategy(sid: str, prices: dict, previous_closes: dict, today: str,
 					show: bool, stale_threshold: float) -> dict | None:
 	"""
 	Update a single strategy's holdings with current prices.
-	FIX: Now uses previous_close as fallback and warns about stale prices.
 	"""
 	acct = read_account(sid)
 	if acct is None:
@@ -411,15 +419,31 @@ def update_strategy(sid: str, prices: dict, previous_closes: dict, today: str,
 	acct["total"] = round(acct["cash"] + hv, 2)
 	save_account(sid, acct)
 	# Note: holdings themselves (cost basis, shares) are not modified here --
-	# only the account's holdings_value total is updated. No need to rewrite holdings CSV.
+	# only the account's holdings_value total is updated.
 	return acct
 
 # -- Rebuild leaderboard -------------------------------------------------------
 def update_leaderboard(today: str, run_ids: list, all_ids: list) -> list:
-	"""Re-reads every strategy account and upserts leaderboard rows in MySQL."""
+	"""Re-reads every strategy account and upserts leaderboard rows in MySQL.
+	Uses a single connection to fetch all accounts at once."""
+	conn = _db_get_connection()
+	try:
+		cur = conn.cursor(dictionary=True)
+		cur.execute("SELECT * FROM accounts")
+		acct_map = {}
+		for r in cur.fetchall():
+			acct_map[r["strategy_id"]] = {
+				"cash":           float(r["cash"]),
+				"holdings_value": float(r["holdings_value"]),
+				"total":          float(r["total"]),
+				"trades":         int(r["trades"]),
+			}
+	finally:
+		conn.close()
+
 	rows = []
-	for sid, name, style, risk, *_ in all_ids:  # *_ absorbs description field
-		acct = read_account(sid)
+	for sid, name, style, risk, *_ in all_ids:
+		acct = acct_map.get(sid)
 		if acct is None:
 			# Account missing from DB -- show as $0 rather than silently skip
 			acct = {"cash": 0.0, "holdings_value": 0.0, "total": 0.0, "trades": 0}
@@ -467,7 +491,7 @@ def main():
 	parser.add_argument("--show", action="store_true",
 						help="Print per-position detail after updating")
 	parser.add_argument("--no-kpi-refresh", action="store_true",
-						help="Skip the abnormal_return refresh in equity_kpi_results.csv")
+						help="Skip the abnormal_return refresh in the equity_kpi table")
 	parser.add_argument("--stale-threshold", type=float, default=DEFAULT_STALE_THRESHOLD,
 						help=f"Warn if price deviates more than X percent from avg_cost (default: {DEFAULT_STALE_THRESHOLD})")
 	parser.add_argument("--verbose", action="store_true",
@@ -487,7 +511,14 @@ def main():
 
 	init_schema()  # ensure MySQL tables exist
 	all_ids = [(s[0], s[1], s[2], s[3]) for s in STRATEGIES]
-	run_ids = [args.strategy] if args.strategy else [s[0] for s in STRATEGIES]
+	if args.strategy:
+		valid_ids = {s[0] for s in STRATEGIES}
+		if args.strategy not in valid_ids:
+			logger.error(f"Unknown strategy ID '{args.strategy}'. Valid IDs: {sorted(valid_ids)}")
+			return
+		run_ids = [args.strategy]
+	else:
+		run_ids = [s[0] for s in STRATEGIES]
 
 	# 1. Refresh abnormal_return in KPI file
 	if not args.no_kpi_refresh:

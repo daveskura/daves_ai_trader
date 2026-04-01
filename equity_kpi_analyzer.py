@@ -465,7 +465,7 @@ def main():
     parser.add_argument("--fred-key", default=None,
                         help="FRED API key (free at fred.stlouisfed.org). "
                              "Defaults to FRED_API_KEY environment variable / .env file.")
-    parser.add_argument("--output",   default="equity_kpi_results.csv",
+    parser.add_argument("--output",   default=str(Path(__file__).parent / "equity_kpi_results.csv"),
                         help="Output CSV filename")
     args = parser.parse_args()
 

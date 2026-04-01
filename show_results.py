@@ -15,33 +15,56 @@ from db import get_connection
 def main():
     parser = argparse.ArgumentParser(description="Show leaderboard results from MySQL")
     parser.add_argument("--history", action="store_true",
-                        help="Show all historical dates, not just the latest")
+                        help="Show historical dates, not just the latest")
+    parser.add_argument("--days", type=int, default=30,
+                        help="Number of past days to show with --history (default: 30, 0=all)")
     args = parser.parse_args()
 
-    conn = get_connection()
-    cur = conn.cursor()
+    try:
+        from db import init_schema
+        init_schema()
+        conn = get_connection()
+    except Exception as e:
+        print(f"ERROR: Could not connect to MySQL: {e}")
+        print("Check DB_HOST / DB_USER / DB_PASSWORD in your .env file.")
+        sys.exit(1)
 
-    if args.history:
-        cur.execute(
-            "SELECT lb_date, rank_pos, strategy_id, strategy_name, "
-            "       total, pnl, pct_return, trades "
-            "FROM leaderboard "
-            "ORDER BY lb_date DESC, rank_pos ASC"
-        )
-    else:
-        cur.execute(
-            "SELECT lb_date, rank_pos, strategy_id, strategy_name, "
-            "       total, pnl, pct_return, trades "
-            "FROM leaderboard "
-            "WHERE lb_date = (SELECT MAX(lb_date) FROM leaderboard) "
-            "ORDER BY rank_pos ASC"
-        )
-
-    rows = cur.fetchall()
-    conn.close()
+    try:
+        cur = conn.cursor()
+        if args.history:
+            if args.days > 0:
+                cur.execute(
+                    "SELECT lb_date, rank_pos, strategy_id, strategy_name, "
+                    "       total, pnl, pct_return, trades "
+                    "FROM leaderboard "
+                    "WHERE lb_date >= DATE_SUB(CURDATE(), INTERVAL %s DAY) "
+                    "ORDER BY lb_date DESC, rank_pos ASC",
+                    (args.days,),
+                )
+            else:
+                cur.execute(
+                    "SELECT lb_date, rank_pos, strategy_id, strategy_name, "
+                    "       total, pnl, pct_return, trades "
+                    "FROM leaderboard "
+                    "ORDER BY lb_date DESC, rank_pos ASC"
+                )
+        else:
+            cur.execute(
+                "SELECT lb_date, rank_pos, strategy_id, strategy_name, "
+                "       total, pnl, pct_return, trades "
+                "FROM leaderboard "
+                "WHERE lb_date = (SELECT MAX(lb_date) FROM leaderboard) "
+                "ORDER BY rank_pos ASC"
+            )
+        rows = cur.fetchall()
+    except Exception as e:
+        print(f"ERROR: Query failed: {e}")
+        sys.exit(1)
+    finally:
+        conn.close()
 
     if not rows:
-        print("No leaderboard data found. Run test_run.bat first.")
+        print("No leaderboard data found. Run test_run.bat (or run_daily.sh) first.")
         sys.exit(1)
 
     print()
