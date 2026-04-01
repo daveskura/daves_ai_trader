@@ -261,6 +261,9 @@ def save_account(sid: str, acct: Dict):
             ),
         )
         conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
     finally:
         conn.close()
 
@@ -299,6 +302,7 @@ def save_holdings(sid: str, holdings: List[Dict]):
     """
     Replace all holdings for strategy sid atomically.
     Deletes existing rows then inserts the new list in one transaction.
+    Rolls back fully if the INSERT fails so holdings are never left empty.
     """
     conn = get_connection()
     try:
@@ -324,6 +328,9 @@ def save_holdings(sid: str, holdings: List[Dict]):
                 ],
             )
         conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
     finally:
         conn.close()
 
@@ -358,6 +365,9 @@ def append_txn(sid: str, txn: Dict):
             ),
         )
         conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
     finally:
         conn.close()
 
@@ -448,6 +458,9 @@ def write_leaderboard(rows: List[Dict]):
             ],
         )
         conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
     finally:
         conn.close()
 
@@ -598,6 +611,9 @@ def write_kpi_rows(rows: List[Dict], fieldnames: Optional[List[str]] = None):
             insert_rows,
         )
         conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
     finally:
         conn.close()
 
@@ -652,5 +668,8 @@ def reset_all(starting_cash: float, strategies: list, account_num: str):
             )
 
         conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
     finally:
         conn.close()

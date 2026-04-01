@@ -421,7 +421,8 @@ def update_leaderboard(today: str, run_ids: list, all_ids: list) -> list:
 	for sid, name, style, risk, *_ in all_ids:  # *_ absorbs description field
 		acct = read_account(sid)
 		if acct is None:
-			continue
+			# Account missing from DB -- show as $0 rather than silently skip
+			acct = {"cash": 0.0, "holdings_value": 0.0, "total": 0.0, "trades": 0}
 		total = acct["cash"] + acct["holdings_value"]
 		pnl = total - STARTING_CASH
 		pct = (total / STARTING_CASH - 1) * 100 if STARTING_CASH else 0.0

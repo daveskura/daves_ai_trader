@@ -135,9 +135,9 @@ run_full() {
     echo
 
     echo "============================================"
-    echo " All done. Steps: KPI → quotes → strategies."
-    echo " Open leaderboard.html and drop"
-    echo " leaderboard.csv onto it to see results."
+    echo " All done. Steps: KPI --> quotes --> strategies."
+    echo " Run: python3 show_results.py"
+    echo " to view the leaderboard from MySQL."
     echo "============================================"
     echo
 

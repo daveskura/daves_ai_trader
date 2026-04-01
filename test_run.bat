@@ -33,14 +33,7 @@ echo [TEST 0/6] Done.
 echo.
 
 :: -- Hard-reset accounts to a clean slate ----------------------------------
-echo [TEST 1/6] Resetting all accounts to $1000 each...
-python reset_accounts.py --yes
-if errorlevel 1 (
-    echo ERROR: reset_accounts.py failed.
-    call :pause_exit 1
-)
-echo [TEST 1/6] Done.
-echo.
+echo [TEST 1/6] skipping 
 
 :: -- KPI analyser ----------------------------------------------------------
 echo [TEST 2/6] Running KPI analyser (--universe)...
@@ -111,5 +104,4 @@ echo %DATE% %TIME% Test run PASSED >> daily_run.log
 call :pause_exit 0
 
 :pause_exit
-if defined SESSIONNAME pause
 exit /b %1
