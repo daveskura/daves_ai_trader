@@ -301,7 +301,7 @@
       <div class="dot"></div>
       <span id="status-text">loading…</span>
     </div>
-    <button class="refresh-btn" onclick="loadCSV()">↺ refresh</button>
+    <button class="refresh-btn" onclick="loadLeaderboard()">↺ refresh</button>
   </div>
 </header>
 
@@ -364,6 +364,25 @@
 </main>
 
 <script>
+	function loadLeaderboard() {
+	  document.getElementById('loading-state').style.display = 'flex';
+	  document.getElementById('dashboard').style.display     = 'none';
+	  document.getElementById('error-state').style.display   = 'none';
+	  document.getElementById('status-pill').className       = 'status-pill';
+	  document.getElementById('status-text').textContent     = 'loading…';
+
+	  fetch('/ait/get_leaderboard.php?t=' + Date.now())
+		.then(r => {
+		  if (!r.ok) throw new Error('HTTP ' + r.status);
+		  return r.json();
+		})
+		.then(data => render(data)) // <-- SAME render function works
+		.catch(err => showError(
+		  'Could not load leaderboard from database.',
+		  'Error: ' + err.message
+		));
+	}
+
 // ── CSV parser ────────────────────────────────────────────────────────────────
 function parseCSV(text) {
   const lines = text.trim().split('\n');
@@ -544,10 +563,10 @@ bindFilePicker('file-input2');
 
 // ── Auto-refresh every 5 minutes ─────────────────────────────────────────────
 const REFRESH_MS = 5 * 60 * 1000;
-setInterval(loadCSV, REFRESH_MS);
+setInterval(loadLeaderboard(), REFRESH_MS);
 
 // ── Initial load ──────────────────────────────────────────────────────────────
-loadCSV();
+loadLeaderboard();
 </script>
 </body>
 </html>
