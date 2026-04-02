@@ -517,10 +517,17 @@ def ask_claude(strategy_id: str, strategy_name: str, strategy_desc: str,
 		cur_price = _raw_price if _raw_price is not None else avg_cost
 		unreal = (cur_price - avg_cost) * h["shares"]
 		pnl_pct = (cur_price - avg_cost) / avg_cost * 100 if avg_cost else 0
+		# Include RSI and MA signal so Claude can apply sell rules that depend on them
+		# (e.g. S02: sell when RSI > 50; S12: sell when MA turns bearish)
+		kd_held   = kmap.get(h['ticker'], {})
+		rsi_held  = kd_held.get('rsi_14')
+		ma_held   = kd_held.get('ma_signal', '?')
+		rsi_s_held = f"{rsi_held:.0f}" if isinstance(rsi_held, float) else '?'
+		ma_s_held  = 'Golden(ok)' if 'BULLISH' in str(ma_held) else ('Death(x)' if 'BEARISH' in str(ma_held) else str(ma_held))
 		hold_lines.append(
 			f"  {h['ticker']}: {h['shares']:.4f} sh  avg_cost ${avg_cost:.2f}  "
 			f"now ${cur_price:.2f}  P&L ${unreal:+.2f} ({pnl_pct:+.1f}%)  "
-			f"held since {h.get('purchase_date','?')}"
+			f"RSI={rsi_s_held}  MA={ma_s_held}  held since {h.get('purchase_date','?')}"
 		)
 	hold_str = "\n".join(hold_lines) or "  (none)"
 
@@ -702,7 +709,7 @@ def score_earnings_surprise(rows, kmap):
 						f"PEAD(fallback): fwd_growth={eps_g*100:.1f}% ab_ret={ab*100:.2f}%"))
 		out = sorted(out, key=lambda x: -x[1])[:5]
 	
-	return sorted(out, key=lambda x: -x[1])
+	return out  # already sorted by the fallback block above
 
 def score_dividend_growth(rows, kmap):
 	"""High dividend yield + growing payout.
@@ -724,7 +731,8 @@ def score_dividend_growth(rows, kmap):
 			continue
 		pe   = r.get("pe_ratio", 999)
 		dy5  = r.get("five_year_avg_dividend_yield", 0) or 0
-		pe_pen = max(0, pe - 35) * 0.3 if pe > 0 else 0
+		# pe < 0 means data is unreliable (mixed fiscal year) — apply max penalty
+		pe_pen = max(0, pe - 35) * 0.3 if pe > 0 else max(0, 999 - 35) * 0.3
 		score  = dy * 400 + max(0, dy - dy5) * 200 + npm * 40 - pe_pen
 		reason = f"Div yield={dy*100:.2f}% 5yr={dy5*100:.2f}% margin={npm*100:.1f}% beta={beta:.2f}"
 		out.append((r["ticker"], round(score, 2), reason))
@@ -750,7 +758,8 @@ def score_insider_buying(rows, kmap):
 
 def score_macro_adaptive(rows, kmap):
 	"""Switch between aggressive and defensive based on VIX."""
-	vix = rows[0].get("vix", 20) if rows else 20
+	# Use first non-None VIX across all rows — rows[0] may have missing/stale data
+	vix = next((r.get("vix") for r in rows if r.get("vix") is not None), 20)
 	out = []
 	for r in rows:
 		beta = r.get("beta", 1)
