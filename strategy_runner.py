@@ -707,9 +707,9 @@ def score_earnings_surprise(rows, kmap):
 			score = eps_g * 150 + ab * 200 + r.get("composite_score", 0) * 0.2
 			out.append((r["ticker"], round(score, 2),
 						f"PEAD(fallback): fwd_growth={eps_g*100:.1f}% ab_ret={ab*100:.2f}%"))
-		out = sorted(out, key=lambda x: -x[1])[:5]
+		out = out[:5]  # limit fallback to 5; sorted at return below
 	
-	return out  # already sorted by the fallback block above
+	return sorted(out, key=lambda x: -x[1])  # sort covers both main and fallback paths
 
 def score_dividend_growth(rows, kmap):
 	"""High dividend yield + growing payout.
