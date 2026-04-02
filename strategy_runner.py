@@ -136,7 +136,11 @@ def check_data_freshness():
 			row = cur.fetchone()
 			if row and row[0]:
 				global _kpi_age_hours
-				age_hours = (datetime.now() - row[0]).total_seconds() / 3600
+				# Strip tzinfo if the connector returns an aware datetime;
+				# datetime.now() is naive local time. Both reflect the same
+				# wall clock as long as MySQL and the process share a timezone.
+				updated_naive = row[0].replace(tzinfo=None) if row[0].tzinfo else row[0]
+				age_hours = (datetime.now() - updated_naive).total_seconds() / 3600
 				_kpi_age_hours = age_hours
 				if age_hours > KPI_WARN_HOURS_PEAD:
 					logger.warning(
@@ -650,10 +654,11 @@ def score_mean_reversion(rows, kmap):
 	"""Buy oversold (RSI < 38)."""
 	out = []
 	for r in rows:
-		rsi = r.get("rsi_14", 50)
-		if rsi > 38: continue
+		rsi = r.get("rsi_14")  # None when DB field is NULL
+		if not rsi or rsi > 38: continue  # excludes None, 0, and non-oversold
 		if r.get("ma_signal", "") == "BEARISH (Death Cross)": continue
-		score = (40 - rsi) * 2 + r.get("composite_score", 0) * 0.3
+		cs = r.get("composite_score") or 0
+		score = (40 - rsi) * 2 + cs * 0.3
 		out.append((r["ticker"], round(score, 2), f"Oversold RSI={rsi:.1f}"))
 	return sorted(out, key=lambda x: -x[1])
 
@@ -800,10 +805,10 @@ def score_academic_momentum(rows, kmap):
 	"""Asness-style momentum with crash protection."""
 	out = []
 	for r in rows:
-		cs = r.get("composite_score", 0)
-		rsi = r.get("rsi_14", 50)
-		beta = r.get("beta", 1)
-		pct_from_high = r.get("pct_from_52w_high", 0)
+		cs = r.get("composite_score") or 0
+		rsi = r.get("rsi_14") or 50  # None (missing data) defaults to 50
+		beta = r.get("beta") or 1
+		pct_from_high = r.get("pct_from_52w_high") or 0
 		
 		if r.get("ma_signal", "") != "BULLISH (Golden Cross)": continue
 		if rsi > 75: continue

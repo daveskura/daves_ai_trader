@@ -583,7 +583,7 @@ def read_kpi_rows() -> List[Dict]:
 			row: Dict[str, Any] = {"ticker": r["ticker"]}
 			for col in _KPI_NUMERIC_COLS:
 				v = r.get(col)
-				row[col] = float(v) if v is not None else 0.0
+				row[col] = float(v) if v is not None else None
 			for col in _KPI_STR_COLS:
 				row[col] = r.get(col) or ""
 			# Merge extra_json fields back in
@@ -733,6 +733,9 @@ def update_kpi_abnormal_returns(ab_map: Dict[str, float]):
 			[(round(v, 4), k) for k, v in ab_map.items()],
 		)
 		conn.commit()
+	except Exception:
+		conn.rollback()
+		raise
 	finally:
 		conn.close()
 
