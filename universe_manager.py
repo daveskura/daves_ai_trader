@@ -282,7 +282,7 @@ def enrich_with_market_cap(df: pd.DataFrame, batch_size: int = 50) -> pd.DataFra
         logger.info(f"    ...{pct}% complete", end="\r", flush=True)
         time.sleep(0.5)   # slightly more polite to Yahoo
 
-    logger.info()
+    logger.info("")
     df = df.copy()
     df["market_cap"] = df["ticker"].map(cap_map).fillna(0).astype(float)
 
@@ -387,7 +387,7 @@ def get_universe(
 
     if skip_market_cap:
         logger.info("  [UNIVERSE] Skipping market-cap lookup (skip_market_cap=True)")
-        constituents["market_cap"] = range(len(constituents), 0, -1)
+        constituents["market_cap"] = [float(i) for i in range(len(constituents), 0, -1)]
     else:
         constituents = enrich_with_market_cap(constituents)
 

@@ -155,7 +155,11 @@ def fetch_returns(tickers: list[str], target_date: datetime.date) -> pd.DataFram
 
     # Extract market and VIX
     market_ret = float(day_returns.get(MARKET_INDEX, 0))
-    vix_val    = float(close.get(VIX_TICKER, pd.Series([None])).dropna().iloc[-1]) if VIX_TICKER in close.columns else None
+    if VIX_TICKER in close.columns:
+        vix_closes = close[VIX_TICKER].dropna()
+        vix_val = float(vix_closes.iloc[-1]) if len(vix_closes) > 0 else None
+    else:
+        vix_val = None
 
     logger.info(f"\n  {'─'*55}")
     logger.info(f"  Analysis date : {target_ts.date()}")
@@ -266,7 +270,7 @@ def fetch_fundamentals(tickers: list[str]) -> dict[str, dict]:
             # Compute pct from 52w high
             price = result[sym]["current_price"]
             high  = result[sym]["52w_high"]
-            if price and high and high > 0:
+            if price is not None and high is not None and high > 0:
                 result[sym]["pct_from_52w_high"] = (price - high) / high
             logger.info("✓")
         except Exception as e:
@@ -312,10 +316,10 @@ def analyze_patterns(df_out: pd.DataFrame, fundamentals: dict, market_ret: float
         d = f.get("dividend_yield")
         p = f.get("pe_ratio")
         s = f.get("short_pct_float")
-        if b and not np.isnan(float(b)):  betas.append(float(b))
-        if d and not np.isnan(float(d)):  div_yields.append(float(d))
-        if p and not np.isnan(float(p)):  pe_ratios.append(float(p))
-        if s and not np.isnan(float(s)):  short_pcts.append(float(s))
+        if b is not None and np.isfinite(float(b)):  betas.append(float(b))
+        if d is not None and np.isfinite(float(d)):  div_yields.append(float(d))
+        if p is not None and np.isfinite(float(p)):  pe_ratios.append(float(p))
+        if s is not None and np.isfinite(float(s)):  short_pcts.append(float(s))
 
     findings["beta"] = {
         "avg":    round(np.mean(betas), 2) if betas else None,
@@ -445,7 +449,7 @@ def write_report(df: pd.DataFrame, fundamentals: dict, findings: dict,
             "forward_pe":       f.get("forward_pe"),
             "net_margin_pct":   round(f["net_margin"] * 100, 1) if f.get("net_margin") else None,
             "dividend_yield_pct": round(f["dividend_yield"] * 100, 2) if f.get("dividend_yield") else 0,
-            "market_cap_B":     round(f["market_cap"] / 1e9, 1) if f.get("market_cap") else None,
+            "market_cap_B":     round(f["market_cap"] / 1e9, 1) if f.get("market_cap") is not None and f["market_cap"] > 0 else None,
             "short_pct_float":  round(f["short_pct_float"] * 100, 1) if f.get("short_pct_float") else None,
             "pct_from_52w_high":round(f["pct_from_52w_high"] * 100, 1) if f.get("pct_from_52w_high") else None,
             "50d_vs_200d_ma":   ("GOLDEN" if (f.get("50d_avg") or 0) > (f.get("200d_avg") or 0)

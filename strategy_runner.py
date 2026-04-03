@@ -74,8 +74,6 @@ from db import (
 	save_holdings  as _db_save_holdings,
 	append_txn     as _db_append_txn,
 	write_leaderboard          as _db_write_leaderboard,
-	read_leaderboard_history   as _db_read_lb_history,
-	append_leaderboard_history as _db_append_lb_history,
 	read_kpi_rows              as _db_read_kpi_rows,
 	write_news_macro_cache     as _db_write_news_macro,
 	read_news_macro_cache      as _db_read_news_macro,
@@ -258,11 +256,16 @@ def buy(sid: str, ticker: str, price: float, cash_available: float, reason: str,
 	
 	spend = min(cash_available * 0.90, max_pos - already_invested)
 	spend = max(spend, 0)
-	
+
+	if price <= 0:
+		return False, f"Invalid price: {price}"
+
 	if spend < price + COMMISSION:
 		return False, "Insufficient funds"
-	
+
 	shares = round((spend - COMMISSION) / (price * (1 + SPREAD_PCT)), 6)
+	if shares <= 0:
+		return False, f"Buy amount too small after fees (would buy {shares} shares)"
 	net_cost = round(shares * price * (1 + SPREAD_PCT) + COMMISSION, 4)
 
 	if dry_run:
@@ -640,13 +643,24 @@ DEFENSE_TICKERS = {
 	"XOM", "CVX", "COP", "OXY", "SLB", "BKR", "EOG",         # energy
 }
 
+# -- Score helpers -------------------------------------------------------------
+import math as _math
+
+def _f(v, default: float = 0.0) -> float:
+	"""Safely coerce a KPI value to float, replacing None/NaN/inf with default."""
+	try:
+		f = float(v) if v is not None else default
+		return f if _math.isfinite(f) else default
+	except (TypeError, ValueError):
+		return default
+
 # -- Score functions -----------------------------------------------------------
 
 def score_passive(rows: List[Dict], kmap: Dict) -> List[Tuple]:
 	"""Passive benchmark: rank by market cap for buy-and-hold selection."""
 	out = []
 	for r in rows:
-		cap = r.get("market_cap", 0)
+		cap = _f(r.get("market_cap"), 0.0)
 		out.append((r["ticker"], cap, "Passive hold: largest market cap"))
 	return sorted(out, key=lambda x: -x[1])
 
@@ -657,7 +671,7 @@ def score_mean_reversion(rows, kmap):
 		rsi = r.get("rsi_14")  # None when DB field is NULL
 		if not rsi or rsi > 38: continue  # excludes None, 0, and non-oversold
 		if r.get("ma_signal", "") == "BEARISH (Death Cross)": continue
-		cs = r.get("composite_score") or 0
+		cs = _f(r.get("composite_score"), 0.0)
 		score = (40 - rsi) * 2 + cs * 0.3
 		out.append((r["ticker"], round(score, 2), f"Oversold RSI={rsi:.1f}"))
 	return sorted(out, key=lambda x: -x[1])
@@ -666,8 +680,8 @@ def score_value(rows, kmap):
 	"""Low P/E + high profit margin."""
 	out = []
 	for r in rows:
-		pe = r.get("pe_ratio", 999)
-		npm = r.get("net_profit_margin", 0)
+		pe  = _f(r.get("pe_ratio"),          999.0)
+		npm = _f(r.get("net_profit_margin"),    0.0)
 		if pe <= 0 or pe > 25: continue
 		if npm < 0.05: continue
 		score = (25 - pe) * 2 + npm * 100
@@ -678,8 +692,8 @@ def score_low_volatility(rows, kmap):
 	"""Lowest beta + decent composite score."""
 	out = []
 	for r in rows:
-		beta = r.get("beta", 1)
-		cs = r.get("composite_score", 0)
+		beta = _f(r.get("beta"), default=999.0)
+		cs   = _f(r.get("composite_score"))
 		if beta <= 0 or beta > 1.0: continue
 		if cs < 40: continue
 		score = (1.5 - beta) * 40 + cs * 0.4
@@ -688,32 +702,46 @@ def score_low_volatility(rows, kmap):
 
 def score_earnings_surprise(rows, kmap):
 	"""PEAD proxy: EPS growth + abnormal return."""
+	import math as _math
 	out = []
 	for r in rows:
-		eps_ttm = r.get("eps_ttm", 0) or 0
-		eps_g = r.get("eps_growth_fwd", 0)
-		ab = r.get("abnormal_return", 0)
+		eps_ttm = _f(r.get("eps_ttm"), 0.0)
+		eps_g_raw = r.get("eps_growth_fwd")
+		ab_raw    = r.get("abnormal_return")
 		if eps_ttm <= 0: continue
+		# Treat None or NaN as missing — do not let them bypass numeric filters
+		try:
+			eps_g = float(eps_g_raw) if eps_g_raw is not None else 0.0
+			ab    = float(ab_raw)    if ab_raw    is not None else 0.0
+		except (TypeError, ValueError):
+			continue
+		if not (_math.isfinite(eps_g) and _math.isfinite(ab)): continue
 		if eps_g < 0.20: continue
 		if ab <= 0.02: continue
-		score = eps_g * 150 + ab * 200 + r.get("composite_score", 0) * 0.2
+		score = eps_g * 150 + ab * 200 + _f(r.get("composite_score"), 0.0) * 0.2
 		out.append((r["ticker"], round(score, 2),
 					f"PEAD: fwd_growth={eps_g*100:.1f}% ab_ret={ab*100:.2f}%"))
-	
+
 	# Fallback for days with no strong signals
 	if not out:
 		for r in rows:
-			eps_ttm = r.get("eps_ttm", 0) or 0
-			eps_g = r.get("eps_growth_fwd", 0)
-			ab = r.get("abnormal_return", 0)
+			eps_ttm = _f(r.get("eps_ttm"), 0.0)
+			eps_g_raw = r.get("eps_growth_fwd")
+			ab_raw    = r.get("abnormal_return")
 			if eps_ttm <= 0: continue
+			try:
+				eps_g = float(eps_g_raw) if eps_g_raw is not None else 0.0
+				ab    = float(ab_raw)    if ab_raw    is not None else 0.0
+			except (TypeError, ValueError):
+				continue
+			if not (_math.isfinite(eps_g) and _math.isfinite(ab)): continue
 			if eps_g < 0.15: continue
 			if ab <= 0.015: continue
-			score = eps_g * 150 + ab * 200 + r.get("composite_score", 0) * 0.2
+			score = eps_g * 150 + ab * 200 + _f(r.get("composite_score"), 0.0) * 0.2
 			out.append((r["ticker"], round(score, 2),
 						f"PEAD(fallback): fwd_growth={eps_g*100:.1f}% ab_ret={ab*100:.2f}%"))
 		out = out[:5]  # limit fallback to 5; sorted at return below
-	
+
 	return sorted(out, key=lambda x: -x[1])  # sort covers both main and fallback paths
 
 def score_dividend_growth(rows, kmap):
@@ -728,14 +756,20 @@ def score_dividend_growth(rows, kmap):
 		dy = r.get("dividend_yield", 0) or 0
 		if dy < MIN_YIELD:          # strict: zero AND sub-threshold excluded
 			continue
-		npm = r.get("net_profit_margin", 0) or 0
+		npm = _f(r.get("net_profit_margin"), 0.0)
 		if npm <= 0:                # must be profitable to sustain the dividend
 			continue
-		beta = r.get("beta", 1)
+		beta = _f(r.get("beta"), 1.0)
 		if beta > 1.2:
 			continue
-		pe   = r.get("pe_ratio", 999)
-		dy5  = r.get("five_year_avg_dividend_yield", 0) or 0
+		pe   = _f(r.get("pe_ratio"), 999.0)
+		dy5_raw = r.get("five_year_avg_dividend_yield")
+		try:
+			dy5 = float(dy5_raw) if dy5_raw is not None else 0.0
+			if not __import__("math").isfinite(dy5):
+				dy5 = 0.0
+		except (TypeError, ValueError):
+			dy5 = 0.0
 		# pe < 0 means data is unreliable (mixed fiscal year) — apply max penalty
 		pe_pen = max(0, pe - 35) * 0.3 if pe > 0 else max(0, 999 - 35) * 0.3
 		score  = dy * 400 + max(0, dy - dy5) * 200 + npm * 40 - pe_pen
@@ -747,7 +781,7 @@ def score_insider_buying(rows, kmap):
 	"""Positive net insider shares = confidence signal."""
 	out = []
 	for r in rows:
-		ins = r.get("net_insider_shares", 0)
+		ins = _f(r.get("net_insider_shares"), 0.0)  # None/NaN → 0 (no insider data)
 		if ins <= 0: continue
 		if ins > 100_000:
 			ins_score = 40
@@ -757,25 +791,26 @@ def score_insider_buying(rows, kmap):
 			ins_score = 12
 		else:
 			ins_score = 5
-		score = ins_score + r.get("composite_score", 0) * 0.4
+		score = ins_score + _f(r.get("composite_score"), 0.0) * 0.4
 		out.append((r["ticker"], round(score, 2), f"Net insider buy={int(ins):,} shares"))
 	return sorted(out, key=lambda x: -x[1])
 
 def score_macro_adaptive(rows, kmap):
 	"""Switch between aggressive and defensive based on VIX."""
 	# Use first non-None VIX across all rows — rows[0] may have missing/stale data
-	vix = next((r.get("vix") for r in rows if r.get("vix") is not None), 20)
+	vix = next((r.get("vix") for r in rows if r.get("vix") is not None and _math.isfinite(r.get("vix"))), 20)
 	out = []
 	for r in rows:
-		beta = r.get("beta", 1)
-		cs = r.get("composite_score", 0)
+		beta = _f(r.get("beta"), 1.0)
+		cs   = _f(r.get("composite_score"), 0.0)
 		if vix > 22:
 			if beta > 1.0: continue
 			score = cs * 0.5 + (1.5 - beta) * 30
 			label = f"Defensive (VIX={vix:.1f})"
 		else:
 			if cs < 55: continue
-			score = cs * 0.8 + r.get("abnormal_return", 0) * 100
+			ab    = _f(r.get("abnormal_return"), 0.0)
+			score = cs * 0.8 + ab * 100
 			label = f"Aggressive (VIX={vix:.1f})"
 		out.append((r["ticker"], round(score, 2), label))
 	return sorted(out, key=lambda x: -x[1])
@@ -784,12 +819,12 @@ def score_large_cap_value(rows, kmap):
 	"""Pure S&P 500 value tilt."""
 	out = []
 	for r in rows:
-		pe = r.get("pe_ratio", 999)
-		npm = r.get("net_profit_margin", 0)
-		beta = r.get("beta", 1.0) or 1.0
-		cs = r.get("composite_score", 0)
-		cap = r.get("market_cap", 0)
-		
+		pe  = _f(r.get("pe_ratio"),          999.0)
+		npm = _f(r.get("net_profit_margin"),    0.0)
+		beta = _f(r.get("beta"),              1.0)
+		cs  = _f(r.get("composite_score"),      0.0)
+		cap = _f(r.get("market_cap"), 0.0)
+
 		if pe <= 0 or pe > 22: continue
 		if npm < 0.05: continue
 		if beta > 1.2: continue
@@ -805,10 +840,10 @@ def score_academic_momentum(rows, kmap):
 	"""Asness-style momentum with crash protection."""
 	out = []
 	for r in rows:
-		cs = r.get("composite_score") or 0
-		rsi = r.get("rsi_14") or 50  # None (missing data) defaults to 50
-		beta = r.get("beta") or 1
-		pct_from_high = r.get("pct_from_52w_high") or 0
+		cs            = _f(r.get("composite_score"))
+		rsi           = _f(r.get("rsi_14"), 50.0)    # None/NaN → neutral 50
+		beta          = _f(r.get("beta"),   1.0)
+		pct_from_high = _f(r.get("pct_from_52w_high"))
 		
 		if r.get("ma_signal", "") != "BULLISH (Golden Cross)": continue
 		if rsi > 75: continue
@@ -816,7 +851,7 @@ def score_academic_momentum(rows, kmap):
 		if pct_from_high > -0.05: continue
 		
 		# RSI rewards stronger trend — use rsi directly (not 100-rsi which penalises momentum)
-		score = cs * 0.6 + rsi * 0.2 + r.get("abnormal_return", 0) * 100
+		score = cs * 0.6 + rsi * 0.2 + _f(r.get("abnormal_return"), 0.0) * 100
 		out.append((r["ticker"], round(score, 2),
 					f"Asness: RSI={rsi:.1f} beta={beta:.2f} from52wh={pct_from_high*100:.1f}%"))
 	return sorted(out, key=lambda x: -x[1])
@@ -825,9 +860,9 @@ def score_quality_profitability(rows, kmap):
 	"""Novy-Marx: high gross margin + low beta."""
 	out = []
 	for r in rows:
-		npm = r.get("net_profit_margin", 0)
-		beta = r.get("beta", 1)
-		eps_g = r.get("eps_growth_fwd", 0)
+		npm   = _f(r.get("net_profit_margin"), 0.0)
+		beta  = _f(r.get("beta"),              1.0)
+		eps_g = _f(r.get("eps_growth_fwd"),    0.0)
 		if npm < 0.15: continue
 		if beta > 1.3: continue
 		score = npm * 100 + (1.5 - beta) * 20 + eps_g * 30
@@ -839,17 +874,17 @@ def score_capex_beneficiary(rows, kmap):
 	"""Capex Beneficiary / Semiconductor Infrastructure."""
 	out = []
 	for r in rows:
-		sector = r.get("sector", "") or ""
-		eps_ttm = r.get("eps_ttm", 0) or 0
-		eps_fwd = r.get("eps_growth_fwd", 0) or 0
-		npm = r.get("net_profit_margin", 0) or 0
-		pe = r.get("pe_ratio", 999) or 999
-		ma_sig = r.get("ma_signal", "")
-		ab = r.get("abnormal_return", 0) or 0
-		cs = r.get("composite_score", 0)
-		beta = r.get("beta", 1.0) or 1.0
-		rsi = r.get("rsi_14", 50) or 50
-		
+		sector  = r.get("sector", "") or ""
+		eps_ttm = _f(r.get("eps_ttm"))
+		eps_fwd = _f(r.get("eps_growth_fwd"))
+		npm     = _f(r.get("net_profit_margin"))
+		pe      = _f(r.get("pe_ratio"), 999.0)
+		ma_sig  = r.get("ma_signal", "")
+		ab      = _f(r.get("abnormal_return"))
+		cs      = _f(r.get("composite_score"))
+		beta    = _f(r.get("beta"), 1.0)
+		rsi     = _f(r.get("rsi_14"), 50.0)
+
 		if sector not in CAPEX_SECTORS: continue
 		if eps_ttm <= 0: continue
 		if eps_fwd < 0.08: continue
@@ -868,17 +903,17 @@ def score_defense_war_economy(rows, kmap):
 	"""Strategy 21 -- Defense & War Economy."""
 	out = []
 	for r in rows:
-		ticker = r["ticker"]
-		sector = r.get("sector", "") or ""
-		eps_ttm = r.get("eps_ttm", 0) or 0
-		eps_fwd = r.get("eps_growth_fwd", 0) or 0
-		npm = r.get("net_profit_margin", 0) or 0
-		ma_sig = r.get("ma_signal", "")
-		ab = r.get("abnormal_return", 0) or 0
-		cs = r.get("composite_score", 0)
-		rsi = r.get("rsi_14", 50) or 50
-		beta = r.get("beta", 1.0) or 1.0
-		
+		ticker  = r["ticker"]
+		sector  = r.get("sector", "") or ""
+		eps_ttm = _f(r.get("eps_ttm"))
+		eps_fwd = _f(r.get("eps_growth_fwd"))
+		npm     = _f(r.get("net_profit_margin"))
+		ma_sig  = r.get("ma_signal", "")
+		ab      = _f(r.get("abnormal_return"))
+		cs      = _f(r.get("composite_score"))
+		rsi     = _f(r.get("rsi_14"), 50.0)
+		beta    = _f(r.get("beta"), 1.0)
+
 		in_whitelist = ticker in DEFENSE_TICKERS
 		in_sector = sector in DEFENSE_SECTORS
 		
@@ -908,8 +943,10 @@ def _fetch_rss(url: str, verbose: bool = False) -> list:
 		return []
 	try:
 		feed = feedparser.parse(url)
+		parts = url.split('/')
+		source = parts[2] if len(parts) > 2 else url
 		return [
-			{"title": e.title, "source": url.split('/')[2]}
+			{"title": e.title, "source": source}
 			for e in feed.entries
 			if hasattr(e, "title")
 		]
@@ -1124,11 +1161,17 @@ def score_news_macro(rows: list, kmap: dict, macro: dict = None) -> list:
 		return []
 
 	regime = macro.get("market_regime", "NEUTRAL")
+	if regime not in ("RISK-ON", "RISK-OFF", "NEUTRAL"):
+		logger.warning(f"Unknown market_regime '{regime}' from Claude — treating as NEUTRAL")
+		regime = "NEUTRAL"
 	sector_scores: dict[str, float] = defaultdict(float)
 	sector_labels: dict[str, list]  = defaultdict(list)
 
 	for theme in macro.get("dominant_themes", []):
-		strength = theme.get("strength", 5) / 10.0
+		try:
+			strength = max(0.0, min(10.0, float(theme.get("strength", 5)))) / 10.0
+		except (TypeError, ValueError):
+			strength = 0.5
 		dur_mult = {"1-3 days": 0.8, "1-2 weeks": 1.0,
 					"1-3 months": 1.2, "structural": 1.5}.get(
 						theme.get("duration_outlook", "1-2 weeks"), 1.0)
@@ -1138,19 +1181,23 @@ def score_news_macro(rows: list, kmap: dict, macro: dict = None) -> list:
 		ben_secs = list(set(theme.get("beneficiary_sectors", []) + builtin[0]))
 		los_secs = list(set(theme.get("loser_sectors", []) + builtin[1]))
 
+		_tname = theme.get("theme_name") or theme.get("theme_id") or "unknown"
 		for sec in ben_secs:
 			sector_scores[sec] += strength * dur_mult * 10
-			sector_labels[sec].append(f"{theme['theme_name']}(+)")
+			sector_labels[sec].append(f"{_tname}(+)")
 		for sec in los_secs:
 			sector_scores[sec] -= strength * dur_mult * 10
-			sector_labels[sec].append(f"{theme['theme_name']}(-)")
+			sector_labels[sec].append(f"{_tname}(-)")
 
 	# Per-company catalysts from news
 	catalyst_map: dict[str, tuple] = {}
 	for cat in macro.get("company_catalysts", []):
 		ticker = (cat.get("ticker") or "").upper()
 		if not ticker: continue
-		mag  = cat.get("magnitude", 5) / 10.0
+		try:
+			mag = max(0.0, min(10.0, float(cat.get("magnitude", 5)))) / 10.0
+		except (TypeError, ValueError):
+			mag = 0.5
 		sign = (1  if cat.get("sentiment") == "positive" else
 			   -1  if cat.get("sentiment") == "negative" else 0)
 		if sign:
@@ -1160,8 +1207,8 @@ def score_news_macro(rows: list, kmap: dict, macro: dict = None) -> list:
 	for r in rows:
 		ticker = r["ticker"]
 		sector = r.get("sector", "Unknown")
-		beta   = r.get("beta", 1.0) or 1.0
-		cs	 = r.get("composite_score", 0) or 0
+		beta = _f(r.get("beta"), 1.0)
+		cs   = _f(r.get("composite_score"))
 
 		sec_adj = sector_scores.get(sector, 0.0)
 
@@ -1199,7 +1246,10 @@ def score_news_sentiment(rows: list, kmap: dict, macro: dict = None) -> list:
 
 	sector_scores: dict[str, float] = defaultdict(float)
 	for theme in macro.get("dominant_themes", []):
-		strength = theme.get("strength", 5) / 10.0
+		try:
+			strength = max(0.0, min(10.0, float(theme.get("strength", 5)))) / 10.0
+		except (TypeError, ValueError):
+			strength = 0.5
 		builtin  = MACRO_THEME_MAP.get(theme.get("theme_id", ""), ([], []))
 		for sec in set(theme.get("beneficiary_sectors", []) + builtin[0]):
 			sector_scores[sec] += strength * 8
@@ -1210,7 +1260,10 @@ def score_news_sentiment(rows: list, kmap: dict, macro: dict = None) -> list:
 	for cat in macro.get("company_catalysts", []):
 		ticker = (cat.get("ticker") or "").upper()
 		if not ticker: continue
-		mag  = cat.get("magnitude", 5) / 10.0
+		try:
+			mag = max(0.0, min(10.0, float(cat.get("magnitude", 5)))) / 10.0
+		except (TypeError, ValueError):
+			mag = 0.5
 		sign = (1  if cat.get("sentiment") == "positive" else
 			   -1  if cat.get("sentiment") == "negative" else 0)
 		if sign:
@@ -1219,13 +1272,13 @@ def score_news_sentiment(rows: list, kmap: dict, macro: dict = None) -> list:
 	out = []
 	for r in rows:
 		ticker = r["ticker"]
-		cs	 = r.get("composite_score", 0) or 0
-		eps_g  = r.get("eps_growth_fwd", 0) or 0
-		npm	= r.get("net_profit_margin", 0) or 0
+		cs     = _f(r.get("composite_score"), 0.0)
+		eps_g  = _f(r.get("eps_growth_fwd"),  0.0)
+		npm    = _f(r.get("net_profit_margin"), 0.0)
 		sector = r.get("sector", "Unknown")
 
 		if cs < 40: continue						 # quality gate
-		if (r.get("eps_ttm") or 0) < 0: continue	# must be profitable
+		if _f(r.get("eps_ttm"), 0.0) < 0: continue	# must be profitable
 
 		sec_adj		   = sector_scores.get(sector, 0.0)
 		cat_adj, cat_desc = catalyst_map.get(ticker, (0, ""))
@@ -1391,7 +1444,11 @@ def _run_strategy_inner(sid: str, name: str, style: str, risk: str, desc: str,
 			logger.info("	   No held positions in today's candidate list — nothing to do")
 			return
 
-	decision, err = ask_claude(sid, name, desc, candidates, current_holdings, acct, today, kmap=kmap)
+	try:
+		decision, err = ask_claude(sid, name, desc, candidates, current_holdings, acct, today, kmap=kmap)
+	except Exception as _claude_exc:
+		logger.error(f"Claude API exception [{sid}]: {_claude_exc}")
+		return
 	if err:
 		logger.error(f"Claude error: {err}")
 		return

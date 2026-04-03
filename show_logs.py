@@ -79,11 +79,13 @@ def show_summary(args):
         warn  = int(r["warn_count"]     or 0)
         error = int(r["error_count"]    or 0)
         crit  = int(r["critical_count"] or 0)
-        warn_s  = colorize("WARNING",  str(warn))  if warn  else str(warn)
-        error_s = colorize("ERROR",    str(error)) if error else str(error)
-        crit_s  = colorize("CRITICAL", str(crit))  if crit  else str(crit)
+        # Format numbers first, then colorize — ANSI codes inflate string length
+        # so applying :>6 after colorize misaligns columns in the terminal.
+        warn_s  = colorize("WARNING",  f"{warn:>6}")  if warn  else f"{warn:>6}"
+        error_s = colorize("ERROR",    f"{error:>6}") if error else f"{error:>6}"
+        crit_s  = colorize("CRITICAL", f"{crit:>6}")  if crit  else f"{crit:>6}"
         print(f"  {str(r['log_date']):<12} {(r['run_stage'] or ''):<10} "
-              f"{int(r['info_count'] or 0):>6} {warn_s:>6} {error_s:>6} {crit_s:>6}")
+              f"{int(r['info_count'] or 0):>6} {warn_s} {error_s} {crit_s}")
     print()
 
 

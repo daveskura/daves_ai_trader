@@ -58,8 +58,9 @@ except ImportError:
 
 try:
 	import pandas as pd
+	import numpy as np
 except ImportError:
-	sys.exit("ERROR: pandas not installed.  Run:  pip install pandas")
+	sys.exit("ERROR: pandas/numpy not installed.  Run:  pip install pandas numpy")
 
 # -- Constants -- imported from single source of truth -------------------------
 from constants import STARTING_CASH, ACCOUNT_NUM, STRATEGIES
@@ -169,6 +170,9 @@ def refresh_abnormal_returns(verbose: bool = True) -> int:
 				logger.warning("Insufficient SPY history -- skipping abnormal_return refresh")
 			return 0
 		spy_ret = (spy_closes.iloc[-1] - spy_closes.iloc[-2]) / spy_closes.iloc[-2]
+		if not np.isfinite(spy_ret):
+			logger.error(f"SPY return is non-finite ({spy_ret}) — skipping abnormal_return refresh")
+			return 0
 	except Exception as e:
 		logger.error(f"SPY return computation failed: {e}")
 		return 0
@@ -188,7 +192,14 @@ def refresh_abnormal_returns(verbose: bool = True) -> int:
 			sym_closes = closes[sym].dropna()
 			if len(sym_closes) < 2:
 				continue
-			stock_ret = (sym_closes.iloc[-1] - sym_closes.iloc[-2]) / sym_closes.iloc[-2]
+			prev_close = sym_closes.iloc[-2]
+			if prev_close <= 0:
+				logger.debug(f"Skipping {sym}: previous close is {prev_close}")
+				continue
+			stock_ret = (sym_closes.iloc[-1] - prev_close) / prev_close
+			if not np.isfinite(stock_ret):
+				logger.debug(f"Skipping {sym}: non-finite stock return {stock_ret}")
+				continue
 			beta_val = beta_lookup.get(sym, 1.0)
 			ab_map[sym] = round(float(stock_ret - beta_val * spy_ret), 4)
 		except Exception as e:
@@ -374,6 +385,10 @@ def update_strategy(sid: str, prices: dict, previous_closes: dict, today: str,
 			price = avg_cost
 			price_source = "avg_cost"
 			logger.warning(f"[{sid}] {sym}: No quote or prev_close available -- using avg_cost ${avg_cost:.2f}")
+
+		if price <= 0:
+			logger.error(f"[{sid}] {sym}: price is {price} (zero or negative) -- skipping MV, possible data corruption")
+			continue
 
 		mv = round(shares * price, 2)
 		hv += mv

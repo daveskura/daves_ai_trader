@@ -96,6 +96,11 @@ def _safe_float(v) -> Optional[float]:
 
 def get_connection():
 	"""Return a new MySQL connection. Caller is responsible for closing it."""
+	if not DB_CONFIG.get("password"):
+		raise ConnectionError(
+			"DB_PASSWORD environment variable is not set. "
+			"Add it to your .env file or set it in the environment."
+		)
 	try:
 		conn = mysql.connector.connect(**DB_CONFIG)
 		return conn
@@ -982,7 +987,8 @@ def write_news_macro_cache(data: Dict):
 	`data` is the full JSON dict returned by Claude.
 	"""
 	import json as _json
-	analysis_date = data.get("analysis_date") or date.today().isoformat()
+	_ad = data.get("analysis_date")
+	analysis_date = _ad if isinstance(_ad, str) and _ad else date.today().isoformat()
 	conn = get_connection()
 	try:
 		cur = conn.cursor()

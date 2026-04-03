@@ -101,13 +101,17 @@ def fetch_macro_fred(fred_key: str | None) -> dict:
 
         # GDP growth (quarterly)
         gdp = fred.get_series("GDP").dropna()
-        if len(gdp) >= 2:
-            macro["gdp_growth_rate"] = (gdp.iloc[-1] - gdp.iloc[-2]) / gdp.iloc[-2]
+        if len(gdp) >= 2 and gdp.iloc[-2] != 0:
+            _gdp_ratio = (gdp.iloc[-1] - gdp.iloc[-2]) / gdp.iloc[-2]
+            if np.isfinite(_gdp_ratio):
+                macro["gdp_growth_rate"] = _gdp_ratio
 
         # CPI inflation (monthly)
         cpi = fred.get_series("CPIAUCSL").dropna()
-        if len(cpi) >= 2:
-            macro["inflation_rate_cpi"] = (cpi.iloc[-1] - cpi.iloc[-2]) / cpi.iloc[-2]
+        if len(cpi) >= 2 and cpi.iloc[-2] != 0:
+            _cpi_ratio = (cpi.iloc[-1] - cpi.iloc[-2]) / cpi.iloc[-2]
+            if np.isfinite(_cpi_ratio):
+                macro["inflation_rate_cpi"] = _cpi_ratio
 
         # Fed funds rate change
         ffr = fred.get_series("FEDFUNDS").dropna()
@@ -115,9 +119,10 @@ def fetch_macro_fred(fred_key: str | None) -> dict:
             macro["policy_rate_change"] = ffr.iloc[-1] - ffr.iloc[-2]
             macro["policy_rate_current"] = ffr.iloc[-1]
 
-        logger.info(f"  [MACRO] GDP growth: {macro.get('gdp_growth_rate', 'N/A'):.4f}  |  "
-              f"CPI: {macro.get('inflation_rate_cpi', 'N/A'):.4f}  |  "
-              f"Fed rate: {macro.get('policy_rate_current', 'N/A'):.2f}%")
+        gdp_s = f"{macro['gdp_growth_rate']:.4f}" if 'gdp_growth_rate' in macro else 'N/A'
+        cpi_s = f"{macro['inflation_rate_cpi']:.4f}" if 'inflation_rate_cpi' in macro else 'N/A'
+        ffr_s = f"{macro['policy_rate_current']:.2f}%" if 'policy_rate_current' in macro else 'N/A'
+        logger.info(f"  [MACRO] GDP growth: {gdp_s}  |  CPI: {cpi_s}  |  Fed rate: {ffr_s}")
 
     except Exception as e:
         logger.error(f"  [MACRO] FRED fetch failed: {e}")
@@ -148,7 +153,10 @@ def compute_rsi(prices: pd.Series, period: int = 14) -> float | None:
     loss   = (-delta.clip(upper=0)).rolling(period).mean()
     rs     = gain / loss.replace(0, np.nan)
     rsi    = 100 - (100 / (1 + rs))
-    return round(rsi.iloc[-1], 2)
+    val = rsi.iloc[-1]
+    if pd.isna(val):
+        return None
+    return round(float(val), 2)
 
 
 def compute_ma_signal(prices: pd.Series) -> dict:
@@ -156,10 +164,13 @@ def compute_ma_signal(prices: pd.Series) -> dict:
     if len(prices) >= MA_LONG:
         result["ma_50"]  = round(prices.rolling(MA_SHORT).mean().iloc[-1], 2)
         result["ma_200"] = round(prices.rolling(MA_LONG).mean().iloc[-1], 2)
-        if result["ma_50"] > result["ma_200"]:
-            result["ma_signal"] = "BULLISH (Golden Cross)"
+        if pd.notna(result["ma_50"]) and pd.notna(result["ma_200"]):
+            if result["ma_50"] > result["ma_200"]:
+                result["ma_signal"] = "BULLISH (Golden Cross)"
+            else:
+                result["ma_signal"] = "BEARISH (Death Cross)"
         else:
-            result["ma_signal"] = "BEARISH (Death Cross)"
+            result["ma_signal"] = "insufficient data"
     elif len(prices) >= MA_SHORT:
         result["ma_50"] = round(prices.rolling(MA_SHORT).mean().iloc[-1], 2)
         result["ma_signal"] = "insufficient history for 200-day MA"
@@ -170,8 +181,13 @@ def compute_abnormal_return(prices: pd.Series, market_prices: pd.Series, beta: f
     """Single-day abnormal return = actual return - (beta * market return)."""
     if len(prices) < 2 or len(market_prices) < 2:
         return None
-    stock_ret  = (prices.iloc[-1] - prices.iloc[-2]) / prices.iloc[-2]
-    market_ret = (market_prices.iloc[-1] - market_prices.iloc[-2]) / market_prices.iloc[-2]
+    prev_price, prev_market = prices.iloc[-2], market_prices.iloc[-2]
+    if prev_price <= 0 or prev_market <= 0:
+        return None
+    stock_ret  = (prices.iloc[-1]        - prev_price)  / prev_price
+    market_ret = (market_prices.iloc[-1] - prev_market) / prev_market
+    if not (np.isfinite(stock_ret) and np.isfinite(market_ret)):
+        return None
     return round(stock_ret - beta * market_ret, 4)
 
 
@@ -196,7 +212,7 @@ def fetch_ticker_data(ticker_symbol: str, market_prices: pd.Series) -> dict:
         # EPS Growth (TTM vs prior year via yf financials)
         row["eps_ttm"]      = info.get("trailingEps")
         row["eps_forward"]  = info.get("forwardEps")
-        if row.get("eps_ttm") and row.get("eps_forward") and row["eps_ttm"] != 0:
+        if row.get("eps_ttm") and row.get("eps_forward") and abs(row["eps_ttm"]) >= 0.01:
             row["eps_growth_fwd"] = round(
                 (row["eps_forward"] - row["eps_ttm"]) / abs(row["eps_ttm"]), 4
             )
@@ -242,7 +258,7 @@ def fetch_ticker_data(ticker_symbol: str, market_prices: pd.Series) -> dict:
             row.update(compute_ma_signal(prices))
 
             # Abnormal return
-            beta = row.get("beta") or 1.0
+            beta = row.get("beta") if row.get("beta") is not None else 1.0
             row["abnormal_return"] = compute_abnormal_return(prices, market_prices, beta)
 
             # 52-week high/low context
@@ -369,7 +385,7 @@ def score_ticker(row: dict, macro: dict, vix: float | None) -> dict:
 
     # Abnormal Return (positive = good signal, cap at +/-5%)
     ar = row.get("abnormal_return")
-    if ar is not None:
+    if ar is not None and np.isfinite(ar):
         t2.append(min(100, max(0, 50 + ar / 0.05 * 50)))
 
     scores["tier2_score"] = round(np.mean(t2), 1) if t2 else None
@@ -559,7 +575,8 @@ def main():
             if prev_rows:
                 prev_map = {r["ticker"]: float(r["eps_growth_fwd"])
                             for r in prev_rows
-                            if r.get("eps_growth_fwd") not in (None, 0.0)}
+                            if r.get("eps_growth_fwd") not in (None, 0.0)
+                            and pd.notna(r.get("eps_growth_fwd"))}
                 logger.info(f"  [S16] Loaded prior eps_growth_fwd from MySQL "
                       f"({len(prev_map)} tickers)")
         except Exception as e:
